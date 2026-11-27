@@ -6,7 +6,7 @@ Deadline: Saturday 28 Nov, 16:00. Each phase ends with a gate. Nothing from a la
 
 Escape Berghain is a web app. It runs in the browser with nothing to install, and it lives on Vercel with a public URL that judges open on their own laptop.
 
-- **Live game:** production deploy of `main` on Vercel (URL in the README once it's up). This is the link in the pitch and the demo
+- **Live game:** https://escape-berghain.vercel.app, the production deploy of `main`. This is the link in the pitch and the demo
 - **Previews:** every PR gets its own Vercel URL. Somebody plays it before merge
 - Desktop Chrome, Firefox and Safari. Keyboard controls. Mobile is out of scope
 - Static Vite build, no server, no accounts, no keys
@@ -26,7 +26,7 @@ Every gate ends with a recap: `docs/recaps/phase-<n>.md` (see `docs/recaps/TEMPL
 - [x] Greybox hall, wobbly box horse, trip meter with chromatic aberration and camera wobble
 - [x] Model loader with grey box fallback, model viewer at `/?viewer=<name>`
 - [x] GitHub repo public, `main` and `dev`, branch protection, CI
-- [ ] Vercel connected, production on `main`, previews on PRs
+- [x] Vercel connected, production on `main` at https://escape-berghain.vercel.app, previews on PRs (previews sit behind Vercel login, #36)
 - [x] All issues created
 - [ ] Emma: greybox kit and one lighting mood shot everyone agrees on
 - [ ] Robin: judging criteria read, first draft of `content/`, pitch site started in its own Lovable project
@@ -59,11 +59,11 @@ Built early by Opus on Friday evening so Emma and the night bots start from a pl
 
 ## Phase 3: Content complete (Saturday 08:00 to 12:00)
 
-- [ ] All 5 fragments in the chain (#11)
-- [ ] All NPCs placed with lines (#14, #22)
-- [ ] Patrols, caught loss, pass out loss (#12, #13)
-- [ ] Intro, HUD, title (#17)
-- [ ] Secret DJ ending (#20)
+- [x] All 5 fragments in the chain (#11): glasses, wrist stamp (Q), ticket, jacket and keys (mash Space), the riddle
+- [x] All NPCs placed with lines (#14, #22). Bouncer at the front door, visible spirit guide that gets more solid as you remember
+- [x] Patrols, caught loss, pass out loss (#12, #13). Torches, animal control van, tourist selfie alerts security
+- [x] Intro, HUD, title (#17). Neon tunnel, objective line in the HUD
+- [x] Secret DJ ending (#20)
 - [ ] NPC and prop models, counters, staircase, decals (#8)
 - [ ] Gemini Neon bug bash at 10:00
 

@@ -2,6 +2,8 @@
 
 You took too much. You are a horse. Get home before your memory slips away.
 
+**Play it:** https://escape-berghain.vercel.app (production, from `main`)
+
 Team Five, 24 hour game hackathon. Dee (code), Emma (3D), Robin (strategy).
 
 ## Run it
@@ -11,7 +13,7 @@ npm install
 npm run dev
 ```
 
-WASD to walk.
+WASD to walk. Space to grab and talk. Q to look at yourself. E to stomp on the beat. M to mute.
 
 ## Start here
 
