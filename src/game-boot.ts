@@ -90,9 +90,15 @@ const lookAt = new THREE.Vector3();
 
 // Face to face: walk into a special NPC and the camera is pulled into your eyes, staring at their face.
 // A dolly zoom (closer while the lens widens) makes the room stretch behind them. Like an old RPG, but wrong.
-let focus: { face: THREE.Vector3; t: number } | null = null;
+let focus: { face: THREE.Vector3; dir: THREE.Vector2; t: number } | null = null;
 bus.on('npc:focus', ({ x, y, z }) => {
-  focus = { face: new THREE.Vector3(x, horse.root.position.y + y, z), t: 0 };
+  // Fix the angle once, from the NPC towards where the camera is now, so it can't flip if the horse slides.
+  const dir = new THREE.Vector2(camera.position.x - x, camera.position.z - z);
+  const toHorse = new THREE.Vector2(horse.root.position.x - x, horse.root.position.z - z);
+  if (toHorse.length() > 0.4) dir.copy(toHorse);
+  if (dir.length() < 0.01) dir.set(0, 1);
+  dir.normalize();
+  focus = { face: new THREE.Vector3(x, horse.root.position.y + y, z), dir, t: 0 };
   horse.root.visible = false;
 });
 bus.on('npc:unfocus', () => {
@@ -134,11 +140,8 @@ renderer.setAnimationLoop(() => {
   if (focus) {
     focus.t += dt;
     const e = 1 - Math.pow(1 - Math.min(1, focus.t / 1.1), 3);
-    const dx = horse.root.position.x - focus.face.x;
-    const dz = horse.root.position.z - focus.face.z;
-    const len = Math.hypot(dx, dz) || 1;
-    const dist = 2.6 - e * 1.5;
-    follow.set(focus.face.x + (dx / len) * dist, focus.face.y - 0.05, focus.face.z + (dz / len) * dist);
+    const dist = 2.6 - e * 1.35;
+    follow.set(focus.face.x + focus.dir.x * dist, focus.face.y - 0.05, focus.face.z + focus.dir.y * dist);
     lookAt.copy(focus.face);
     // Dolly zoom: the face grows a little while everything behind it stretches away.
     focusFov = 2 * Math.atan((0.75 - e * 0.25) / dist) * (180 / Math.PI);
@@ -171,5 +174,5 @@ renderer.setAnimationLoop(() => {
   fx.render(dt);
 });
 
-// Playtesting: /?debug puts window.eb = { state, bus, world, npcs, horse } on the page.
-if (debug.on) (window as unknown as { eb: unknown }).eb = { state, bus, world, npcs, horse };
+// Playtesting: /?debug puts window.eb = { state, bus, world, npcs, horse, camera } on the page.
+if (debug.on) (window as unknown as { eb: unknown }).eb = { state, bus, world, npcs, horse, camera };

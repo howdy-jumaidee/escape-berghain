@@ -27,6 +27,14 @@ const COLOURS: Partial<Record<NpcId, number>> = {
   bouncer: 0x0e0e0e,
   leather_choir: 0x050505,
   cleaner: 0x2a5a8a,
+  leather_daddy: 0x0b0b0b,
+  bartender_bear: 0x5a3a22,
+  drag_oracle: 0xc81e8c,
+  rubber_knight: 0x111418,
+  old_raver: 0x5a5a3a,
+  glitter_boy: 0xd8d0ff,
+  darkroom_keeper: 0x050507,
+  lighting_tech: 0x2a2a2a,
 };
 /** How many figures stand at one NPC spot. */
 const GROUP: Partial<Record<NpcId, number>> = { herd: 3, tourists: 2, leather_choir: 5 };
@@ -62,12 +70,28 @@ const STYLES: Partial<Record<NpcId, DanceStyle>> = {
   coat_check: { hop: 0.03, step: 0, twist: 0.1, wander: 0 },
   bouncer: { hop: 0.02, step: 0, twist: 0, wander: 0 },
   cleaner: { hop: 0.02, step: 0, twist: 0.15, wander: 0 },
+  bartender_bear: { hop: 0.03, step: 0.1, twist: 0.1, wander: 0.6 },
+  drag_oracle: { hop: 0.05, step: 0.06, twist: 0.6, wander: 0.4 },
+  rubber_knight: { hop: 0.08, step: 0.05, twist: 0.1, wander: 1 },
+  old_raver: { hop: 0.1, step: 0.12, twist: 0.3, wander: 0.5 },
+  glitter_boy: { hop: 0.28, step: 0.18, twist: 0.8, wander: 1.8 },
+  darkroom_keeper: { hop: 0, step: 0, twist: 0.05, wander: 0 },
+  lighting_tech: { hop: 0.02, step: 0, twist: 0.4, wander: 0.3 },
 };
 const WANDER_SPEED = 0.6;
 /** Special NPCs: walk into them and you're pulled into a face to face conversation. */
 const FOCUS = new Set<NpcId>([
   'friday_guy', 'patrick', 'philosopher', 'tourists', 'ice_cream_horse', 'bouncer', 'cleaner', 'leather_choir', 'riddle_horse', 'coat_check',
+  'leather_daddy', 'bartender_bear', 'drag_oracle', 'rubber_knight', 'old_raver', 'glitter_boy', 'darkroom_keeper', 'lighting_tech',
 ]);
+/** Figures that aren't the standard 1.8 m box. */
+const SIZES: Partial<Record<NpcId, { x: number; y: number; z: number }>> = {
+  bartender_bear: { x: 0.8, y: 1.9, z: 0.5 },
+  drag_oracle: { x: 0.55, y: 2.15, z: 0.35 },
+  rubber_knight: { x: 0.62, y: 1.95, z: 0.42 },
+  glitter_boy: { x: 0.45, y: 1.7, z: 0.3 },
+  leather_daddy: { x: 0.65, y: 1.88, z: 0.42 },
+};
 /** How close you have to stumble before they grab you. */
 const BUMP_RANGE = 1.5;
 /** Walk this far away before they can grab you again. */
@@ -198,6 +222,20 @@ export class Npcs {
 
   /** Push the horse out of the crowd. Wired into the horse's collision by game-boot. Mutates pos. */
   pushPlayer(pos: THREE.Vector3, radius: number): void {
+    // Special NPCs are solid: you bump into them, you don't walk through them.
+    for (const npc of this.npcs) {
+      if (!FOCUS.has(npc.id)) continue;
+      for (const h of npc.holders) {
+        const dx = pos.x - h.position.x;
+        const dz = pos.z - h.position.z;
+        const d = Math.hypot(dx, dz);
+        const min = radius + 0.38;
+        if (d < min && d > 1e-4) {
+          pos.x = h.position.x + (dx / d) * min;
+          pos.z = h.position.z + (dz / d) * min;
+        }
+      }
+    }
     if (!this.crowd.push(pos, radius)) return;
     const now = performance.now();
     if (now - this.barkAt < BARK_EVERY_MS || !state.started || state.ending) return;
@@ -286,7 +324,7 @@ export class Npcs {
     const c = cellCenter(col, row);
     const pos = new THREE.Vector3(c.x, 0, c.z);
     const horse = HORSES.has(id);
-    const size = horse ? { x: 0.6, y: 2.2, z: 0.45 } : { x: 0.55, y: 1.8, z: 0.35 };
+    const size = SIZES[id] ?? (horse ? { x: 0.6, y: 2.2, z: 0.45 } : { x: 0.55, y: 1.8, z: 0.35 });
     const mat = new THREE.MeshStandardMaterial({ color: COLOURS[id] ?? 0x555555, roughness: id === 'leather_choir' ? 0.35 : 0.85 });
     const count = GROUP[id] ?? 1;
     const objects: THREE.Object3D[] = [];
@@ -442,7 +480,7 @@ export class Npcs {
     lock('talk');
     const h = npc.holders[0];
     // Eye height, so their eyes sit right in the middle of the frame.
-    const face = HORSES.has(npc.id) ? 1.88 : 1.48;
+    const face = (SIZES[npc.id]?.y ?? (HORSES.has(npc.id) ? 2.2 : 1.8)) - 0.32;
     bus.emit('npc:focus', { npc: npc.id, x: h.position.x, y: face, z: h.position.z });
     this.sayLine();
   }

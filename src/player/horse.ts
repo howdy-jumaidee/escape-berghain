@@ -99,6 +99,11 @@ export class Horse {
       this.turnVel = 0;
       this.lurchIn = 2;
     });
+    // Pulled into a conversation: stop dead.
+    bus.on('npc:focus', () => {
+      this.velocity.set(0, 0, 0);
+      this.turnVel = 0;
+    });
     bus.on('player:floor', ({ floor }) => (this.root.position.y = floor * FLOOR_HEIGHT));
     bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
   }

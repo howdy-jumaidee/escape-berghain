@@ -173,5 +173,93 @@
       "Six o'clock. Every Sunday. Mind the floor.",
       "I always mop the back exit last. Follow the wet floor, you'll find the way out."
     ]
+  },
+  "leather_daddy": {
+    "name": "Leather daddy",
+    "lines": [
+      "Breathe, cutie."
+    ],
+    "talk": [
+      "Stop right there. Breathe. You look lost, cutie.",
+      "Coat check won't give anyone anything without a ticket. Not even a horse.",
+      "And the number you're looking for? It's on your wrist. Has been all night."
+    ]
+  },
+  "bartender_bear": {
+    "name": "Bartender bear",
+    "lines": [
+      "Water's off. MATE's in the corner."
+    ],
+    "talk": [
+      "We don't serve horses. Kidding. We serve everyone. Except you, you've had enough.",
+      "Water's off since Saturday. There's a MATE in the far corner of the main hall, by the wall.",
+      "Drink it slow. It'll clear your head and wreck your legs."
+    ]
+  },
+  "drag_oracle": {
+    "name": "Drag oracle",
+    "lines": [
+      "The cards don't lie, darling. I do."
+    ],
+    "talk": [
+      "Sit, foal. The cards have been waiting for you.",
+      "First card: the Glasses. Then the Number. Then the Ticket. Then the Keys.",
+      "Last card: the Bike. Reversed. The riddle horse holds it. Don't tell him I told you."
+    ]
+  },
+  "rubber_knight": {
+    "name": "Rubber knight",
+    "lines": [
+      "Hail. I dance until Monday."
+    ],
+    "talk": [
+      "Hail, traveller. I am sworn to dance until Monday, or until the squeaking stops.",
+      "I used to wander like thee. Then I took a stiletto to the knee.",
+      "Thou seekest the way out? It lies beyond the gate the riddle horse guards. Go with grace, little steed."
+    ]
+  },
+  "old_raver": {
+    "name": "Old raver",
+    "lines": [
+      "You remember yet?"
+    ],
+    "talk": [
+      "I came in a horse once. Back in the old building, before this one.",
+      "Everyone runs for this door. Running isn't what gets you out.",
+      "Remembering is. Glasses, number, ticket, keys, bike. Then you can go home."
+    ]
+  },
+  "glitter_boy": {
+    "name": "Glitter boy",
+    "lines": [
+      "Found my earring yet?"
+    ],
+    "talk": [
+      "Oh. My. God. A horse! Okay, quest for you. Very important.",
+      "I lost my other earring. I think it's under the DJ booth. Or in Panorama. Or in my other jacket.",
+      "Bring it back and I'll tell you a secret. Kidding, I don't know any secrets. Love the mane though."
+    ]
+  },
+  "darkroom_keeper": {
+    "name": "Darkroom keeper",
+    "lines": [
+      "Not yet."
+    ],
+    "talk": [
+      "...",
+      "The way out is through the darkroom. Nobody's ever come back to say otherwise.",
+      "Not tonight, though. It's closed for... reasons. Come back when the walls stop moving."
+    ]
+  },
+  "lighting_tech": {
+    "name": "Lighting tech",
+    "lines": [
+      "Don't look at the strobes."
+    ],
+    "talk": [
+      "Don't look straight at the strobes, they're mine.",
+      "Pro tip: stand dead still in a strobe and the torches can't see you. Physics.",
+      "Also the herd dances to my lights, not the music. Nobody believes me."
+    ]
   }
 }
