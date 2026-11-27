@@ -571,6 +571,12 @@ export class Techno {
 
 
 
+  /** Pulled into a conversation: a low swoop. */
+  sfxFocus(): void {
+    const t = this.ctx.currentTime;
+    this.tone(t, 320, 70, 0.5, 0.18, 'sine', 0.5);
+  }
+
   /** Bumping into a dancer. */
   sfxBump(): void {
     const t = this.ctx.currentTime;
