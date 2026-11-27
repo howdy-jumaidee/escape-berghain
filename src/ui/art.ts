@@ -39,6 +39,21 @@ const BOOTH = `<svg viewBox="0 0 320 150">
   ${[20, 50, 260, 290].map((x) => `<circle cx="${x}" cy="138" r="10" fill="#111"/>`).join('')}
 </svg>`;
 
+const HERD = `<svg viewBox="0 0 320 150">
+  <rect x="0" y="0" width="320" height="150" fill="#0b0b0b"/>
+  <rect x="0" y="128" width="320" height="22" fill="#1c1c1c"/>
+  ${[70, 160, 250]
+    .map(
+      (x) => `<g transform="translate(${x} 0)">
+    <rect x="-22" y="54" width="44" height="60" fill="#e6e1d3"/>
+    <rect x="-6" y="20" width="16" height="40" fill="#e6e1d3" transform="rotate(12 2 40)"/>
+    <rect x="-4" y="10" width="38" height="16" fill="#e6e1d3" transform="rotate(18 15 18)"/>
+    <rect x="-20" y="112" width="12" height="18" fill="#e6e1d3"/><rect x="8" y="112" width="12" height="18" fill="#e6e1d3"/>
+  </g>`,
+    )
+    .join('')}
+</svg>`;
+
 export function endArt(ending: EndingId): string {
-  return ending === 'full_memory' ? BED : ending === 'secret_dj' ? BOOTH : QUEUE;
+  return ending === 'full_memory' ? BED : ending === 'secret_dj' ? BOOTH : ending === 'herd' ? HERD : QUEUE;
 }
