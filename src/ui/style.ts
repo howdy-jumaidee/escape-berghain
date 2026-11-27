@@ -60,4 +60,48 @@ export const css = /* css */ `
 .eb-flash svg { height: 60vh; filter: drop-shadow(0 0 30px #9fe8ff); }
 .eb-fade { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity 0.6s; }
 .eb-fade.on { opacity: 1; }
+.eb-objective { position: absolute; left: 20px; top: 40px; max-width: 46vw; font: 13px/1.4 "Arial Narrow", Arial, sans-serif; color: #c9c9c9; letter-spacing: 0.02em; text-shadow: 0 0 6px #000; }
+.eb-objective::before { content: ""; display: inline-block; width: 6px; height: 6px; background: #22ff66; margin-right: 8px; vertical-align: middle; box-shadow: 0 0 6px #22ff66; }
+
+.eb-tunnel { position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s; }
+.eb-tunnel canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.eb-morph { position: absolute; left: 50%; top: 50%; width: 22vh; color: #e8f6ff; transform: translate(-50%, -50%); filter: drop-shadow(0 0 18px #9fe8ff); }
+.eb-morph svg { width: 100%; height: auto; fill: currentColor; }
+.eb-horse { opacity: 0; width: 34vh; }
+.eb-intro { transition: opacity 0.4s; position: relative; }
+.eb-intro-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.eb-intro-flash.on { animation: eb-flash 0.7s ease-out; }
+@keyframes eb-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+.eb-stamp { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(0.9); padding: 26px 40px 18px; background: #c9a47e;
+  border-radius: 40% 40% 30% 30%; text-align: center; color: #2a1406; opacity: 0; transition: opacity 0.3s, transform 0.3s; box-shadow: 0 0 40px #000; }
+.eb-stamp.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.eb-stamp b { font: 700 10px ui-monospace, Menlo, monospace; letter-spacing: 0.3em; opacity: 0.7; }
+.eb-stamp-num { font: 800 84px/1 "Arial Narrow", Impact, sans-serif; color: #5a1fa8; transform: rotate(-8deg); opacity: 0.85; filter: blur(0.6px); }
+
+.eb-jacket { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); width: 260px; padding: 18px; text-align: center;
+  background: rgba(8,8,8,0.9); border: 1px solid #2a2a2a; border-top: 3px solid #22ff66; opacity: 0; transition: opacity 0.2s; }
+.eb-jacket.on { opacity: 1; }
+.eb-jacket b { font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: 0.25em; color: #22ff66; }
+.eb-jacket-icon { width: 110px; margin: 12px auto; }
+.eb-jacket-icon.jolt { animation: eb-jolt 0.15s; }
+@keyframes eb-jolt { 30% { transform: rotate(-12deg) translateY(-6px); } 70% { transform: rotate(10deg); } }
+.eb-jacket .eb-trip-bar { width: 100%; }
+.eb-jacket-hint { margin-top: 10px; font: 11px ui-monospace, Menlo, monospace; color: #777; letter-spacing: 0.15em; }
+
+.eb-seen { position: absolute; inset: 0; opacity: 0; transition: opacity 0.15s; box-shadow: inset 0 0 160px 40px rgba(255, 23, 68, 0.75); }
+
+.eb-van { position: absolute; inset: 0; background: #000; display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 0.35s; }
+.eb-van.on { opacity: 1; }
+.eb-van svg { animation: eb-drive 3s linear; }
+@keyframes eb-drive { from { transform: translateX(-40vw); } to { transform: translateX(40vw); } }
+.eb-van h2 { margin: 18px 0 6px; font: 800 48px/1 "Arial Narrow", Impact, sans-serif; color: #ff7a00; }
+.eb-van p { margin: 4px; color: #aaa; font-size: 17px; }
+.eb-van-line { font-style: italic; color: #ddd !important; }
+
+.eb-selfie { position: absolute; inset: 0; background: #fff; opacity: 0; }
+.eb-selfie.on { opacity: 0.95; }
+
+.eb-art { width: min(420px, 80vw); margin: 0 auto 22px; border: 1px solid #222; line-height: 0; }
+.eb-art svg { width: 100%; height: auto; }
 `;
