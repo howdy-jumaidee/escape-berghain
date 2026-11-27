@@ -22,9 +22,14 @@ export type NpcId =
   | 'bouncer'
   | 'leather_choir'
   | 'cleaner'
-  | 'sink'
-  | 'shoe_collector'
-  | 'dj_cousin'
+  | 'leather_daddy'
+  | 'bartender_bear'
+  | 'drag_oracle'
+  | 'rubber_knight'
+  | 'old_raver'
+  | 'glitter_boy'
+  | 'darkroom_keeper'
+  | 'lighting_tech'
   | 'calm_horse';
 
 /** Things you can pick up or consume that aren't fragments. */
