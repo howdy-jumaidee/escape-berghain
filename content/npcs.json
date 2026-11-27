@@ -57,7 +57,9 @@
     "lines": [
       "Ticket."
     ],
-    "with_ticket": "Nice jacket. For a horse."
+    "with_ticket": "Nice jacket. For a horse.",
+    "jacket": "Nice jacket. For a horse.",
+    "empty": "You already have your jacket."
   },
   "philosopher": {
     "name": "Philosopher",
@@ -82,13 +84,15 @@
   "tourists": {
     "name": "Tourists",
     "lines": [
-      "Oh my god, the costume! Selfie!"
+      "Oh my god, the costume! Selfie!",
+      "Sorry. We put a sticker on it."
     ]
   },
   "security": {
     "name": "Security",
     "lines": [
-      "Hey. Horse. Stop."
+      "Hey. Horse. Stop.",
+      "Torch says you're a horse."
     ]
   },
   "animal_control": {
@@ -105,6 +109,9 @@
     ]
   },
   "spirit_guide": {
-    "name": "You, sort of"
+    "name": "You, sort of",
+    "lines": [
+      "..."
+    ]
   }
 }
