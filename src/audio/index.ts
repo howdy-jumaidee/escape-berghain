@@ -12,13 +12,20 @@ const ZONE_MIX: Record<ZoneId, Mix> = {
   back_exit: { cutoff: 900, volume: 0.6, warm: 0 },
 };
 
+const MUFFLED: Mix = { cutoff: 220, volume: 0.9, warm: 0 };
+
+function startFallbackBeat(): number {
+  let n = 0;
+  return window.setInterval(() => bus.emit('beat', { n: n++, time: performance.now() }), BEAT_SECONDS * 1000);
+}
+
 export function startAudio(): void {
   let music: Techno | null = null;
   let muted = false;
   let fallback = 0;
 
   bus.on('game:start', () => {
-    if (music || fallback) return;
+    if (music) return;
     try {
       music = new Techno();
       const m = music;
@@ -28,12 +35,28 @@ export function startAudio(): void {
         const time = performance.now() + delayMs;
         setTimeout(() => bus.emit('beat', { n, time }), Math.max(0, delayMs));
       };
-      m.setMix(ZONE_MIX[state.zone]);
+      // Intro: the kick through a concrete wall until the horse lands.
+      m.setMix(state.started ? ZONE_MIX[state.zone] : MUFFLED);
       m.start();
+      // If the browser keeps audio suspended, keep a silent beat going and retry on the next real input.
+      const retry = () => void m.ctx.resume();
+      const watch = () => {
+        if (m.ctx.state === 'running') {
+          clearInterval(fallback);
+          fallback = 0;
+          removeEventListener('keydown', retry);
+          removeEventListener('pointerdown', retry);
+        } else if (!fallback) {
+          fallback = startFallbackBeat();
+          addEventListener('keydown', retry);
+          addEventListener('pointerdown', retry);
+        }
+      };
+      m.ctx.addEventListener('statechange', watch);
+      setTimeout(watch, 1000);
     } catch {
-      // No Web Audio: keep the beat clock alive so the strobes and herd still work.
-      let n = 0;
-      fallback = window.setInterval(() => bus.emit('beat', { n: n++, time: performance.now() }), BEAT_SECONDS * 1000);
+      // No Web Audio: keep the beat clock alive so the strobes, herd and DJ booth still work.
+      fallback = startFallbackBeat();
     }
   });
 
@@ -72,11 +95,25 @@ export function startAudio(): void {
     } else music.sfxBad();
   });
   bus.on('herd:synced', () => music?.sfxGood());
+  bus.on('intro:land', () => {
+    music?.sfxThud();
+    music?.setMix(ZONE_MIX[state.zone]);
+  });
+  bus.on('player:caught', () => {
+    music?.sfxSiren();
+    music?.dive(3, 300);
+  });
+  bus.on('selfie:flash', () => music?.sfxCamera());
+  bus.on('jacket:shaken', () => music?.sfxKeys());
+  bus.on('door:refused', () => music?.sfxBad());
+  bus.on('shutters:open', () => music?.sfxGate());
+  bus.on('secret:dj', () => music?.sfxCrowd());
   bus.on('mirror:seen', () => music?.sfxShimmer());
   bus.on('trip:max', () => music?.dive(2.5));
   bus.on('ending:show', ({ ending }) => {
     if (!music) return;
     if (ending === 'partial_memory') music.setMix({ cutoff: 300, volume: 0.6, warm: 0 });
-    else music.fadeOut(6);
+    // The resident horse DJ keeps the music going.
+    else if (ending === 'full_memory') music.fadeOut(6);
   });
 }
