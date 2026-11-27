@@ -6,6 +6,7 @@ import { buildScene } from './look/scene';
 import { World } from './world';
 import { Horse } from './player/horse';
 import { TripFx } from './fx/trip';
+import { startGame } from './game';
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -28,6 +29,7 @@ scene.add(horse.root);
 const fx = new TripFx(renderer, scene, camera);
 // Until the UI lands (click to start), start right away.
 state.started = true;
+startGame();
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
