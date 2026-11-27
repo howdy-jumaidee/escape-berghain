@@ -92,6 +92,13 @@ export class Horse {
       this.velocity.set(0, 0, 0);
       this.turnVel = 0;
     });
+    // Caught or passed out: a fresh start. The steering goes back to soft and ramps up again,
+    // so a respawn never drops you straight back into the hardest steering.
+    bus.on('player:respawn', () => {
+      this.playTime = 0;
+      this.turnVel = 0;
+      this.lurchIn = 2;
+    });
     bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
   }
 
