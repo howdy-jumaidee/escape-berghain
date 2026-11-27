@@ -7,7 +7,7 @@
     "We're a horse.",
     "We live somewhere. Let's go home."
   ],
-  "controls": "WASD to walk. Space to grab and talk. E to stomp. M to mute.",
+  "controls": "WASD to walk. Space to grab and talk. Q to look at yourself. E to stomp. M to mute.",
   "spirit_guide": {
     "fragment_1": "Glasses. We wear glasses. That's something.",
     "fragment_2": "47. Why do we know that number?",
@@ -15,7 +15,13 @@
     "fragment_4": "That keychain... our street!",
     "fragment_5": "Our bike. By the river. We can get home.",
     "trip_high": "Everything is getting soft around the edges. Hurry.",
-    "mate": "Mate. Clearer. Shakier. Worth it."
+    "mate": "Mate. Clearer. Shakier. Worth it.",
+    "look_blurry": "Everything is a smudge. We need our glasses first.",
+    "look_again": "Still 47. Still a horse.",
+    "stamp": "A stamp. 47. We had a number.",
+    "jacket": "Our jacket! Shake it. Something rattles.",
+    "all": "We remember. The street, the bike, the river. Go.",
+    "seen": "Torch. Don't let them see us."
   },
   "losses": {
     "passed_out": "You wake up in the toilet queue. Someone is still talking about their ex.",
@@ -74,5 +80,38 @@
       "Music: made live in your browser",
       "No real horses were harmed."
     ]
-  }
+  },
+  "objectives": {
+    "_comment": "The HUD shows the next thing to do, picked by the first fragment you are missing.",
+    "1": "Something of yours glints under the speakers.",
+    "2": "Glasses on. Look at yourself. Q.",
+    "3": "47. Somewhere near the bar, something has that number.",
+    "4": "A ticket. The coat check is in the corner of the bar.",
+    "5": "The riddle horse in the toilet corridor has been here since Friday. Ask him.",
+    "done": "Out the back. Go home."
+  },
+  "stamp": {
+    "label": "WRIST STAMP",
+    "number": "47"
+  },
+  "jacket": {
+    "title": "SHAKE THE JACKET",
+    "hint": "Mash Space"
+  },
+  "caught": {
+    "title": "ANIMAL CONTROL",
+    "sub": "Van ride. Back to where you were."
+  },
+  "dj": {
+    "hint": "The decks are right there. Stomp on the beat. Eight times.",
+    "screen_blurry": "▒▒▒▒ ▒▒▒▒▒▒ ▒▒▒",
+    "tracks": [
+      "Dee - Hoof Theory (Sunday Mix)",
+      "Emma - Concrete Haze",
+      "Robin - No Mirrors"
+    ]
+  },
+  "shutters": "The shutters go up. Morning floods into Panorama Bar.",
+  "door": "The front door is never the way out.",
+  "selfie_after": "They have a sticker over their camera now. Berghain rules."
 }
