@@ -45,6 +45,9 @@ export class Techno {
   private warm = 0;
   private trip = 0;
   private sharp = false;
+  private finale = false;
+  private choirGain: GainNode;
+  private crowdGain: GainNode;
   /** Called for each quarter note with the audio time it lands on. */
   onBeat: (n: number, audioTime: number) => void = () => {};
 
@@ -161,6 +164,111 @@ export class Techno {
     }
     padLp.connect(this.padGain).connect(this.duck);
     this.padGain.connect(this.reverb);
+
+    // The crowd: a murmur bed under everything, breathing slowly. Muffled with the music through walls.
+    const crowd = ctx.createBufferSource();
+    crowd.buffer = this.noise;
+    crowd.loop = true;
+    const crowdBp = ctx.createBiquadFilter();
+    crowdBp.type = 'bandpass';
+    crowdBp.frequency.value = 520;
+    crowdBp.Q.value = 0.6;
+    this.crowdGain = gain(ctx, 0.05);
+    const crowdLfo = ctx.createOscillator();
+    crowdLfo.frequency.value = 0.07;
+    const crowdLfoGain = gain(ctx, 0.02);
+    crowdLfo.connect(crowdLfoGain).connect(this.crowdGain.gain);
+    crowd.connect(crowdBp).connect(this.crowdGain).connect(this.music);
+    crowd.start();
+    crowdLfo.start();
+
+    // The leather choir's hum: low voices on the root and fifth, with a slow vibrato. Silent until you stand with them.
+    this.choirGain = gain(ctx, 0);
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 4.5;
+    const vibGain = gain(ctx, 6);
+    vib.connect(vibGain);
+    for (const f of [F2, F2 * 1.5, F2 * 2]) {
+      const o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      vibGain.connect(o.detune);
+      const formant = ctx.createBiquadFilter();
+      formant.type = 'bandpass';
+      formant.frequency.value = 500;
+      formant.Q.value = 2;
+      o.connect(formant).connect(this.choirGain);
+      o.start();
+    }
+    vib.start();
+    this.choirGain.connect(this.music);
+    this.choirGain.connect(this.reverb);
+  }
+
+  /** Standing with the leather choir. */
+  setChoir(on: boolean): void {
+    this.choirGain.gain.setTargetAtTime(on ? 0.09 : 0, this.ctx.currentTime, 0.6);
+  }
+
+  /** Closing time: acid all the way up, a siren riser every four bars, the crowd roars. */
+  setFinale(): void {
+    this.finale = true;
+    this.crowdGain.gain.setTargetAtTime(0.12, this.ctx.currentTime, 1);
+  }
+
+  /** A cheer from the crowd: a noise swell and a few whistles. */
+  cheer(): void {
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1100;
+    bp.Q.value = 0.8;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+    src.connect(bp).connect(g).connect(this.music);
+    g.connect(gain(this.ctx, 0.4)).connect(this.reverb);
+    src.start(t, Math.random());
+    src.stop(t + 2.5);
+    for (let i = 0; i < 3; i++) this.whistle(t + 0.2 + Math.random() * 1.2);
+  }
+
+  private whistle(t: number): void {
+    const f = 2200 + Math.random() * 900;
+    const o = this.ctx.createOscillator();
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * 1.25, t + 0.12);
+    o.frequency.exponentialRampToValueAtTime(f * 0.9, t + 0.45);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g).connect(this.music);
+    g.connect(gain(this.ctx, 0.5)).connect(this.reverb);
+    o.start(t);
+    o.stop(t + 0.55);
+  }
+
+  private riser(t: number): void {
+    const len = STEP * 16 * 2;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(300, t);
+    o.frequency.exponentialRampToValueAtTime(1400, t + len);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'bandpass';
+    lp.frequency.value = 900;
+    lp.Q.value = 3;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + len * 0.9);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(lp).connect(g).connect(this.duck);
+    o.start(t);
+    o.stop(t + len + 0.05);
   }
 
   start(): void {
@@ -227,6 +335,13 @@ export class Techno {
 
     if (s % 4 === 0) this.onBeat(step / 4, t);
 
+    // The kick comes back after the breakdown: the crowd goes off.
+    if (bar === 30 && s === 0) this.cheer();
+    // Now and then somebody whistles.
+    if (s === 0 && Math.random() < 0.08) this.whistle(t + Math.random() * 0.4);
+    // Closing time: a siren riser every four bars.
+    if (this.finale && s === 0 && bar % 4 === 2) this.riser(t);
+
     // Kick: four on the floor.
     if (s % 4 === 0 && !breakdown) this.kick(t);
 
@@ -250,7 +365,7 @@ export class Techno {
     if (this.warm > 0.5 && s % 4 === 2) this.hat(t, true, 0.5, 5500);
 
     // Acid creeps in as the trip rises.
-    const acid = Math.max(0, (this.trip - 0.45) / 0.55);
+    const acid = this.finale ? 1 : Math.max(0, (this.trip - 0.45) / 0.55);
     if (acid > 0 && !this.sharp) this.acid(t, ACID[s] ?? F2, ACID_ACCENT[s] ?? 0, acid);
   }
 
@@ -457,6 +572,18 @@ export class Techno {
   sfxShimmer(): void {
     const t = this.ctx.currentTime;
     [1318.5, 1568, 1975.5, 2637].forEach((f, i) => this.tone(t + i * 0.05, f, f * 1.01, 0.8, 0.05, 'sine', 0.7));
+  }
+
+  /** A glass of cold water. */
+  sfxWater(): void {
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 4; i++) this.tone(t + i * 0.09, 500 + i * 60, 300 + i * 40, 0.08, 0.08, 'sine');
+  }
+
+  /** Bumping into a dancer. */
+  sfxBump(): void {
+    const t = this.ctx.currentTime;
+    this.tone(t, 140, 80, 0.12, 0.15, 'sine');
   }
 
   /** The horse lands on the dance floor. */
