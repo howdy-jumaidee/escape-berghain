@@ -8,6 +8,7 @@ import { Horse } from './player/horse';
 import { TripFx } from './fx/trip';
 import { startGame } from './game';
 import { startUi } from './ui';
+import { Npcs } from './npc';
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -26,6 +27,8 @@ const horse = new Horse((pos, r) => world.resolve(pos, r));
 horse.setPosition(world.level.start.x, world.level.start.z);
 scene.add(horse.root);
 
+const npcs = new Npcs();
+scene.add(npcs.root);
 
 const fx = new TripFx(renderer, scene, camera);
 startGame();
@@ -58,6 +61,7 @@ renderer.setAnimationLoop(() => {
 
   horse.update(dt);
   world.update(dt, camera.position);
+  npcs.update(dt);
 
   const target = horse.root.position.clone().add(camOffset);
   camera.position.lerp(target, 1 - Math.exp(-4 * dt));
