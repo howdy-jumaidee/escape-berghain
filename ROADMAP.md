@@ -25,9 +25,9 @@ Every gate ends with a recap: `docs/recaps/phase-<n>.md` (see `docs/recaps/TEMPL
 - [x] `contracts.ts` with state, types and event bus
 - [x] Greybox hall, wobbly box horse, trip meter with chromatic aberration and camera wobble
 - [x] Model loader with grey box fallback, model viewer at `/?viewer=<name>`
-- [ ] GitHub repo public, `main` and `dev`, branch protection, CI
+- [x] GitHub repo public, `main` and `dev`, branch protection, CI
 - [ ] Vercel connected, production on `main`, previews on PRs
-- [ ] All issues created
+- [x] All issues created
 - [ ] Emma: greybox kit and one lighting mood shot everyone agrees on
 - [ ] Robin: judging criteria read, first draft of `content/`, pitch site started in its own Lovable project
 
@@ -35,25 +35,25 @@ Every gate ends with a recap: `docs/recaps/phase-<n>.md` (see `docs/recaps/TEMPL
 
 ## Phase 1: First playable (Friday night, before sleep)
 
-- [ ] Horse controller with spring wobble and hoof grab (#2, #3)
-- [ ] Trip meter with blur, Mate and brain freeze (#4)
-- [ ] Level loader from grid JSON, collisions (#9)
-- [ ] Fragment 1 (glasses) pickup and one checkpoint (#11)
-- [ ] Back exit triggers an ending (#13)
+- [x] Horse controller with spring wobble and hoof grab (#2, #3)
+- [x] Trip meter with blur, Mate and brain freeze (#4)
+- [x] Level loader from grid JSON, collisions (#9)
+- [x] Fragment 1 (glasses) pickup and one checkpoint (#11)
+- [x] Back exit triggers an ending (#13)
 - [ ] Emma's first models in the build: horse parts, wall, floor, pillar, speaker (#7)
-- [ ] Lighting and haze in `src/look/` (#5)
+- [ ] Lighting and haze in `src/look/` (#5). Placeholder lights per zone are in, Emma tunes the real look
 
 **Gate 1:** walk through the hall in moody light, grab the glasses, blur rises, reach the exit, see an ending. Merged to `main`.
 
 ## Phase 2: Night shift (Friday night to Saturday 08:00)
 
-Grok bots on `night-shift` issues only, PRs into `dev`:
-- [ ] NPC dialogue from JSON (#14)
-- [ ] Riddle UI (#15)
-- [ ] Herd sync dance (#16)
-- [ ] End cards and credits (#18)
-- [ ] Audio manager, generated Berghain techno at 132 BPM, SFX (#19)
-- [ ] Konami rat and mirror easter eggs (#21)
+Built early by Opus on Friday evening so Emma and the night bots start from a playable base (#24 to #33). Night bots now take Phase 3 polish issues labelled `night-shift`:
+- [x] NPC dialogue from JSON (#14)
+- [x] Riddle UI (#15)
+- [x] Herd sync dance (#16)
+- [x] End cards and credits (#18)
+- [x] Audio manager, generated Berghain techno at 132 BPM, SFX (#19)
+- [x] Konami rat and mirror easter eggs (#21)
 
 **Gate 2 (08:00):** night PRs reviewed by Opus, merged or closed.
 
