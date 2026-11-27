@@ -36,6 +36,8 @@ export class Horse {
   private pitchVel = 0;
   private t = 0;
   private stomp = 0;
+  /** Looking down at your own front leg. */
+  private look = 0;
   private lastStepPhase = 0;
   private resolve: Resolver;
   private scale = 1;
@@ -134,6 +136,10 @@ export class Horse {
       bus.emit('player:step', {});
       this.stomp = 1;
     }
+    if (free && pressed.has('KeyQ')) {
+      bus.emit('player:look', {});
+      this.look = 1;
+    }
     pressed.clear();
 
     // Spring sway: the drunk wobble.
@@ -147,17 +153,19 @@ export class Horse {
     this.pitch += this.pitchVel * dt;
 
     this.stomp = Math.max(0, this.stomp - dt * 5);
+    this.look = Math.max(0, this.look - dt * 0.8);
     this.rig.rotation.z = this.sway;
     this.rig.rotation.x = this.pitch * 0.2 - this.stomp * 0.15;
     this.rig.position.y = -this.stomp * 0.08;
     this.neck.rotation.z = this.sway * 1.2;
-    this.neck.rotation.x = 0.5 + Math.sin(this.t * 2) * 0.08 * (v + k) + this.pitch * 0.4;
+    this.neck.rotation.x = 0.5 + Math.sin(this.t * 2) * 0.08 * (v + k) + this.pitch * 0.4 + Math.sin(this.look * Math.PI) * 1.1;
+    this.legs[0].userData.lift = Math.sin(this.look * Math.PI);
 
     const gait = Math.min(v / 2, 1);
     this.legs.forEach((leg, i) => {
       const phase = this.t * 3 + (i === 0 || i === 3 ? 0 : Math.PI);
       const shake = state.clubMateActive ? (Math.random() - 0.5) * 0.3 : 0;
-      leg.rotation.x = Math.sin(phase) * 0.5 * gait * (1 + k) + shake - (i < 2 ? this.stomp * 0.9 : 0);
+      leg.rotation.x = Math.sin(phase) * 0.5 * gait * (1 + k) + shake - (i < 2 ? this.stomp * 0.9 : 0) - (leg.userData.lift ?? 0) * 1.2;
       leg.rotation.z = Math.sin(phase * 0.5) * 0.1 * k;
     });
 
