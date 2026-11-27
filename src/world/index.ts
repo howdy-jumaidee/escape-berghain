@@ -2,11 +2,10 @@
 // Talks to other systems only through the bus. game-boot calls update() and resolve().
 import * as THREE from 'three';
 import { bus, state, cellCenter, CELL, type FragmentId, type ItemId } from '../contracts';
+import { level as levelData, story, debug } from '../data';
 import { placeModel } from '../look/models';
-import { buildLevel, resolveCircle, type BuiltLevel, type LevelData } from './level';
+import { buildLevel, resolveCircle, type BuiltLevel } from './level';
 import { Patrols } from './patrols';
-import level1 from '../../levels/level1.json';
-import story from '../../content/story.json';
 
 /** Panorama Bar shutters open after this much play time. */
 const SHUTTERS_AFTER = 600;
@@ -41,7 +40,7 @@ export class World {
   private player = new THREE.Vector3();
   private beam: THREE.Mesh | null = null;
   private patrols: Patrols;
-  private playTime = 0;
+  private playTime = debug.time;
   private shuttersOpen = false;
   private morning: THREE.SpotLight;
   private doorPos: { x: number; z: number } | null = null;
@@ -49,7 +48,7 @@ export class World {
   private djScreen: { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture } | null = null;
 
   constructor() {
-    this.level = buildLevel(level1 as unknown as LevelData);
+    this.level = buildLevel(levelData);
     this.root = this.level.root;
 
     for (const [col, row] of this.level.cells.get('fragment_1') ?? []) {
@@ -311,11 +310,12 @@ export class World {
   }
 
   private foundFragment(id: FragmentId): void {
-    if (state.fragments.includes(id)) return;
-    state.fragments.push(id);
-    bus.emit('fragment:found', { id });
-    state.checkpoint = state.zone;
-    bus.emit('checkpoint:set', { zone: state.zone });
+    bus.emit('fragment:claim', { id });
+  }
+
+  /** Something other than walls that blocks a torch beam at (x, z), e.g. dancers. Wired by game-boot. */
+  setTorchBlocker(blocks: (x: number, z: number) => boolean): void {
+    this.patrols.setBlocker(blocks);
   }
 
   private openGate(): void {
