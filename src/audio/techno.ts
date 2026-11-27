@@ -569,16 +569,7 @@ export class Techno {
     this.tone(t, 70, 50, 1.2, 0.3, 'sine');
   }
 
-  sfxShimmer(): void {
-    const t = this.ctx.currentTime;
-    [1318.5, 1568, 1975.5, 2637].forEach((f, i) => this.tone(t + i * 0.05, f, f * 1.01, 0.8, 0.05, 'sine', 0.7));
-  }
 
-  /** A glass of cold water. */
-  sfxWater(): void {
-    const t = this.ctx.currentTime;
-    for (let i = 0; i < 4; i++) this.tone(t + i * 0.09, 500 + i * 60, 300 + i * 40, 0.08, 0.08, 'sine');
-  }
 
   /** Bumping into a dancer. */
   sfxBump(): void {

@@ -81,7 +81,6 @@ export function startAudio(): void {
   bus.on('item:consumed', ({ item }) => {
     if (!music) return;
     if (item === 'mate') music.sfxMate();
-    else if (item === 'water') music.sfxWater();
     else {
       music.sfxIce();
       music.setTrip(state.trip / TRIP_MAX, true);
@@ -105,7 +104,9 @@ export function startAudio(): void {
     music?.dive(3, 300);
   });
   bus.on('selfie:flash', () => music?.sfxCamera());
-  bus.on('jacket:shaken', () => music?.sfxKeys());
+  bus.on('fragment:found', ({ id }) => {
+    if (id === 4) music?.sfxKeys();
+  });
   bus.on('door:refused', () => music?.sfxBad());
   bus.on('shutters:open', () => music?.sfxGate());
   bus.on('secret:dj', () => music?.sfxCrowd());
@@ -121,7 +122,6 @@ export function startAudio(): void {
     music?.setChoir(near);
     music?.setMix(near ? { ...ZONE_MIX[state.zone], cutoff: 18000, volume: 1.1 } : ZONE_MIX[state.zone]);
   });
-  bus.on('mirror:seen', () => music?.sfxShimmer());
   bus.on('trip:max', () => music?.dive(2.5));
   bus.on('ending:show', ({ ending }) => {
     if (!music) return;

@@ -42,7 +42,6 @@ export class Horse {
   private look = 0;
   private lastStepPhase = 0;
   private resolve: Resolver;
-  private scale = 1;
   private input = new THREE.Vector3();
   /** Facing, and how fast it's swinging. */
   private heading = 0;
@@ -94,9 +93,6 @@ export class Horse {
       this.turnVel = 0;
     });
     bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
-    bus.on('player:rat', ({ active }) => {
-      this.mat.color.set(active ? 0x6b6b70 : 0x8b5a2b);
-    });
   }
 
   setPosition(x: number, z: number): void {
@@ -149,7 +145,7 @@ export class Horse {
 
     // How well you're lined up with where you want to go: badly lined up means slow.
     const aligned = wants ? Math.max(0, Math.cos(angleDiff(Math.atan2(input.x, input.z), this.heading))) : 0;
-    const speed = SPEED * (state.rat ? 1.3 : 1) * (0.7 - drunk * 0.35 + (0.3 + drunk * 0.35) * aligned);
+    const speed = SPEED * (0.7 - drunk * 0.35 + (0.3 + drunk * 0.35) * aligned);
     this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(wants ? speed : 0);
 
     // Lurch: a sideways stumble now and then. None at first; more often and harder as you get drunker.
@@ -170,7 +166,7 @@ export class Horse {
     const grip = slippy ? 0.6 : wants ? 4 - drunk * 1.8 : 3 - drunk * 1.6;
     this.velocity.lerp(this.target, 1 - Math.exp(-grip * dt));
     this.root.position.addScaledVector(this.velocity, dt);
-    this.resolve(this.root.position, RADIUS * this.scale);
+    this.resolve(this.root.position, RADIUS);
 
     const v = this.velocity.length();
     this.root.rotation.y = this.heading;
@@ -225,10 +221,6 @@ export class Horse {
     if (gait > 0.3 && Math.sign(stepPhase) !== Math.sign(this.lastStepPhase)) bus.emit('player:step', {});
     this.lastStepPhase = stepPhase;
 
-    // Rat mode shrinks you.
-    const targetScale = state.rat ? 0.35 : 1;
-    this.scale += (targetScale - this.scale) * (1 - Math.exp(-6 * dt));
-    this.rig.scale.setScalar(this.scale);
 
     bus.emit('player:moved', { x: this.root.position.x, z: this.root.position.z });
   }
