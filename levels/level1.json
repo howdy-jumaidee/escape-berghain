@@ -46,14 +46,9 @@
     { "id": "ice_cream_horse", "cell": [4, 10] },
     { "id": "bouncer", "cell": [1, 4] },
     { "id": "leather_choir", "cell": [9, 5] },
-    { "id": "cleaner", "cell": [13, 2] },
-    { "id": "sink", "cell": [15, 7] },
-    { "id": "shoe_collector", "cell": [10, 4] },
-    { "id": "dj_cousin", "cell": [6, 1] },
-    { "id": "calm_horse", "cell": [8, 10] }
+    { "id": "cleaner", "cell": [13, 2] }
   ],
   "markers": {
-    "mirror": [3, 10],
     "dj_booth": [5, 1]
   },
   "crowd": {

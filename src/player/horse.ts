@@ -42,6 +42,12 @@ export class Horse {
   private resolve: Resolver;
   private scale = 1;
   private input = new THREE.Vector3();
+  /** Facing, and how fast it's swinging. */
+  private heading = 0;
+  private turnVel = 0;
+  private lurchIn = 2;
+  /** Which way the camera looks (yaw). WASD is relative to it, so W is always 'away from the camera'. */
+  cameraYaw = Math.PI;
   private target = new THREE.Vector3();
   /** Wet floor from the cleaner: x, z, radius, seconds left. */
   private wet: { x: number; z: number; r: number; left: number }[] = [];
@@ -81,6 +87,7 @@ export class Horse {
     bus.on('player:teleport', ({ x, z }) => {
       this.root.position.set(x, 0, z);
       this.velocity.set(0, 0, 0);
+      this.turnVel = 0;
     });
     bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
     bus.on('player:rat', ({ active }) => {
@@ -90,6 +97,10 @@ export class Horse {
 
   setPosition(x: number, z: number): void {
     this.root.position.set(x, 0, z);
+  }
+
+  get facing(): number {
+    return this.heading;
   }
 
   update(dt: number): void {
@@ -106,32 +117,56 @@ export class Horse {
       );
     }
     if (input.lengthSq() > 0) input.normalize();
-
-    // High trip: your legs drift sideways on their own.
+    // Turn the keys into world directions for the current camera.
     if (input.lengthSq() > 0) {
-      const drift = Math.sin(this.t * 0.9) * k * 0.6;
-      input.set(input.x - input.z * drift, 0, input.z + input.x * drift).normalize();
-    }
-    // Club Mate: jittery legs.
-    if (state.clubMateActive && input.lengthSq() > 0) {
-      input.x += (Math.random() - 0.5) * 0.8;
-      input.z += (Math.random() - 0.5) * 0.8;
+      const r = this.cameraYaw - Math.PI;
+      const c = Math.cos(r);
+      const sn = Math.sin(r);
+      input.set(input.x * c + input.z * sn, 0, -input.x * sn + input.z * c);
     }
 
-    const speed = SPEED * (state.rat ? 1.3 : 1);
+    // Drunk steering. You go where you're facing, not where you press. Turning is a loose spring that
+    // overshoots, speed builds slowly and carries on when you let go, and every few seconds you lurch.
+    // All of it gets worse as the trip rises.
+    const wants = input.lengthSq() > 0;
+    if (wants) {
+      const want = Math.atan2(input.x, input.z) + Math.sin(this.t * 0.9) * k * 0.5;
+      const stiffness = 26 - k * 10;
+      const damping = 4.2 - k * 2;
+      this.turnVel += (angleDiff(want, this.heading) * stiffness - this.turnVel * damping) * dt;
+    } else {
+      this.turnVel *= Math.exp(-3 * dt);
+    }
+    if (state.clubMateActive) this.turnVel += (Math.random() - 0.5) * 30 * dt;
+    this.heading += this.turnVel * dt;
+
+    // How well you're lined up with where you want to go: badly lined up means slow.
+    const aligned = wants ? Math.max(0, Math.cos(angleDiff(Math.atan2(input.x, input.z), this.heading))) : 0;
+    const speed = SPEED * (state.rat ? 1.3 : 1) * (0.35 + 0.65 * aligned);
+    this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(wants ? speed : 0);
+
+    // Lurch: a sideways stumble now and then.
+    this.lurchIn -= dt;
+    if (this.lurchIn <= 0 && state.started) {
+      this.lurchIn = 1.2 + Math.random() * (3.5 - k * 2);
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const power = 1.2 + k * 2.2;
+      this.velocity.x += Math.cos(this.heading) * side * power;
+      this.velocity.z -= Math.sin(this.heading) * side * power;
+      this.swayVel += side * 2;
+    }
+
     // Wet floor: almost no grip, you keep sliding.
     this.wet = this.wet.filter((w) => (w.left -= dt) > 0);
     const p = this.root.position;
     const slippy = this.wet.some((w) => (p.x - w.x) ** 2 + (p.z - w.z) ** 2 < w.r * w.r);
-    this.velocity.lerp(this.target.copy(input).multiplyScalar(speed), 1 - Math.exp(-(slippy ? 0.7 : 6) * dt));
+    const grip = slippy ? 0.6 : wants ? 2.2 : 1.4;
+    this.velocity.lerp(this.target, 1 - Math.exp(-grip * dt));
     this.root.position.addScaledVector(this.velocity, dt);
     this.resolve(this.root.position, RADIUS * this.scale);
 
     const v = this.velocity.length();
-    if (v > 0.1) {
-      const target = Math.atan2(this.velocity.x, this.velocity.z);
-      this.root.rotation.y += angleDiff(target, this.root.rotation.y) * (1 - Math.exp(-8 * dt));
-    }
+    this.root.rotation.y = this.heading;
 
     // Actions.
     if (free && pressed.has('Space')) {

@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { bus, state, cellCenter, BeatCounter, type NpcId } from '../contracts';
 import { placeModel } from '../look/models';
-import { level, npcText, story } from '../data';
+import { level, npcText } from '../data';
 import { Crowd, type Spot } from './crowd';
 
 const TALK_RANGE = 2.4;
@@ -12,16 +12,14 @@ const HERD_STOMPS = 4;
 const SELFIE_RANGE = 3.4;
 const CHOIR_RANGE = 4;
 const BARK_EVERY_MS = 2200;
-const SINK_COOLDOWN_MS = 20000;
 const MOP_EVERY = 11;
 
-const HORSES = new Set<NpcId>(['riddle_horse', 'patrick', 'herd', 'ice_cream_horse', 'calm_horse']);
+const HORSES = new Set<NpcId>(['riddle_horse', 'patrick', 'herd', 'ice_cream_horse']);
 const COLOURS: Partial<Record<NpcId, number>> = {
   riddle_horse: 0x3d2a1e,
   patrick: 0x6d6a5a,
   herd: 0x2a2a2a,
   ice_cream_horse: 0xd8c8b0,
-  calm_horse: 0x9a7a55,
   friday_guy: 0x5a1e3a,
   coat_check: 0x303844,
   philosopher: 0x40406a,
@@ -29,9 +27,6 @@ const COLOURS: Partial<Record<NpcId, number>> = {
   bouncer: 0x0e0e0e,
   leather_choir: 0x050505,
   cleaner: 0x2a5a8a,
-  sink: 0x9aa4a8,
-  shoe_collector: 0x6a3a6a,
-  dj_cousin: 0x1a1a1a,
 };
 /** How many figures stand at one NPC spot. */
 const GROUP: Partial<Record<NpcId, number>> = { herd: 3, tourists: 2, leather_choir: 5 };
@@ -65,7 +60,6 @@ export class Npcs {
   private guidePulse = 0;
   private guideVisible = false;
   private barkAt = 0;
-  private sinkAt = -1e9;
   private choirNear = false;
   private mopTimer = MOP_EVERY;
   private t = 0;
@@ -110,7 +104,6 @@ export class Npcs {
       this.herd.beat(n, time);
     });
     bus.on('riddle:answered', ({ correct }) => this.riddleAnswered(correct));
-    bus.on('jacket:shaken', () => bus.emit('fragment:claim', { id: 4 }));
     bus.on('door:refused', () => bus.emit('npc:talk', { npc: 'bouncer', lineId: 'npcs:bouncer.lines.0' }));
     bus.on('secret:dj', () => {
       if (!booth) return;
@@ -151,8 +144,6 @@ export class Npcs {
     if (now - this.barkAt < BARK_EVERY_MS || !state.started || state.ending) return;
     this.barkAt = now;
     bus.emit('crowd:bump', {});
-    const n = story.crowd.barks.length;
-    if (Math.random() < 0.6) bus.emit('ui:say', { key: `story:crowd.barks.${Math.floor(Math.random() * n)}`, seconds: 1.8 });
   }
 
   /** True if a dancer stands at (x, z): torches can't see through them. */
@@ -194,7 +185,7 @@ export class Npcs {
     const c = cellCenter(col, row);
     const pos = new THREE.Vector3(c.x, 0, c.z);
     const horse = HORSES.has(id);
-    const size = horse ? { x: 0.6, y: 2.2, z: 0.45 } : id === 'sink' ? { x: 1.2, y: 0.9, z: 0.5 } : { x: 0.55, y: 1.8, z: 0.35 };
+    const size = horse ? { x: 0.6, y: 2.2, z: 0.45 } : { x: 0.55, y: 1.8, z: 0.35 };
     const mat = new THREE.MeshStandardMaterial({ color: COLOURS[id] ?? 0x555555, roughness: id === 'leather_choir' ? 0.35 : 0.85 });
     const count = GROUP[id] ?? 1;
     const objects: THREE.Object3D[] = [];
@@ -247,21 +238,14 @@ export class Npcs {
       case 'coat_check':
         if (!state.fragments.includes(3)) return say('lines.0');
         if (state.fragments.includes(4)) return say('empty');
+        // Ticket in, jacket out, keys in the pocket.
         say('jacket');
-        bus.emit('ui:say', { key: 'story:spirit_guide.jacket', seconds: 3 });
-        return bus.emit('jacket:start', {});
+        return bus.emit('fragment:claim', { id: 4 });
       case 'tourists':
         return say(this.selfieTaken ? 'lines.1' : 'lines.0');
       case 'herd':
         say(state.passOuts > 0 ? 'warning' : `lines.${npc.line++ % 2}`);
         return bus.emit('ui:say', { key: 'story:herd.hint', seconds: 4 });
-      case 'sink': {
-        const now = performance.now();
-        if (now - this.sinkAt < SINK_COOLDOWN_MS) return say('busy');
-        this.sinkAt = now;
-        say('lines.0');
-        return bus.emit('item:consumed', { item: 'water' });
-      }
       case 'philosopher': {
         if (npc.line++ % 2 === 0) return say('lines.0');
         const n = state.fragments.length;

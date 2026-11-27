@@ -126,7 +126,6 @@ export class Patrols {
     }
 
     if (worst > 0 || this.lastSeen > 0) bus.emit('player:seen', { amount: Math.min(1, worst) });
-    if (worst > 0 && this.lastSeen === 0) bus.emit('ui:say', { key: 'story:spirit_guide.seen', seconds: 2.5 });
     this.lastSeen = worst;
   }
 
