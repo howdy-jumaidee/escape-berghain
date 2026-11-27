@@ -317,7 +317,7 @@ export class Npcs {
   }
 
   private checkSelfie(): void {
-    if (this.selfieTaken || !state.started || state.ending || state.rat) return;
+    if (this.selfieTaken || !state.started || state.ending) return;
     const t = this.npcs.find((n) => n.id === 'tourists');
     if (!t || t.pos.distanceTo(this.player) > SELFIE_RANGE) return;
     this.selfieTaken = true;

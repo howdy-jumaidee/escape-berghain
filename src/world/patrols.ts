@@ -2,7 +2,6 @@
 // Guards walk fixed routes from levels/level1.json with a torch. If the torch finds you and stays on you,
 // you're caught: player:caught, and animal control drives you back to your last checkpoint.
 // A tourist selfie flash (selfie:flash) pulls the nearest guard over to look.
-// Rats are beneath their notice.
 import * as THREE from 'three';
 import { bus, state, cellCenter } from '../contracts';
 import { placeModel } from '../look/models';
@@ -90,7 +89,7 @@ export class Patrols {
 
   update(dt: number, player: THREE.Vector3): void {
     this.grace = Math.max(0, this.grace - dt);
-    const ignore = !state.started || !!state.ending || state.inputLocked || state.rat || this.grace > 0;
+    const ignore = !state.started || !!state.ending || state.inputLocked || this.grace > 0;
     let worst = 0;
 
     for (const g of this.guards) {

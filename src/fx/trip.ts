@@ -20,7 +20,6 @@ import { bus, state, TRIP_MAX } from '../contracts';
 const TRIP_PER_SECOND = 0.45;
 const FRAGMENT_RELIEF = 10;
 const MATE_RELIEF = 30;
-const WATER_RELIEF = 12;
 const MATE_SECONDS = 10;
 const FREEZE_SECONDS = 5;
 
@@ -103,9 +102,7 @@ export class TripFx {
 
     bus.on('fragment:found', () => this.relieve(FRAGMENT_RELIEF));
     bus.on('item:consumed', ({ item }) => {
-      if (item === 'water') {
-        this.relieve(WATER_RELIEF);
-      } else if (item === 'mate') {
+      if (item === 'mate') {
         this.relieve(MATE_RELIEF);
         this.mateLeft = MATE_SECONDS;
         state.clubMateActive = true;
