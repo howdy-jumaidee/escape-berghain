@@ -131,8 +131,14 @@ export function startUi(): void {
   const cover = el('div', 'eb-cover', root);
   const box = el('div', '', cover);
   el('div', 'eb-title', box).textContent = t('story:title');
+  el('div', 'eb-tagline', box).textContent = t('story:start.tagline');
+  // Controls as a key / action list, easy to scan.
+  const controls = el('div', 'eb-controls', box);
+  for (const pair of (lookup('story:controls') as [string, string][] | undefined) ?? []) {
+    el('kbd', '', controls).textContent = pair[0];
+    el('span', '', controls).textContent = pair[1];
+  }
   el('div', 'eb-sub', box).textContent = t('story:start.sub');
-  el('div', 'eb-controls', box).textContent = t('story:controls');
   el('div', 'eb-go', box).textContent = t('story:start.button');
 
   const land = () => {

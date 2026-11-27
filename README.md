@@ -1,6 +1,6 @@
 # Escape Berghain
 
-You took too much. You are a horse. Get home before your memory slips away.
+You horsed around a little too hard. Now you're a horse. Trot home before you forget who you were.
 
 **Play it:** https://escape-berghain.vercel.app (production, from `main`)
 
@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-WASD to walk. Space to grab and talk. Q to look at yourself. E to stomp on the beat. M to mute.
+WASD to walk, Space to grab and talk, Q to look at yourself, E to stomp on the beat, V to change view, M to mute.
 
 ## Start here
 

@@ -34,10 +34,15 @@ export const css = /* css */ `
 /* Title and intro: pitch black. */
 .eb-cover { position: absolute; inset: 0; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }
-.eb-title { font: 400 clamp(28px, 5vw, 56px)/1.1 var(--mono); letter-spacing: 0.04em; }
-.eb-sub, .eb-controls { margin-top: 18px; font: 400 12px/1.8 var(--mono); color: var(--dim); }
-.eb-controls { max-width: 460px; margin-left: auto; margin-right: auto; }
-.eb-go { margin-top: 40px; display: inline-block; font: 400 14px/1 var(--mono); color: var(--paper); border-bottom: 1px solid var(--paper); padding-bottom: 6px; }
+.eb-title { font: 400 clamp(32px, 6vw, 64px)/1.1 var(--mono); letter-spacing: 0.04em; }
+.eb-tagline { margin-top: 14px; font: 400 15px/1.5 var(--mono); color: #bdbdbd; }
+.eb-controls { display: grid; grid-template-columns: auto auto; justify-content: center; column-gap: 18px; row-gap: 10px;
+  margin: 40px auto 0; text-align: left; align-items: center; }
+.eb-controls kbd { justify-self: end; min-width: 2.4em; padding: 3px 8px; border: 1px solid #5a5a5a; border-radius: 3px;
+  font: 400 13px/1.2 var(--mono); color: var(--paper); text-align: center; }
+.eb-controls span { font: 400 15px/1.2 var(--mono); color: #d0d0d0; }
+.eb-sub { margin-top: 36px; font: 400 13px/1.6 var(--mono); color: #9a9a9a; }
+.eb-go { margin-top: 22px; display: inline-block; font: 400 14px/1 var(--mono); color: var(--paper); border-bottom: 1px solid var(--paper); padding-bottom: 6px; }
 .eb-intro { font: 400 clamp(16px, 2.2vw, 24px)/1.4 var(--mono); color: #d8d8d8; max-width: 80vw; transition: opacity 0.25s; position: relative; }
 .eb-swirl { position: absolute; inset: 0; width: 100%; height: 100%; }
 .eb-skip { position: absolute; bottom: 20px; right: 24px; font: 400 11px var(--mono); color: #444; }
