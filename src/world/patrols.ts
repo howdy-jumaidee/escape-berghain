@@ -11,6 +11,9 @@ import { resolveCircle, type BuiltLevel } from './level';
 const WALK = 2;
 const RUN = 3.6;
 const SIGHT = 8.5;
+/** Closing time: everyone moves faster and sees further. */
+const FINALE_SPEED = 1.5;
+const FINALE_SIGHT = 1.25;
 const SIGHT_ANGLE = 0.5; // radians either side
 const CATCH_SECONDS = 1.1;
 const GRACE = 4;
@@ -32,6 +35,10 @@ export class Patrols {
   private grace = 0;
   private lastSeen = 0;
   private level: BuiltLevel;
+  private blocker: (x: number, z: number) => boolean = () => false;
+  private finale = false;
+  private torches: THREE.SpotLight[] = [];
+  private beams: THREE.MeshBasicMaterial;
 
   constructor(level: BuiltLevel, routes: [number, number][][]) {
     this.level = level;
@@ -56,6 +63,7 @@ export class Patrols {
       torch.position.set(0.25, 1.4, 0.3);
       torch.target.position.set(0, 0, SIGHT);
       obj.add(torch, torch.target);
+      this.torches.push(torch);
       const beam = new THREE.Mesh(new THREE.ConeGeometry(Math.tan(SIGHT_ANGLE) * SIGHT, SIGHT, 20, 1, true), cone);
       beam.rotation.x = -Math.PI / 2 - 0.12;
       beam.position.set(0.25, 1, SIGHT / 2 + 0.3);
@@ -66,7 +74,14 @@ export class Patrols {
       this.guards.push({ obj, route, next: 1 % route.length, heading: 0, alert: null, seen: 0, spotted: false });
     }
 
+    this.beams = cone;
     bus.on('selfie:flash', ({ x, z }) => this.alert(x, z));
+    bus.on('game:finale', () => {
+      this.finale = true;
+      this.beams.color.set(0xff3030);
+      this.beams.opacity = 0.11;
+      this.torches.forEach((t) => t.color.set(0xff5040));
+    });
     bus.on('player:teleport', () => {
       this.grace = GRACE;
       this.guards.forEach((g) => (g.seen = 0));
@@ -86,7 +101,7 @@ export class Patrols {
         // Freeze and keep the torch on you.
         g.heading = turn(g.heading, Math.atan2(player.x - p.x, player.z - p.z), dt * 6);
         const d = Math.hypot(player.x - p.x, player.z - p.z);
-        g.seen += (dt / CATCH_SECONDS) * (1.4 - (d / SIGHT) * 0.7);
+        g.seen += (dt / CATCH_SECONDS) * (1.4 - (d / SIGHT) * 0.7) * (this.finale ? 1.3 : 1);
         if (!g.spotted) {
           g.spotted = true;
           bus.emit('npc:talk', { npc: 'security', lineId: 'npcs:security.lines.0' });
@@ -118,10 +133,10 @@ export class Patrols {
   private walk(g: Guard, dt: number): void {
     const p = g.obj.position;
     let target: { x: number; z: number };
-    let speed = WALK;
+    let speed = WALK * (this.finale ? FINALE_SPEED : 1);
     if (g.alert) {
       target = g.alert;
-      speed = RUN;
+      speed = RUN * (this.finale ? FINALE_SPEED : 1);
       g.alert.timeout -= dt;
       if (Math.hypot(target.x - p.x, target.z - p.z) < 1.2 || g.alert.timeout <= 0) {
         // Look around where the flash was, then go back to the route.
@@ -152,7 +167,8 @@ export class Patrols {
     const dx = player.x - p.x;
     const dz = player.z - p.z;
     const d = Math.hypot(dx, dz);
-    if (d > SIGHT || d < 0.01) return false;
+    const sight = SIGHT * (this.finale ? FINALE_SIGHT : 1);
+    if (d > sight || d < 0.01) return false;
     const off = Math.abs(Math.atan2(Math.sin(Math.atan2(dx, dz) - g.heading), Math.cos(Math.atan2(dx, dz) - g.heading)));
     if (off > SIGHT_ANGLE) return false;
     // Walls, pillars and counters block the torch.
@@ -163,8 +179,14 @@ export class Patrols {
       for (const c of this.level.colliders) {
         if (c.enabled && x > c.minX && x < c.maxX && z > c.minZ && z < c.maxZ) return false;
       }
+      // Dancers block the torch too: hide in the crowd. Not right next to the guard, though.
+      if (i > 2 && this.blocker(x, z)) return false;
     }
     return true;
+  }
+
+  setBlocker(blocks: (x: number, z: number) => boolean): void {
+    this.blocker = blocks;
   }
 
   private alert(x: number, z: number): void {

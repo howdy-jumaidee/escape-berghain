@@ -1,18 +1,10 @@
 // World: builds a level from grid JSON and answers collision queries. Issue #9.
 import * as THREE from 'three';
-import { CELL, cellCenter, type NpcId, type ZoneId } from '../contracts';
+import { CELL, cellCenter, type ZoneId } from '../contracts';
 import { placeModel } from '../look/models';
 
-export interface LevelData {
-  cellSize: number;
-  legend: Record<string, string>;
-  zones: Record<ZoneId, [[number, number], [number, number]]>;
-  spawns: Record<ZoneId, [number, number]>;
-  npcs: { id: NpcId; cell: [number, number] }[];
-  markers: Record<string, [number, number]>;
-  patrols?: [number, number][][];
-  grid: string[];
-}
+export type { LevelData } from '../data';
+import type { LevelData } from '../data';
 
 /** A solid box on the floor plan, in world metres. */
 export interface Collider {
