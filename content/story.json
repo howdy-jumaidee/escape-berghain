@@ -7,7 +7,7 @@
     "We're a horse.",
     "We live somewhere. Let's go home."
   ],
-  "controls": "WASD to walk. Space to grab with your hooves. Good luck.",
+  "controls": "WASD to walk. Space to grab and talk. E to stomp. M to mute.",
   "spirit_guide": {
     "fragment_1": "Glasses. We wear glasses. That's something.",
     "fragment_2": "47. Why do we know that number?",
@@ -25,5 +25,54 @@
     "full_memory": "You wake up in your own bed. Human. There's a hoofprint on the pillow.",
     "partial_memory": "Monday, noon. The club is closing. You're outside in the queue. Still a horse. Try again?",
     "secret_dj": "You never left. You are the resident horse DJ now."
+  },
+  "title": "ESCAPE BERGHAIN",
+  "start": {
+    "button": "Click to go in",
+    "sub": "Headphones on. Sound up.",
+    "skip": "Space to skip"
+  },
+  "hud": {
+    "trip": "TRIP",
+    "memories": "MEMORIES"
+  },
+  "items": {
+    "glasses_slip_1": "It slips. Hooves are not hands.",
+    "glasses_slip_2": "Again. Come on.",
+    "ice_cream": "Brain freeze. Everything goes sharp.",
+    "mate_found": "A bottle of MATE. Space to drink."
+  },
+  "herd": {
+    "hint": "Stand in their line. E on the beat. Four times.",
+    "miss": "Off beat. They pretend not to notice.",
+    "synced": "The herd turns as one and stares at the bar."
+  },
+  "gate": {
+    "locked": "A door to the stairs. Locked. The riddle horse might know something.",
+    "open": "Somewhere a door clicks open."
+  },
+  "easter": {
+    "rat": "You are a rat now. Just for a bit.",
+    "rat_end": "Horse again.",
+    "mirror": "For one second, there you are."
+  },
+  "ending_titles": {
+    "full_memory": "HOME",
+    "partial_memory": "NOT QUITE",
+    "secret_dj": "RESIDENT"
+  },
+  "retry": "Press R to try again",
+  "credits": {
+    "heading": "GARDEROBE",
+    "ticket": "No. 47",
+    "lines": [
+      "Escape Berghain",
+      "Team Five",
+      "Code: Dee",
+      "3D and look: Emma",
+      "Story and pitch: Robin",
+      "Music: made live in your browser",
+      "No real horses were harmed."
+    ]
   }
 }
