@@ -53,7 +53,7 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 | Emma | Models in the build (#7, #8), real lighting in `src/look/` (#5) | |
 | Robin | Rewrite the story drafts in `content/` (#22), 3 cold playtests, pitch (#23) | |
 
-- [x] **Steering ramps up.** It started too aggressive. Now you start almost sober (stiff, steady, no lurching) and it gets looser over about 3 minutes in the club, plus more with the trip: overshooting turns, slower to line up, sideways lurches. Tune `SOBER_UP_SECONDS` in `src/player/horse.ts`
+- [x] **Steering ramps up.** It started too aggressive. Now you start almost sober (stiff, steady, no lurching) and it gets looser over 90 seconds in the club, plus more with the trip: overshooting turns, slower to line up, sideways lurches. Tune `SOBER_UP_SECONDS` in `src/player/horse.ts`
 - [ ] Only `fix/` branches after 12:00
 - [ ] 3 cold playtests by outsiders, run by Robin
 
