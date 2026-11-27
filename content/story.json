@@ -122,5 +122,6 @@
       "mute"
     ]
   ],
-  "talk_hint": "Space to continue. Esc to leave."
+  "talk_hint": "Space to continue. Esc to leave.",
+  "view_hint": "V to change view"
 }

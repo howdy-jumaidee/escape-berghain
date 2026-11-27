@@ -13,6 +13,7 @@ const SELFIE_RANGE = 3.4;
 const CHOIR_RANGE = 4;
 const BARK_EVERY_MS = 2200;
 const MOP_EVERY = 11;
+const PUDDLE_RADIUS = 1.8;
 
 const HORSES = new Set<NpcId>(['riddle_horse', 'patrick', 'herd', 'ice_cream_horse']);
 const COLOURS: Partial<Record<NpcId, number>> = {
@@ -114,6 +115,7 @@ export class Npcs {
   private player = new THREE.Vector3();
   private talking: Npc | null = null;
   private riddleSolved = false;
+  private riddleMateSpawned = false;
   private beatN = 0;
   private beatPulse = 0;
   private herd = new BeatCounter();
@@ -130,6 +132,7 @@ export class Npcs {
   private choirNear = false;
   private mopTimer = MOP_EVERY;
   private t = 0;
+  private puddleGeo = new THREE.CircleGeometry(PUDDLE_RADIUS, 24);
   private puddles: { mesh: THREE.Mesh; left: number }[] = [];
   private convo: Convo | null = null;
   /** Who has already had their say and is waiting for you to walk away first. */
@@ -403,8 +406,12 @@ export class Npcs {
     const cleaner = this.npcs.find((n) => n.id === 'cleaner');
     for (const p of this.puddles) {
       p.left -= dt;
-      (p.mesh.material as THREE.MeshStandardMaterial).opacity = Math.min(0.55, p.left * 0.1);
-      if (p.left <= 0) this.root.remove(p.mesh);
+      const mat = p.mesh.material as THREE.MeshStandardMaterial;
+      mat.opacity = Math.min(0.55, p.left * 0.1);
+      if (p.left <= 0) {
+        this.root.remove(p.mesh);
+        mat.dispose();
+      }
     }
     this.puddles = this.puddles.filter((p) => p.left > 0);
     if (!cleaner || !state.started) return;
@@ -417,9 +424,9 @@ export class Npcs {
     if (this.mopTimer > 0) return;
     this.mopTimer = MOP_EVERY;
     const seconds = 14;
-    const radius = 1.8;
+    const radius = PUDDLE_RADIUS;
     const mesh = new THREE.Mesh(
-      new THREE.CircleGeometry(radius, 24),
+      this.puddleGeo,
       new THREE.MeshStandardMaterial({ color: 0x8fb4d0, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }),
     );
     mesh.rotation.x = -Math.PI / 2;
@@ -439,8 +446,22 @@ export class Npcs {
     const solid = 0.12 + state.fragments.length * 0.13;
     // Forgetting: past trip 85 the guide fades away.
     const forget = Math.max(0, Math.min(1, (state.trip - 85) / 15));
-    this.guideMat.opacity = Math.min(0.85, solid + this.guidePulse * 0.25) * (1 - forget * 0.9);
-    this.guideMat.emissiveIntensity = 0.4 + this.guidePulse;
+    const opacity = Math.min(0.85, solid + this.guidePulse * 0.25) * (1 - forget * 0.9);
+    const emissiveIntensity = 0.4 + this.guidePulse;
+    this.guide.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (!m) continue;
+        if (!m.transparent) {
+          m.transparent = true;
+          m.depthWrite = false;
+          m.needsUpdate = true;
+        }
+        m.opacity = opacity;
+        if ('emissiveIntensity' in m) (m as THREE.MeshStandardMaterial).emissiveIntensity = emissiveIntensity;
+      }
+    });
   }
 
   private checkSelfie(): void {
@@ -574,8 +595,9 @@ export class Npcs {
     if (correct) {
       this.riddleSolved = true;
       bus.emit('fragment:claim', { id: 5 });
-    } else {
+    } else if (!this.riddleMateSpawned) {
       // The long way, with a bonus Mate on the floor next to him.
+      this.riddleMateSpawned = true;
       bus.emit('item:spawn', { item: 'mate', x: horse.pos.x - 1.6, z: horse.pos.z - 1 });
     }
   }

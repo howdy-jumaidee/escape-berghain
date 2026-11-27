@@ -50,6 +50,7 @@ export class Crowd {
   private horseHeads: THREE.InstancedMesh;
   private hash = new Map<number, number[]>();
   private dummy = new THREE.Object3D();
+  private hidden = new THREE.Matrix4().makeScale(0, 0, 0);
   private t = 0;
   private cheer = 0;
   private faceTarget: { x: number; z: number } | null;
@@ -109,7 +110,7 @@ export class Crowd {
     const q = level.zones.toilet_corridor;
     if (q) {
       const z = q[0][1] * CELL + CELL + 1.2;
-      for (let x = q[0][0] * CELL + 1; x < q[0][0] * CELL + 11.5; x += 1.05) add(x, z + (rand() - 0.5) * 0.3, true);
+      for (let x = (q[0][0] + 1) * CELL + 1; x < q[0][0] * CELL + 11.5; x += 1.05) add(x, z + (rand() - 0.5) * 0.3, true);
     }
 
     // Dark bodies so they read as silhouettes against the haze and strobes. A few pale shirts catch the light.
@@ -157,7 +158,6 @@ export class Crowd {
     const frenzy = state.finale ? 1.6 : 1;
     this.hash.clear();
     const d = this.dummy;
-    const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
 
     const side = beatN % 2 === 0 ? 1 : -1;
     for (let i = 0; i < this.n; i++) {
@@ -208,8 +208,8 @@ export class Crowd {
       d.updateMatrix();
       this.bodies.setMatrixAt(i, d.matrix);
       const horse = this.horseRank[i] < horseShare;
-      this.heads.setMatrixAt(i, horse ? hidden : d.matrix);
-      this.horseHeads.setMatrixAt(i, horse ? d.matrix : hidden);
+      this.heads.setMatrixAt(i, horse ? this.hidden : d.matrix);
+      this.horseHeads.setMatrixAt(i, horse ? d.matrix : this.hidden);
     }
     this.bodies.instanceMatrix.needsUpdate = true;
     this.heads.instanceMatrix.needsUpdate = true;

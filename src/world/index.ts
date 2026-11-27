@@ -5,14 +5,16 @@ import { bus, state, cellCenter, CELL, type FragmentId, type ItemId } from '../c
 import { level as levelData, story, debug } from '../data';
 import { placeModel } from '../look/models';
 import { buildLevel, resolveCircle, type BuiltLevel } from './level';
+import { buildGalleries, type Galleries } from './galleries';
 import { Patrols } from './patrols';
 
 /** Panorama Bar shutters open after this much play time. */
 const SHUTTERS_AFTER = 600;
-const DOOR_RANGE = 2.2;
+const DOOR_RANGE = 1.5;
 
 const GRAB_RANGE = 1.8;
 const EXIT_RANGE = 2.4;
+const OFF_FLOOR_PLAYER = new THREE.Vector3(-999, 0, -999);
 
 interface Pickup {
   kind: 'fragment' | 'item';
@@ -30,6 +32,7 @@ const glow = (color: number) => new THREE.MeshBasicMaterial({ color });
 export class World {
   readonly level: BuiltLevel;
   readonly root: THREE.Group;
+  private galleries: Galleries;
   private pickups: Pickup[] = [];
   private exitPos: { x: number; z: number } | null = null;
   private exitDone = false;
@@ -50,6 +53,10 @@ export class World {
   constructor() {
     this.level = buildLevel(levelData);
     this.root = this.level.root;
+
+    // Walkable 9 m mezzanine galleries, catwalk bridge, and monumental steel staircase.
+    this.galleries = buildGalleries(levelData);
+    this.root.add(this.galleries.root);
 
     for (const [col, row] of this.level.cells.get('fragment_1') ?? []) {
       this.addPickup({ kind: 'fragment', fragment: 1, slips: 2 }, 'prop_glasses', { x: 0.45, y: 0.12, z: 0.18 }, 0x9fe8ff, col, row);
@@ -105,6 +112,10 @@ export class World {
     bus.on('player:moved', ({ x, z }) => this.player.set(x, 0, z));
     bus.on('player:grab', ({ x, z }) => this.grab(x, z));
     bus.on('player:respawn', ({ zone }) => {
+      if (state.floor !== 0) {
+        state.floor = 0;
+        bus.emit('player:floor', { floor: 0 });
+      }
       const p = this.level.spawn(zone);
       bus.emit('player:teleport', p);
     });
@@ -118,18 +129,53 @@ export class World {
     bus.on('herd:synced', () => this.showTicketBeam());
   }
 
-  /** Collision for the horse. Mutates pos. */
-  resolve(pos: THREE.Vector3, radius: number): void {
-    resolveCircle(this.level.colliders, pos, radius);
+  /** Collision for the horse on floor 0, the stairs, or the 9 m galleries. Mutates pos. */
+  resolve(pos: THREE.Vector3, radius: number, floor = state.floor, y = 0): void {
+    if (floor === 0 && y < 0.5) {
+      resolveCircle(this.level.colliders, pos, radius);
+    }
+    this.galleries.resolve(pos, radius, floor, y);
   }
 
-  update(dt: number, cameraPos: THREE.Vector3): void {
+  /** Smoothly ramps elevation up/down the monumental steel stairs and across the 9 m mezzanine galleries. */
+  elevationAt(x: number, z: number, currentFloor: number, currentY: number): { floor: number; y: number } {
+    return this.galleries.elevationAt(x, z, currentFloor, currentY);
+  }
+
+  /**
+   * Pull a camera target `to` forward along the ray from `from` so it never sits inside or behind a wall,
+   * and keep it above the active floor. Mutates `to`.
+   */
+  clipCamera(from: THREE.Vector3, to: THREE.Vector3, margin = 0.35, minFloorY = 0): void {
+    const dx = to.x - from.x;
+    const dz = to.z - from.z;
+    const minY = Math.min(from.y, to.y);
+    let bestT = 1;
+    if (dx * dx + dz * dz > 1e-6) {
+      for (const c of this.level.colliders) {
+        if (!c.enabled || c.height < minY) continue;
+        const t = rayBox2D(from.x, from.z, dx, dz, c.minX - margin, c.maxX + margin, c.minZ - margin, c.maxZ + margin);
+        if (t !== null && t < bestT) bestT = t;
+      }
+    }
+    if (bestT < 1) {
+      const clamped = Math.max(0.05, bestT);
+      to.x = from.x + dx * clamped;
+      to.z = from.z + dz * clamped;
+    }
+    const tall = this.level.colliders.filter((c) => c.enabled && c.height >= minY);
+    resolveCircle(tall, to, margin);
+    const floorCap = Math.max(0.45, minFloorY + 0.45);
+    if (to.y < floorCap) to.y = floorCap;
+  }
+
+  update(dt: number, cameraPos: THREE.Vector3, useCutaway = true): void {
     this.t += dt;
     const p = this.player;
 
     // Zones.
     const zone = this.level.zoneAt(p.x, p.z);
-    if (zone && zone !== state.zone) {
+    if (zone && zone !== state.zone && !state.ending) {
       state.zone = zone;
       bus.emit('zone:entered', { zone });
     }
@@ -186,8 +232,9 @@ export class World {
       }
     }
 
-    this.patrols.update(dt, p);
-    this.cutaway(dt, cameraPos);
+    // Patrols walk on floor 0; guards can't spot you through the 9 m gallery deck.
+    this.patrols.update(dt, state.floor === 0 ? p : OFF_FLOOR_PLAYER);
+    this.cutaway(dt, cameraPos, useCutaway);
   }
 
   private drawDjScreen(sharp: boolean): void {
@@ -329,21 +376,60 @@ export class World {
     this.beam = null;
   }
 
-  /** Fade walls and pillars that stand between the camera and the horse. */
-  private cutaway(dt: number, cam: THREE.Vector3): void {
+  /** Fade walls and pillars that stand between the camera and the horse (top view only). */
+  private cutaway(dt: number, cam: THREE.Vector3, active: boolean): void {
     const p = this.player;
     for (const o of this.level.tall) {
       const dz = o.position.z - p.z;
       const dx = o.position.x - p.x;
-      const between = dz > 0.6 && o.position.z < cam.z + 2 && Math.abs(dx) < 3.2 + dz * 0.15;
+      const between = active && dz > 0.6 && o.position.z < cam.z + 2 && Math.abs(dx) < 3.2 + dz * 0.15;
       const target = between ? 0.18 : 1;
       const cur: number = o.userData.opacity ?? 1;
-      if (Math.abs(cur - target) < 0.01) continue;
+      if (Math.abs(cur - target) < 0.01) {
+        if (cur < 0.99) setOpacity(o, cur);
+        continue;
+      }
       const next = cur + (target - cur) * (1 - Math.exp(-10 * dt));
       o.userData.opacity = Math.abs(next - target) < 0.01 ? target : next;
       setOpacity(o, o.userData.opacity);
     }
   }
+}
+
+/** 2D slab ray-vs-AABB intersection for t in [0, 1]. Returns entry t or null. */
+function rayBox2D(
+  ox: number,
+  oz: number,
+  dx: number,
+  dz: number,
+  minX: number,
+  maxX: number,
+  minZ: number,
+  maxZ: number,
+): number | null {
+  let tmin = 0;
+  let tmax = 1;
+  if (Math.abs(dx) < 1e-8) {
+    if (ox < minX || ox > maxX) return null;
+  } else {
+    let t1 = (minX - ox) / dx;
+    let t2 = (maxX - ox) / dx;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    tmin = Math.max(tmin, t1);
+    tmax = Math.min(tmax, t2);
+    if (tmin > tmax) return null;
+  }
+  if (Math.abs(dz) < 1e-8) {
+    if (oz < minZ || oz > maxZ) return null;
+  } else {
+    let t1 = (minZ - oz) / dz;
+    let t2 = (maxZ - oz) / dz;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    tmin = Math.max(tmin, t1);
+    tmax = Math.min(tmax, t2);
+    if (tmin > tmax) return null;
+  }
+  return tmin;
 }
 
 function setOpacity(o: THREE.Object3D, opacity: number): void {

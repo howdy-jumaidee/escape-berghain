@@ -46,7 +46,7 @@ export function startAudio(): void {
           fallback = 0;
           removeEventListener('keydown', retry);
           removeEventListener('pointerdown', retry);
-        } else if (!fallback) {
+        } else if (!fallback && !document.hidden) {
           fallback = startFallbackBeat();
           addEventListener('keydown', retry);
           addEventListener('pointerdown', retry);
@@ -61,7 +61,7 @@ export function startAudio(): void {
   });
 
   addEventListener('keydown', (e) => {
-    if (e.code !== 'KeyM' || !music) return;
+    if (e.code !== 'KeyM' || e.repeat || !music) return;
     muted = !muted;
     music.muted = muted;
   });
@@ -72,7 +72,9 @@ export function startAudio(): void {
     else void music.ctx.resume();
   });
 
-  bus.on('zone:entered', ({ zone }) => music?.setMix(ZONE_MIX[zone]));
+  bus.on('zone:entered', ({ zone }) => {
+    if (!state.ending) music?.setMix(ZONE_MIX[zone]);
+  });
   bus.on('trip:changed', ({ trip }) => music?.setTrip(trip / TRIP_MAX, state.brainFreezeActive));
 
   bus.on('player:step', () => music?.sfxStep());
@@ -84,7 +86,6 @@ export function startAudio(): void {
     else {
       music.sfxIce();
       music.setTrip(state.trip / TRIP_MAX, true);
-      setTimeout(() => music?.setTrip(state.trip / TRIP_MAX, false), 5000);
     }
   });
   bus.on('riddle:answered', ({ correct }) => {
@@ -117,7 +118,9 @@ export function startAudio(): void {
     music?.setMix({ cutoff: 600, volume: 0.7, warm: 0 });
     music?.sfxFocus();
   });
-  bus.on('npc:unfocus', () => music?.setMix(ZONE_MIX[state.zone]));
+  bus.on('npc:unfocus', () => {
+    if (!state.ending) music?.setMix(ZONE_MIX[state.zone]);
+  });
   bus.on('game:finale', () => {
     music?.setFinale();
     music?.cheer();

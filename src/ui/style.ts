@@ -16,10 +16,15 @@ export const css = /* css */ `
 .eb-ui * { box-sizing: border-box; }
 
 /* Captions: what you find, what the spirit guide says. */
-.eb-say { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); max-width: min(640px, 88vw);
+.eb-say { position: absolute; left: 50%; bottom: 20%; z-index: 4; transform: translateX(-50%); max-width: min(640px, 88vw);
   text-align: center; font: 400 16px/1.5 var(--mono); color: var(--paper); text-shadow: 0 0 8px #000, 0 0 2px #000;
   opacity: 0; transition: opacity 0.4s; }
 .eb-say.on { opacity: 1; }
+
+/* View toggle reminder: quiet dim grey, bottom right. */
+.eb-view-hint { position: absolute; right: 24px; bottom: 20px; font: 400 11px/1 var(--mono); color: #8a8a8a;
+  opacity: 0; transition: opacity 2.2s ease; }
+.eb-view-hint.on { opacity: 1; }
 
 /* Dialogue: a name and a line, bottom left. */
 .eb-talk { position: absolute; left: 32px; bottom: 32px; max-width: min(520px, 86vw); opacity: 0; transition: opacity 0.2s; text-shadow: 0 0 8px #000; }
@@ -44,7 +49,7 @@ export const css = /* css */ `
 .eb-talk.focus .eb-answers { justify-content: center; text-align: left; }
 
 /* Title and intro: pitch black. */
-.eb-cover { position: absolute; inset: 0; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
+.eb-cover { position: absolute; inset: 0; z-index: 10; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }
 .eb-title { font: 400 clamp(32px, 6vw, 64px)/1.1 var(--mono); letter-spacing: 0.04em; }
 .eb-tagline { margin-top: 14px; font: 400 15px/1.5 var(--mono); color: #bdbdbd; }
@@ -79,7 +84,7 @@ export const css = /* css */ `
 .eb-fade.on { opacity: 1; }
 
 /* Endings. */
-.eb-end { position: absolute; inset: 0; background: rgba(0,0,0,0.94); display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 1.4s; pointer-events: none; }
+.eb-end { position: absolute; inset: 0; z-index: 10; background: rgba(0,0,0,0.94); display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 1.4s; pointer-events: none; }
 .eb-end.on { opacity: 1; pointer-events: auto; }
 .eb-end h1 { margin: 0; font: 400 clamp(36px, 7vw, 72px)/1 var(--mono); letter-spacing: 0.06em; }
 .eb-end p { max-width: 520px; margin: 22px auto 0; font: 400 16px/1.6 var(--mono); color: #bdbdbd; }
