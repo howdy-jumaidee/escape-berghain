@@ -6,21 +6,29 @@ import { bus, state, TRIP_MAX, FLOOR_HEIGHT } from '../contracts';
 import { placeModel } from '../look/models';
 
 const keys = new Set<string>();
+const pressed = new Set<string>();
 addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.repeat) return;
-  pressed.add(e.code);
+  if (state.started && !state.inputLocked && !state.ending) pressed.add(e.code);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => keys.clear());
-const pressed = new Set<string>();
+addEventListener('blur', () => {
+  keys.clear();
+  pressed.clear();
+});
 
 const RADIUS = 0.45;
-const SPEED = 6;
+const HEAD_RADIUS = 0.44;
+const REAR_RADIUS = 0.4;
+const SPEED = 5;
+const BACK_SPEED = 2.8;
+const TURN_SPEED = 2.4;
 const LEG_LENGTH = 0.8;
 /** Time in the club until the steering is fully drunk (trip makes it worse on top). */
 const SOBER_UP_SECONDS = 90;
 
+export type CameraMode = 'top' | 'follow' | 'eyes';
 export type Resolver = (pos: THREE.Vector3, radius: number) => void;
 
 export class Horse {
@@ -43,14 +51,17 @@ export class Horse {
   private lastStepPhase = 0;
   private resolve: Resolver;
   private input = new THREE.Vector3();
+  private prevPos = new THREE.Vector3();
+  private probe = new THREE.Vector3();
   /** Facing, and how fast it's swinging. */
   private heading = 0;
   private turnVel = 0;
   private lurchIn = 2;
   /** Seconds played. Steering gets harder with it. */
   private playTime = 0;
-  /** Which way the camera looks (yaw). WASD is relative to it, so W is always 'away from the camera'. */
+  /** Which way the camera looks (yaw). Used for world-relative steering in top view. */
   cameraYaw = Math.PI;
+  private cameraMode: CameraMode = 'follow';
   private target = new THREE.Vector3();
   /** Wet floor from the cleaner: x, z, radius, seconds left. */
   private wet: { x: number; z: number; r: number; left: number }[] = [];
@@ -112,8 +123,43 @@ export class Horse {
     this.root.position.set(x, 0, z);
   }
 
+  setElevation(y: number): void {
+    this.root.position.y = y;
+  }
+
+  setCameraMode(mode: CameraMode): void {
+    this.cameraMode = mode;
+  }
+
   get facing(): number {
     return this.heading;
+  }
+
+  /** 3-circle spine resolution so the horse's nose and rump never clip through walls. */
+  private resolveBody(): void {
+    const pos = this.root.position;
+    this.resolve(pos, RADIUS);
+
+    const fwdX = Math.sin(this.heading);
+    const fwdZ = Math.cos(this.heading);
+
+    const headOff = 0.88 + Math.sin(this.look * Math.PI) * 0.36;
+    this.probe.set(pos.x + fwdX * headOff, pos.y, pos.z + fwdZ * headOff);
+    const hx = this.probe.x;
+    const hz = this.probe.z;
+    this.resolve(this.probe, HEAD_RADIUS);
+    pos.x += this.probe.x - hx;
+    pos.z += this.probe.z - hz;
+
+    const rearOff = -0.32;
+    this.probe.set(pos.x + fwdX * rearOff, pos.y, pos.z + fwdZ * rearOff);
+    const rx = this.probe.x;
+    const rz = this.probe.z;
+    this.resolve(this.probe, REAR_RADIUS);
+    pos.x += this.probe.x - rx;
+    pos.z += this.probe.z - rz;
+
+    this.resolve(pos, RADIUS);
   }
 
   update(dt: number): void {
@@ -121,55 +167,81 @@ export class Horse {
     const k = state.trip / TRIP_MAX;
     const wobbleBoost = 1 + k * 2;
 
-    const input = this.input.set(0, 0, 0);
-    if (free) {
-      input.set(
-        (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0),
-        0,
-        (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0),
-      );
-    }
-    if (input.lengthSq() > 0) input.normalize();
-    // Turn the keys into world directions for the current camera.
-    if (input.lengthSq() > 0) {
-      const r = this.cameraYaw - Math.PI;
-      const c = Math.cos(r);
-      const sn = Math.sin(r);
-      input.set(input.x * c + input.z * sn, 0, -input.x * sn + input.z * c);
-    }
-
-    // Drunk steering. You go where you're facing, not where you press. Turning is a spring, speed builds
-    // and carries on when you let go, and later you lurch. It starts soft so you can learn it, then gets
-    // worse the longer you're in the club and the higher your trip: `drunk` goes from 0 to 1.
+    // Drunk steering. It starts soft so you can learn it, then gets worse the longer
+    // you're in the club and the higher your trip: `drunk` goes from 0 to 1.
     if (state.started && !state.ending) this.playTime += dt;
     const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.6 + k * 0.5);
-    const wants = input.lengthSq() > 0;
-    if (wants) {
-      const want = Math.atan2(input.x, input.z) + Math.sin(this.t * 0.9) * drunk * 0.5;
-      // Sober: stiff and well damped, it just turns. Drunk: loose, it swings past and back.
-      const stiffness = 40 - drunk * 24;
-      const damping = 9 - drunk * 6.5;
-      this.turnVel += (angleDiff(want, this.heading) * stiffness - this.turnVel * damping) * dt;
-    } else {
-      this.turnVel *= Math.exp(-3 * dt);
-    }
-    if (state.clubMateActive) this.turnVel += (Math.random() - 0.5) * 30 * dt;
-    this.heading += this.turnVel * dt;
 
-    // How well you're lined up with where you want to go: badly lined up means slow.
-    const aligned = wants ? Math.max(0, Math.cos(angleDiff(Math.atan2(input.x, input.z), this.heading))) : 0;
-    const speed = SPEED * (0.7 - drunk * 0.35 + (0.3 + drunk * 0.35) * aligned);
-    this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(wants ? speed : 0);
+    let wants = false;
+    if (this.cameraMode === 'top') {
+      const input = this.input.set(0, 0, 0);
+      if (free) {
+        input.set(
+          (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0),
+          0,
+          (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0),
+        );
+      }
+      if (input.lengthSq() > 0) input.normalize();
+      // Turn the keys into world directions for the current camera.
+      if (input.lengthSq() > 0) {
+        const r = this.cameraYaw - Math.PI;
+        const c = Math.cos(r);
+        const sn = Math.sin(r);
+        input.set(input.x * c + input.z * sn, 0, -input.x * sn + input.z * c);
+      }
+
+      wants = input.lengthSq() > 0;
+      if (wants) {
+        const want = Math.atan2(input.x, input.z) + Math.sin(this.t * 0.9) * drunk * 0.5;
+        // Sober: stiff and well damped, it just turns. Drunk: loose, it swings past and back.
+        const stiffness = 40 - drunk * 24;
+        const damping = 9 - drunk * 6.5;
+        this.turnVel += (angleDiff(want, this.heading) * stiffness - this.turnVel * damping) * dt;
+      } else {
+        this.turnVel *= Math.exp(-3 * dt);
+      }
+      if (free && state.clubMateActive) this.turnVel += (Math.random() - 0.5) * 30 * dt;
+      this.heading += this.turnVel * dt;
+
+      // How well you're lined up with where you want to go: badly lined up means slow.
+      const aligned = wants ? Math.max(0, Math.cos(angleDiff(Math.atan2(input.x, input.z), this.heading))) : 0;
+      const speed = SPEED * (0.7 - drunk * 0.35 + (0.3 + drunk * 0.35) * aligned);
+      this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(wants ? speed : 0);
+    } else {
+      // Follow / eyes view: W/S for smooth forward & reverse, A/D for left/right steering with bounded drunk drift.
+      const forward = free
+        ? (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0)
+        : 0;
+      const steer = free
+        ? (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0)
+        : 0;
+      wants = forward !== 0;
+
+      const drift = free && (forward !== 0 || steer !== 0) ? Math.sin(this.t * 0.9) * drunk * 0.65 : 0;
+      const wantTurn = steer * TURN_SPEED + drift;
+      const response = 12 - drunk * 6;
+      this.turnVel += (wantTurn - this.turnVel) * (1 - Math.exp(-response * dt));
+      if (free && state.clubMateActive) this.turnVel += (Math.random() - 0.5) * 14 * dt;
+      const maxTurn = TURN_SPEED * 1.45;
+      this.turnVel = Math.max(-maxTurn, Math.min(maxTurn, this.turnVel));
+      this.heading += this.turnVel * dt;
+
+      const moveSpeed = forward > 0 ? SPEED : forward < 0 ? -BACK_SPEED : 0;
+      this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(moveSpeed);
+    }
 
     // Lurch: a sideways stumble now and then. None at first; more often and harder as you get drunker.
-    this.lurchIn -= dt;
-    if (this.lurchIn <= 0 && state.started && drunk > 0.2) {
-      this.lurchIn = 1.2 + Math.random() * (4 - drunk * 2.5);
-      const side = Math.random() < 0.5 ? -1 : 1;
-      const power = drunk * 3.2;
-      this.velocity.x += Math.cos(this.heading) * side * power;
-      this.velocity.z -= Math.sin(this.heading) * side * power;
-      this.swayVel += side * 2;
+    if (free) {
+      this.lurchIn -= dt;
+      if (this.lurchIn <= 0 && drunk > 0.2) {
+        this.lurchIn = 1.2 + Math.random() * (4 - drunk * 2.5);
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const power = drunk * 3.2;
+        this.velocity.x += Math.cos(this.heading) * side * power;
+        this.velocity.z -= Math.sin(this.heading) * side * power;
+        this.swayVel += side * 2;
+      }
     }
 
     // Wet floor: almost no grip, you keep sliding.
@@ -178,8 +250,19 @@ export class Horse {
     const slippy = this.wet.some((w) => (p.x - w.x) ** 2 + (p.z - w.z) ** 2 < w.r * w.r);
     const grip = slippy ? 0.6 : wants ? 4 - drunk * 1.8 : 3 - drunk * 1.6;
     this.velocity.lerp(this.target, 1 - Math.exp(-grip * dt));
+
+    this.prevPos.copy(this.root.position);
     this.root.position.addScaledVector(this.velocity, dt);
-    this.resolve(this.root.position, RADIUS);
+    this.resolveBody();
+    // Sync velocity with resolved displacement so the horse doesn't gallop in place against walls.
+    if (dt > 1e-4) {
+      this.velocity.set(
+        (this.root.position.x - this.prevPos.x) / dt,
+        0,
+        (this.root.position.z - this.prevPos.z) / dt,
+      );
+      if (this.velocity.lengthSq() > 144) this.velocity.setLength(12);
+    }
 
     const v = this.velocity.length();
     this.root.rotation.y = this.heading;
@@ -187,8 +270,8 @@ export class Horse {
     // Actions.
     if (free && pressed.has('Space')) {
       const fwd = new THREE.Vector3(Math.sin(this.root.rotation.y), 0, Math.cos(this.root.rotation.y));
-      const p = this.root.position.clone().addScaledVector(fwd, 0.7);
-      bus.emit('player:grab', { x: p.x, z: p.z });
+      const grabAt = this.root.position.clone().addScaledVector(fwd, 0.7);
+      bus.emit('player:grab', { x: grabAt.x, z: grabAt.z });
       this.pitchVel -= 3;
     }
     if (free && pressed.has('KeyE')) {
@@ -204,10 +287,17 @@ export class Horse {
 
     // Spring sway: the drunk wobble.
     this.t += dt * (2 + v * 2);
-    const jitter = state.clubMateActive ? (Math.random() - 0.5) * 6 : 0;
+    const jitter = free && state.clubMateActive ? (Math.random() - 0.5) * 6 : 0;
     const force = Math.sin(this.t * 1.3) * (v * 0.6 + k * 0.8) * wobbleBoost + jitter - this.sway * 30 - this.swayVel * 3;
     this.swayVel += force * dt;
     this.sway += this.swayVel * dt;
+    if (this.sway > 0.28) {
+      this.sway = 0.28;
+      if (this.swayVel > 0) this.swayVel = 0;
+    } else if (this.sway < -0.28) {
+      this.sway = -0.28;
+      if (this.swayVel < 0) this.swayVel = 0;
+    }
     const pitchForce = -this.pitch * 40 - this.pitchVel * 5;
     this.pitchVel += pitchForce * dt;
     this.pitch += this.pitchVel * dt;
@@ -224,7 +314,7 @@ export class Horse {
     const gait = Math.min(v / 2, 1);
     this.legs.forEach((leg, i) => {
       const phase = this.t * 3 + (i === 0 || i === 3 ? 0 : Math.PI);
-      const shake = state.clubMateActive ? (Math.random() - 0.5) * 0.3 : 0;
+      const shake = free && state.clubMateActive ? (Math.random() - 0.5) * 0.3 : 0;
       leg.rotation.x = Math.sin(phase) * 0.5 * gait * (1 + k) + shake - (i < 2 ? this.stomp * 0.9 : 0) - (leg.userData.lift ?? 0) * 1.2;
       leg.rotation.z = Math.sin(phase * 0.5) * 0.1 * k;
     });

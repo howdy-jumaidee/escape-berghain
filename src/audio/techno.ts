@@ -221,6 +221,7 @@ export class Techno {
     const t = this.ctx.currentTime;
     const src = this.ctx.createBufferSource();
     src.buffer = this.noise;
+    src.loop = true;
     const bp = this.ctx.createBiquadFilter();
     bp.type = 'bandpass';
     bp.frequency.value = 1100;
@@ -508,6 +509,7 @@ export class Techno {
     const ctx = this.ctx;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
+    src.loop = true;
     const f = ctx.createBiquadFilter();
     f.type = type;
     f.frequency.value = freq;

@@ -7,6 +7,7 @@ import {
   cellCenter,
   BeatCounter,
   PASS_OUTS_TO_HERD,
+  lock,
   type EndingId,
   type FragmentId,
 } from '../contracts';
@@ -15,21 +16,32 @@ import { level, debug } from '../data';
 const DJ_STOMPS = 8;
 const DJ_RANGE = 2.8;
 const PASS_OUT_TRIP = 45;
+let endingPending = false;
 
 export function startGame(): void {
   // Fragments: one owner.
   bus.on('fragment:claim', ({ id }) => found(id));
 
   // Endings: the back exit decides by how much you remember.
-  bus.on('exit:reached', () => showEnding(state.fragments.length >= 5 ? 'full_memory' : 'partial_memory'));
+  bus.on('exit:reached', () => {
+    if (state.ending || endingPending) return;
+    showEnding(state.fragments.length >= 5 ? 'full_memory' : 'partial_memory');
+  });
   // Secret ending: the crowd turns first, then the card.
-  bus.on('secret:dj', () => setTimeout(() => showEnding('secret_dj'), 1800));
+  bus.on('secret:dj', () => {
+    if (state.ending || endingPending) return;
+    endingPending = true;
+    lock('ending');
+    setTimeout(() => showEnding('secret_dj'), 1800);
+  });
 
   // Loss: trip at max. Wake up in the toilet queue. Three times and you're one of the herd.
   bus.on('trip:max', () => {
-    if (state.ending) return;
+    if (state.ending || endingPending) return;
     state.passOuts++;
     if (state.passOuts >= PASS_OUTS_TO_HERD) {
+      endingPending = true;
+      lock('ending');
       setTimeout(() => showEnding('herd'), 1200);
       return;
     }
@@ -38,12 +50,14 @@ export function startGame(): void {
     bus.emit('player:respawn', { zone: 'toilet_corridor' });
     bus.emit('ui:say', { key: 'story:losses.passed_out', seconds: 4 });
     const warning = `story:spirit_guide.herd_warning_${state.passOuts}`;
-    setTimeout(() => bus.emit('ui:say', { key: warning, seconds: 5 }), 4500);
+    setTimeout(() => {
+      if (!state.ending && !endingPending) bus.emit('ui:say', { key: warning, seconds: 5 });
+    }, 4500);
   });
 
   // Loss: caught. Back to the last checkpoint.
   bus.on('player:caught', () => {
-    if (state.ending) return;
+    if (state.ending || endingPending) return;
     bus.emit('player:respawn', { zone: state.checkpoint });
     bus.emit('ui:say', { key: 'story:losses.caught', seconds: 5 });
   });
@@ -53,7 +67,7 @@ export function startGame(): void {
     bus.emit('ui:say', { key: `story:spirit_guide.fragment_${id}`, seconds: 4 });
     if (state.fragments.length === 5 && !state.finale) {
       setTimeout(() => {
-        if (state.ending) return;
+        if (state.ending || endingPending) return;
         state.finale = true;
         bus.emit('game:finale', {});
         bus.emit('ui:say', { key: 'story:finale.start', seconds: 5 });
@@ -63,7 +77,7 @@ export function startGame(): void {
 
   // Fragment 2: no mirrors, so look down at your own leg. Only readable with your glasses on.
   bus.on('player:look', () => {
-    if (state.ending) return;
+    if (state.ending || endingPending) return;
     if (!state.fragments.includes(1)) return bus.emit('ui:say', { key: 'story:spirit_guide.look_blurry', seconds: 3 });
     if (state.fragments.includes(2)) return bus.emit('ui:say', { key: 'story:spirit_guide.look_again', seconds: 2.5 });
     found(2);
@@ -71,7 +85,7 @@ export function startGame(): void {
 
   bus.on('door:refused', () => bus.emit('ui:say', { key: 'story:door', seconds: 3 }));
   // Playtest flags.
-  if (debug.trip !== null) state.trip = Math.max(0, Math.min(99, debug.trip));
+  if (debug.trip !== null && Number.isFinite(debug.trip)) state.trip = Math.max(0, Math.min(99, debug.trip));
   bus.on('intro:land', () => debug.fragments.forEach((id) => found(id)));
 
   if (level.markers.dj_booth) startDjBooth(level.markers.dj_booth);
@@ -79,7 +93,7 @@ export function startGame(): void {
 }
 
 function found(id: FragmentId): void {
-  if (state.fragments.includes(id) || state.ending) return;
+  if (state.fragments.includes(id) || state.ending || endingPending) return;
   state.fragments.push(id);
   bus.emit('fragment:found', { id });
   state.checkpoint = state.zone;
@@ -101,7 +115,7 @@ function startDjBooth(cell: [number, number]): void {
     bus.emit('ui:say', { key: 'story:dj.hint', seconds: 4 });
   });
   bus.on('player:stomp', ({ x, z, time }) => {
-    if (done || state.ending || Math.hypot(x - booth.x, z - booth.z) > DJ_RANGE) return;
+    if (done || state.ending || endingPending || Math.hypot(x - booth.x, z - booth.z) > DJ_RANGE) return;
     if (counter.stomp(time) < DJ_STOMPS) return;
     done = true;
     bus.emit('secret:dj', {});
@@ -111,6 +125,7 @@ function startDjBooth(cell: [number, number]): void {
 
 function showEnding(ending: EndingId): void {
   if (state.ending) return;
+  endingPending = false;
   state.ending = ending;
   bus.emit('ending:show', { ending });
 }

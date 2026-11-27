@@ -9,6 +9,8 @@ import {
   EffectPass,
   Effect,
   EffectAttribute,
+  BloomEffect,
+  BrightnessContrastEffect,
   ChromaticAberrationEffect,
   HueSaturationEffect,
   NoiseEffect,
@@ -68,11 +70,15 @@ class TripBlurEffect extends Effect {
 
 export class TripFx {
   composer: EffectComposer;
+  private bloom: BloomEffect;
+  private grade: BrightnessContrastEffect;
   private chroma: ChromaticAberrationEffect;
   private blur: TripBlurEffect;
   private hue: HueSaturationEffect;
   private camera: THREE.Camera;
   private baseCamPos = new THREE.Vector3();
+  private camWobbleScale = 1;
+  private hasCameraBase = false;
   private t = 0;
   private mateLeft = 0;
   private freezeLeft = 0;
@@ -84,6 +90,16 @@ export class TripFx {
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(scene, camera));
 
+    // Subtle high-threshold bloom so frosted glass-block windows, lasers, strobes, and exit sign glow in the haze.
+    this.bloom = new BloomEffect({
+      luminanceThreshold: 0.78,
+      luminanceSmoothing: 0.16,
+      mipmapBlur: true,
+      intensity: 0.45,
+      radius: 0.65,
+    });
+    this.composer.addPass(new EffectPass(camera, this.bloom));
+
     this.blur = new TripBlurEffect();
     this.composer.addPass(new EffectPass(camera, this.blur));
 
@@ -94,11 +110,13 @@ export class TripFx {
     });
     this.composer.addPass(new EffectPass(camera, this.chroma));
 
-    this.hue = new HueSaturationEffect({ hue: 0, saturation: 0 });
+    // Stark, slightly desaturated brutalist contrast at low trip; shifts wilder as trip climbs.
+    this.grade = new BrightnessContrastEffect({ brightness: 0, contrast: 0.12 });
+    this.hue = new HueSaturationEffect({ hue: 0, saturation: -0.22 });
     const noise = new NoiseEffect({ blendFunction: BlendFunction.OVERLAY });
-    noise.blendMode.opacity.value = 0.35;
-    const vignette = new VignetteEffect({ darkness: 0.7, offset: 0.3 });
-    this.composer.addPass(new EffectPass(camera, this.hue, noise, vignette));
+    noise.blendMode.opacity.value = 0.28;
+    const vignette = new VignetteEffect({ darkness: 0.65, offset: 0.28 });
+    this.composer.addPass(new EffectPass(camera, this.grade, this.hue, noise, vignette));
 
     bus.on('fragment:found', () => this.relieve(FRAGMENT_RELIEF));
     bus.on('item:consumed', ({ item }) => {
@@ -121,7 +139,7 @@ export class TripFx {
   update(dt: number): void {
     this.t += dt;
 
-    if (state.started && !state.ending) {
+    if (state.started && !state.ending && !state.inputLocked) {
       const prev = state.trip;
       state.trip = Math.min(TRIP_MAX, state.trip + TRIP_PER_SECOND * dt);
       if (Math.floor(prev) !== Math.floor(state.trip)) bus.emit('trip:changed', { trip: state.trip });
@@ -134,7 +152,10 @@ export class TripFx {
     }
     if (this.freezeLeft > 0) {
       this.freezeLeft -= dt;
-      if (this.freezeLeft <= 0) state.brainFreezeActive = false;
+      if (this.freezeLeft <= 0) {
+        state.brainFreezeActive = false;
+        bus.emit('trip:changed', { trip: state.trip });
+      }
     }
 
     this.shown += (state.trip - this.shown) * (1 - Math.exp(-1.5 * dt));
@@ -147,19 +168,33 @@ export class TripFx {
     const o = 0.0008 + k * 0.018;
     this.chroma.offset.set(o * Math.cos(this.t * 2), o * Math.sin(this.t * 1.7));
     this.hue.hue = Math.sin(this.t * 0.25) * k * 0.9;
-    this.hue.saturation = state.brainFreezeActive ? -0.2 : k * 0.3;
+    this.hue.saturation = state.brainFreezeActive ? -0.32 : -0.22 + k * 0.6;
+    this.grade.contrast = state.brainFreezeActive ? 0.16 : 0.12 + k * 0.08;
+    this.bloom.intensity = state.brainFreezeActive ? 0.35 : 0.45 + k * 0.15;
 
-    // Camera wobble grows with the trip.
-    this.camera.position.x = this.baseCamPos.x + Math.sin(this.t * 1.1) * k * 0.6;
-    this.camera.position.y = this.baseCamPos.y + Math.sin(this.t * 0.7) * k * 0.4;
+    // Camera wobble grows with the trip; applied from baseCamPos and clamped so it never dips underground.
+    if (this.hasCameraBase) {
+      this.camera.position.copy(this.baseCamPos);
+      this.camera.position.x = this.baseCamPos.x + Math.sin(this.t * 1.1) * k * this.camWobbleScale * 0.6;
+      this.camera.position.y = Math.max(
+        this.baseCamPos.y - 0.45,
+        Math.max(0.45, this.baseCamPos.y + Math.sin(this.t * 0.7) * k * this.camWobbleScale * 0.4),
+      );
+    }
   }
 
   /** Call after the camera has followed the player, before update(). */
-  setCameraBase(pos: THREE.Vector3): void {
+  setCameraBase(pos: THREE.Vector3, wobbleScale = 1): void {
     this.baseCamPos.copy(pos);
+    this.camWobbleScale = wobbleScale;
+    this.hasCameraBase = true;
   }
 
   render(dt: number): void {
     this.composer.render(dt);
+    // Restore unwobbled base after rendering so next frame's camera lerp never compounds wobble.
+    if (this.hasCameraBase) {
+      this.camera.position.copy(this.baseCamPos);
+    }
   }
 }
