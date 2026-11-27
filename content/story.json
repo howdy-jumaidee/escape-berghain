@@ -1,0 +1,29 @@
+{
+  "_owner": "Robin. Draft lines, rewrite freely.",
+  "intro": [
+    "Sunday. 06:12.",
+    "Psst. That's us.",
+    "There are no mirrors in here, so you didn't notice.",
+    "We're a horse.",
+    "We live somewhere. Let's go home."
+  ],
+  "controls": "WASD to walk. Space to grab with your hooves. Good luck.",
+  "spirit_guide": {
+    "fragment_1": "Glasses. We wear glasses. That's something.",
+    "fragment_2": "47. Why do we know that number?",
+    "fragment_3": "A ticket. We came in with a jacket. We had a whole outfit.",
+    "fragment_4": "That keychain... our street!",
+    "fragment_5": "Our bike. By the river. We can get home.",
+    "trip_high": "Everything is getting soft around the edges. Hurry.",
+    "mate": "Mate. Clearer. Shakier. Worth it."
+  },
+  "losses": {
+    "passed_out": "You wake up in the toilet queue. Someone is still talking about their ex.",
+    "caught": "Animal control drops you back where you were. He asks if you can get him in next time."
+  },
+  "endings": {
+    "full_memory": "You wake up in your own bed. Human. There's a hoofprint on the pillow.",
+    "partial_memory": "Monday, noon. The club is closing. You're outside in the queue. Still a horse. Try again?",
+    "secret_dj": "You never left. You are the resident horse DJ now."
+  }
+}

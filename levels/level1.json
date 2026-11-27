@@ -1,0 +1,42 @@
+{
+  "_owner": "Emma and Dee. Each character is one 4 x 4 m cell. Loader comes in issue #9.",
+  "cellSize": 4,
+  "legend": {
+    "#": "hall_wall",
+    ".": "hall_floor",
+    "P": "hall_pillar",
+    "S": "hall_speaker",
+    "D": "hall_dj_booth",
+    "B": "bar_counter",
+    "C": "cloakroom_counter",
+    "T": "toilet_cubicle",
+    "U": "staircase_up",
+    "I": "panorama_ice_cream",
+    "E": "exit_door",
+    "@": "player_start",
+    "1": "fragment_1",
+    "3": "fragment_3"
+  },
+  "zones": {
+    "main_hall": [[1, 1], [10, 8]],
+    "bar_cloakroom": [[11, 1], [15, 4]],
+    "toilet_corridor": [[11, 5], [15, 8]],
+    "panorama_bar": [[1, 9], [10, 11]],
+    "back_exit": [[11, 9], [15, 11]]
+  },
+  "grid": [
+    "#################",
+    "#S...D....S#B..C#",
+    "#..P...P...#....#",
+    "#....1.....#..3.#",
+    "#..P...P......U.#",
+    "#..........#TTTT#",
+    "#....@.....#....#",
+    "#..P...P...#....#",
+    "#..........#....#",
+    "######U##########",
+    "#..I.......#....#",
+    "#..........#...E#",
+    "#################"
+  ]
+}

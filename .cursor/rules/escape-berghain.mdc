@@ -1,0 +1,7 @@
+---
+description: Escape Berghain team rules
+alwaysApply: true
+---
+Follow AGENTS.md in the repo root exactly. Read docs/PLAN.md, ROADMAP.md and src/contracts.ts before writing code.
+Work on a branch from dev, open a PR into dev, never push to main or dev.
+Run npm run build before every push.

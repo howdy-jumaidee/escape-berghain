@@ -1,0 +1,33 @@
+{
+  "_owner": "Robin. Draft lines, rewrite freely.",
+  "riddle_horse": {
+    "lines": ["Been here since Friday. You look new. Answer me this."],
+    "riddle": {
+      "question": "I have keys but open no doors in here. I wait by the river for you. What am I?",
+      "answers": [
+        { "text": "A piano", "correct": false },
+        { "text": "My bike", "correct": true },
+        { "text": "The bouncer", "correct": false }
+      ],
+      "right": "Stairs. Up. Then out the back. Go.",
+      "wrong": "Hm. Try the long way. Bring me a Mate if you find one."
+    }
+  },
+  "patrick": { "lines": ["I'm Patrick. From accounting. I'm definitely not a horse.", "Exit's that way. Trust me. I do numbers."] },
+  "herd": { "lines": ["...", "*stomps in perfect sync*"] },
+  "ice_cream_horse": { "lines": ["Eis?"] },
+  "friday_guy": { "lines": ["Exit? Left for about 128. Then up.", "I came in Friday. What day is it? Don't tell me."] },
+  "coat_check": { "lines": ["Ticket."], "with_ticket": "Nice jacket. For a horse." },
+  "philosopher": {
+    "lines": ["Who are you, really?"],
+    "answers_by_fragments": {
+      "0": ["A horse?", "I don't know."],
+      "3": ["Someone with glasses and a jacket.", "A horse with a coat check ticket."],
+      "5": ["Someone who lives by the river.", "Someone going home."]
+    }
+  },
+  "tourists": { "lines": ["Oh my god, the costume! Selfie!"] },
+  "security": { "lines": ["Hey. Horse. Stop."] },
+  "animal_control": { "lines": ["Come on, buddy. Into the van.", "Hey, any chance you could get me in sometime?"] },
+  "bouncer": { "lines": ["Heute nicht."] }
+}
