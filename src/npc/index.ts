@@ -1,7 +1,7 @@
 // NPCs: the crowd, the named weirdos, dialogue from content/npcs.json, the riddle horse, the herd, the spirit guide.
 // Issues #14, #15, #16. Model names: npc_<id>.glb in public/models/, e.g. npc_patrick.glb. Missing models are grey boxes.
 import * as THREE from 'three';
-import { bus, state, cellCenter, BeatCounter, type NpcId } from '../contracts';
+import { bus, state, cellCenter, BeatCounter, lock, unlock, type NpcId } from '../contracts';
 import { placeModel } from '../look/models';
 import { level, npcText } from '../data';
 import { Crowd, type Spot } from './crowd';
@@ -64,6 +64,23 @@ const STYLES: Partial<Record<NpcId, DanceStyle>> = {
   cleaner: { hop: 0.02, step: 0, twist: 0.15, wander: 0 },
 };
 const WANDER_SPEED = 0.6;
+/** Special NPCs: walk into them and you're pulled into a face to face conversation. */
+const FOCUS = new Set<NpcId>([
+  'friday_guy', 'patrick', 'philosopher', 'tourists', 'ice_cream_horse', 'bouncer', 'cleaner', 'leather_choir', 'riddle_horse', 'coat_check',
+]);
+/** How close you have to stumble before they grab you. */
+const BUMP_RANGE = 1.5;
+/** Walk this far away before they can grab you again. */
+const REARM_RANGE = 4.5;
+
+interface Convo {
+  npc: Npc;
+  keys: string[];
+  i: number;
+  after?: () => void;
+  /** Stay face to face after the last line (the riddle is asked in your face). */
+  keepFocus?: boolean;
+}
 const STOP_FOR_PLAYER = 3.5;
 
 export class Npcs {
@@ -73,7 +90,6 @@ export class Npcs {
   private player = new THREE.Vector3();
   private talking: Npc | null = null;
   private riddleSolved = false;
-  private riddleSeen = false;
   private beatN = 0;
   private beatPulse = 0;
   private herd = new BeatCounter();
@@ -91,6 +107,12 @@ export class Npcs {
   private mopTimer = MOP_EVERY;
   private t = 0;
   private puddles: { mesh: THREE.Mesh; left: number }[] = [];
+  private convo: Convo | null = null;
+  /** Who has already had their say and is waiting for you to walk away first. */
+  private disarmed = new Set<Npc>();
+  /** Has this NPC done their full conversation once? After that, they just say one line. */
+  private heard = new Set<NpcId>();
+  private eyes: THREE.Object3D[] = [];
 
   constructor() {
     for (const { id, cell } of level.npcs) this.spawn(id, cell[0], cell[1]);
@@ -122,6 +144,16 @@ export class Npcs {
       }
       this.herdHint();
       this.choir();
+      this.bumpInto();
+    });
+    addEventListener('keydown', (e) => {
+      if (!this.convo || e.repeat) return;
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        this.nextLine();
+      } else if (e.code === 'Escape') {
+        this.endConvo(false);
+      }
     });
     bus.on('player:grab', ({ x, z }) => this.talk(new THREE.Vector3(x, 0, z)));
     bus.on('player:stomp', ({ x, z, time }) => this.stomp(x, z, time));
@@ -183,6 +215,7 @@ export class Npcs {
     this.updateGuide(dt);
     this.checkSelfie();
     this.mop(dt);
+    this.blink(dt);
     this.beatPulse = Math.max(0, this.beatPulse - dt * 4);
     this.crowd.update(dt, this.beatPulse, this.beatN);
     const bounce = this.beatPulse * this.beatPulse;
@@ -261,6 +294,7 @@ export class Npcs {
     for (let i = 0; i < count; i++) {
       const o = new THREE.Group();
       o.add(placeModel(`npc_${id}`, size, mat));
+      if (FOCUS.has(id)) o.add(this.makeEyes(size));
       const holder = new THREE.Group();
       if (id === 'leather_choir') {
         // A tight circle.
@@ -300,35 +334,13 @@ export class Npcs {
     if (!best) return;
     this.talking = best;
     const npc = best;
+    if (FOCUS.has(npc.id)) return this.startConvo(npc);
     const say = (key: string) => bus.emit('npc:talk', { npc: npc.id, lineId: `npcs:${npc.id}.${key}` });
 
     switch (npc.id) {
-      case 'riddle_horse':
-        if (this.riddleSolved) return say('riddle.right');
-        // The chain runs in order: the bike riddle needs your keys.
-        if (!state.fragments.includes(4)) return say('not_yet');
-        if (!this.riddleSeen) {
-          this.riddleSeen = true;
-          return say('lines.0');
-        }
-        return bus.emit('riddle:show', {});
-      case 'coat_check':
-        if (!state.fragments.includes(3)) return say('lines.0');
-        if (state.fragments.includes(4)) return say('empty');
-        // Ticket in, jacket out, keys in the pocket.
-        say('jacket');
-        return bus.emit('fragment:claim', { id: 4 });
-      case 'tourists':
-        return say(this.selfieTaken ? 'lines.1' : 'lines.0');
       case 'herd':
         say(state.passOuts > 0 ? 'warning' : `lines.${npc.line++ % 2}`);
         return bus.emit('ui:say', { key: 'story:herd.hint', seconds: 4 });
-      case 'philosopher': {
-        if (npc.line++ % 2 === 0) return say('lines.0');
-        const n = state.fragments.length;
-        const bucket = n >= 5 ? '5' : n >= 3 ? '3' : '0';
-        return bus.emit('ui:say', { key: `npcs:philosopher.answers_by_fragments.${bucket}.${Math.floor(Math.random() * 2)}`, seconds: 3 });
-      }
       default: {
         const lines = npcText[npc.id]?.lines ?? [];
         if (!lines.length) return;
@@ -404,11 +416,123 @@ export class Npcs {
     setTimeout(() => bus.emit('ui:say', { key: 'story:selfie_after', seconds: 3 }), 3500);
   }
 
+  // ---------- Conversations: forced, face to face, like an old RPG ----------
+
+  /** Stumble into a special NPC and they pull you into a conversation. */
+  private bumpInto(): void {
+    for (const npc of this.npcs) {
+      if (!FOCUS.has(npc.id)) continue;
+      const d = npc.pos.distanceTo(this.player);
+      if (d > REARM_RANGE) this.disarmed.delete(npc);
+      const range = npc.id === 'leather_choir' ? 2.2 : BUMP_RANGE;
+      if (d < range && !this.disarmed.has(npc) && !this.convo && state.started && !state.ending && !state.inputLocked) {
+        this.startConvo(npc);
+        return;
+      }
+    }
+  }
+
+  private startConvo(npc: Npc): void {
+    if (this.convo || state.ending) return;
+    const { keys, after, keepFocus } = this.script(npc);
+    if (!keys.length) return;
+    this.convo = { npc, keys, i: 0, after, keepFocus };
+    this.disarmed.add(npc);
+    this.talking = npc;
+    lock('talk');
+    const h = npc.holders[0];
+    // Eye height, so their eyes sit right in the middle of the frame.
+    const face = HORSES.has(npc.id) ? 1.88 : 1.48;
+    bus.emit('npc:focus', { npc: npc.id, x: h.position.x, y: face, z: h.position.z });
+    this.sayLine();
+  }
+
+  /** What an NPC says, given where you are in the story. Some of it is true. Some of it isn't. */
+  private script(npc: Npc): { keys: string[]; after?: () => void; keepFocus?: boolean } {
+    const talk = (npcText[npc.id]?.talk as string[] | undefined) ?? [];
+    const full = talk.map((_, i) => `talk.${i}`);
+    const once = (keys: string[]) => {
+      const first = !this.heard.has(npc.id);
+      this.heard.add(npc.id);
+      return first ? keys : keys.slice(-1);
+    };
+    switch (npc.id) {
+      case 'riddle_horse':
+        if (this.riddleSolved) return { keys: ['riddle.right'] };
+        // The bike riddle needs your keys first.
+        if (!state.fragments.includes(4)) return { keys: ['talk.0', 'not_yet'] };
+        return { keys: once(full), after: () => bus.emit('riddle:show', {}), keepFocus: true };
+      case 'coat_check':
+        if (!state.fragments.includes(3)) return { keys: ['lines.0'] };
+        if (state.fragments.includes(4)) return { keys: ['empty'] };
+        // Ticket in, jacket out, keys in the pocket.
+        return { keys: ['jacket'], after: () => bus.emit('fragment:claim', { id: 4 }) };
+      default:
+        return { keys: once(full.length ? full : ['lines.0']) };
+    }
+  }
+
+  private sayLine(): void {
+    const c = this.convo;
+    if (!c) return;
+    bus.emit('npc:talk', { npc: c.npc.id, lineId: `npcs:${c.npc.id}.${c.keys[c.i]}` });
+  }
+
+  private nextLine(): void {
+    const c = this.convo;
+    if (!c) return;
+    c.i++;
+    if (c.i >= c.keys.length) return this.endConvo(true);
+    this.sayLine();
+  }
+
+  private endConvo(finished: boolean): void {
+    const c = this.convo;
+    if (!c) return;
+    this.convo = null;
+    unlock('talk');
+    if (finished && c.keepFocus) return c.after?.();
+    bus.emit('npc:unfocus', {});
+    bus.emit('npc:silent', {});
+    if (finished) c.after?.();
+  }
+
+  /** Two eyes that blink. When you're face to face, they're looking right at you. */
+  private makeEyes(size: { x: number; y: number; z: number }): THREE.Object3D {
+    const eyes = new THREE.Group();
+    eyes.position.set(0, size.y - 0.32, size.z / 2 + 0.01);
+    const white = new THREE.MeshBasicMaterial({ color: 0xf2f2f2 });
+    const black = new THREE.MeshBasicMaterial({ color: 0x050505 });
+    for (const x of [-0.09, 0.09]) {
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.01), white);
+      eye.position.x = x;
+      const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.045, 0.01), black);
+      pupil.position.set(x, -0.005, 0.008);
+      eyes.add(eye, pupil);
+    }
+    eyes.userData.blinkIn = 1 + Math.random() * 4;
+    this.eyes.push(eyes);
+    return eyes;
+  }
+
+  private blink(dt: number): void {
+    for (const e of this.eyes) {
+      e.userData.blinkIn -= dt;
+      if (e.userData.blinkIn < 0) e.userData.blinkIn = 2 + Math.random() * 4;
+      e.scale.y = e.userData.blinkIn < 0.12 ? 0.1 : 1;
+    }
+  }
+
   private riddleAnswered(correct: boolean): void {
     const horse = this.npcs.find((n) => n.id === 'riddle_horse');
     if (!horse) return;
     this.talking = horse;
     bus.emit('npc:talk', { npc: 'riddle_horse', lineId: `npcs:riddle_horse.riddle.${correct ? 'right' : 'wrong'}` });
+    // Let his answer land in your face, then let go.
+    setTimeout(() => {
+      bus.emit('npc:unfocus', {});
+      bus.emit('npc:silent', {});
+    }, 3000);
     if (correct) {
       this.riddleSolved = true;
       bus.emit('fragment:claim', { id: 5 });

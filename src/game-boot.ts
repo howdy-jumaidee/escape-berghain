@@ -87,6 +87,18 @@ addEventListener('keydown', (e) => {
 let baseFov = FOV;
 const camOffset = new THREE.Vector3(0, 24, 14);
 const lookAt = new THREE.Vector3();
+
+// Face to face: walk into a special NPC and the camera is pulled into your eyes, staring at their face.
+// A dolly zoom (closer while the lens widens) makes the room stretch behind them. Like an old RPG, but wrong.
+let focus: { face: THREE.Vector3; t: number } | null = null;
+bus.on('npc:focus', ({ x, y, z }) => {
+  focus = { face: new THREE.Vector3(x, horse.root.position.y + y, z), t: 0 };
+  horse.root.visible = false;
+});
+bus.on('npc:unfocus', () => {
+  focus = null;
+  horse.root.visible = view !== 'eyes';
+});
 camera.position.copy(horse.root.position).add(camOffset);
 const timer = new THREE.Timer();
 const follow = new THREE.Vector3();
@@ -117,13 +129,29 @@ renderer.setAnimationLoop(() => {
     lookAt.set(horse.root.position.x + fwdX * 10, horse.root.position.y + 1.5, horse.root.position.z + fwdZ * 10);
     horse.cameraYaw = Math.atan2(fwdX, fwdZ);
   }
-  camera.position.lerp(follow, 1 - Math.exp(-(view === 'eyes' ? 12 : 4) * dt));
+  let focusFov = 0;
+  let roll = 0;
+  if (focus) {
+    focus.t += dt;
+    const e = 1 - Math.pow(1 - Math.min(1, focus.t / 1.1), 3);
+    const dx = horse.root.position.x - focus.face.x;
+    const dz = horse.root.position.z - focus.face.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const dist = 2.6 - e * 1.5;
+    follow.set(focus.face.x + (dx / len) * dist, focus.face.y - 0.05, focus.face.z + (dz / len) * dist);
+    lookAt.copy(focus.face);
+    // Dolly zoom: the face grows a little while everything behind it stretches away.
+    focusFov = 2 * Math.atan((0.75 - e * 0.25) / dist) * (180 / Math.PI);
+    roll = Math.sin(focus.t * 0.9) * 0.05;
+  }
+  camera.position.lerp(follow, 1 - Math.exp(-(focus ? 7 : view === 'eyes' ? 12 : 4) * dt));
   fx.setCameraBase(camera.position);
   camera.lookAt(lookAt);
+  if (roll) camera.rotateZ(roll);
 
   // Kick: a small zoom punch on every beat.
   kick = Math.max(0, kick - dt * 6);
-  camera.fov = baseFov - kick * kick * 1.2;
+  camera.fov = (focus ? focusFov : baseFov) - kick * kick * 1.2;
   camera.updateProjectionMatrix();
 
   flash = Math.max(0, flash - dt * 7);

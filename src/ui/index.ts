@@ -36,6 +36,9 @@ export function startUi(): void {
   const hideTalk = () => {
     if (!riddleOpen) talk.classList.remove('on');
   };
+  const talkHint = el('div', 'eb-talk-hint', talk);
+  talkHint.textContent = t('story:talk_hint');
+  let focused = false;
   bus.on('npc:talk', ({ npc, lineId }) => {
     if (riddleOpen) return;
     talkName.textContent = t(`npcs:${npc}.name`);
@@ -43,9 +46,23 @@ export function startUi(): void {
     answers.replaceChildren();
     talk.classList.add('on');
     clearTimeout(talkTimer);
-    talkTimer = window.setTimeout(hideTalk, 4500);
+    // In a face to face conversation the line stays until you press Space.
+    if (!focused) talkTimer = window.setTimeout(hideTalk, 4500);
   });
   bus.on('npc:silent', hideTalk);
+
+  // Face to face: letterbox bars slide in, the dialogue moves to the centre.
+  const barTop = el('div', 'eb-bar-top', root);
+  const barBottom = el('div', 'eb-bar-bottom', root);
+  bus.on('npc:focus', () => {
+    focused = true;
+    clearTimeout(talkTimer);
+    for (const e of [barTop, barBottom, talk]) e.classList.add('focus');
+  });
+  bus.on('npc:unfocus', () => {
+    focused = false;
+    for (const e of [barTop, barBottom, talk]) e.classList.remove('focus');
+  });
 
   // Riddle: three answers, keys 1 to 3 or click.
   let riddleAnswers: { text: string; correct: boolean }[] = [];

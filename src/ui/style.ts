@@ -31,6 +31,18 @@ export const css = /* css */ `
 .eb-answers button:hover, .eb-answers button:focus-visible { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
 .eb-answers kbd { font: 400 13px var(--mono); color: var(--dim); margin-right: 14px; }
 
+/* Face to face conversations: letterbox, centred dialogue, the NPC fills the frame. */
+.eb-bar-top, .eb-bar-bottom { position: absolute; left: 0; right: 0; height: 11vh; background: #000; transition: transform 0.45s ease-out; }
+.eb-bar-top { top: 0; transform: translateY(-100%); }
+.eb-bar-bottom { bottom: 0; transform: translateY(100%); }
+.eb-bar-top.focus, .eb-bar-bottom.focus { transform: none; }
+.eb-talk.focus { left: 50%; bottom: 3vh; transform: translateX(-50%); width: min(720px, 90vw); text-align: center; z-index: 1; }
+.eb-talk.focus p { font-size: 19px; }
+.eb-talk.focus b { font-size: 12px; }
+.eb-talk-hint { display: none; margin-top: 12px; font: 400 11px var(--mono); color: #6a6a6a; }
+.eb-talk.focus .eb-talk-hint { display: block; }
+.eb-talk.focus .eb-answers { justify-content: center; text-align: left; }
+
 /* Title and intro: pitch black. */
 .eb-cover { position: absolute; inset: 0; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }

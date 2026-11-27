@@ -24,13 +24,23 @@
       "right": "Stairs. Up. Then out the back. Go.",
       "wrong": "Hm. Try the long way. Bring me a Mate if you find one."
     },
-    "not_yet": "You've got nothing that opens anything. Come back with keys."
+    "not_yet": "You've got nothing that opens anything. Come back with keys.",
+    "talk": [
+      "Been here since Friday. You look new.",
+      "I know the way out. Everyone wants the way out.",
+      "Answer me this."
+    ]
   },
   "patrick": {
     "name": "Patrick",
     "lines": [
       "I'm Patrick. From accounting. I'm definitely not a horse.",
       "Exit's that way. Trust me. I do numbers."
+    ],
+    "talk": [
+      "I'm Patrick. From accounting. Definitely not a horse.",
+      "The way out is behind the DJ booth, straight through the big speaker. I've done the numbers.",
+      "Don't tell anyone about the hooves. Mine or yours."
     ]
   },
   "herd": {
@@ -45,6 +55,11 @@
     "name": "Ice cream horse",
     "lines": [
       "Eis?"
+    ],
+    "talk": [
+      "Eis?",
+      "...",
+      "The riddle horse only lies about bouncers. Eis?"
     ]
   },
   "friday_guy": {
@@ -52,6 +67,11 @@
     "lines": [
       "Exit? Left for about 128. Then up.",
       "I came in Friday. What day is it? Don't tell me."
+    ],
+    "talk": [
+      "You. Horse. I've been dancing since Friday. I see everything.",
+      "Your glasses? Something glinted under the left speaker. Left from the DJ. Or my left. One of the lefts.",
+      "Exit? Left for about 128. Then up."
     ]
   },
   "coat_check": {
@@ -81,13 +101,23 @@
         "Someone who lives by the river.",
         "Someone going home."
       ]
-    }
+    },
+    "talk": [
+      "Who are you, really?",
+      "Nobody in here knows their own face. No mirrors.",
+      "But your wrist remembers. Look down at yourself."
+    ]
   },
   "tourists": {
     "name": "Tourists",
     "lines": [
       "Oh my god, the costume! Selfie!",
       "Sorry. We put a sticker on it."
+    ],
+    "talk": [
+      "Oh my god, the costume! Is it a horse? It's a horse.",
+      "We saw a ticket taped to a pillar by the bar. Forty-something.",
+      "We'd show you the photo, but they put a sticker on our camera."
     ]
   },
   "security": {
@@ -108,6 +138,11 @@
     "name": "Bouncer",
     "lines": [
       "Heute nicht."
+    ],
+    "talk": [
+      "Heute nicht.",
+      "...",
+      "The back door was never the problem. The front door is."
     ]
   },
   "spirit_guide": {
@@ -121,6 +156,11 @@
     "lines": [
       "Mmmm. Mmmm. Mmmm. They're humming the bassline.",
       "Join us. Low notes only."
+    ],
+    "talk": [
+      "Mmmm. Mmmm. Mmmm.",
+      "The herd knows where your ticket is. Stomp with them, on the beat.",
+      "Mmmm."
     ]
   },
   "cleaner": {
@@ -128,6 +168,10 @@
     "lines": [
       "Six o'clock. Every Sunday. Mind the floor.",
       "Wet. Floor. Horse."
+    ],
+    "talk": [
+      "Six o'clock. Every Sunday. Mind the floor.",
+      "I always mop the back exit last. Follow the wet floor, you'll find the way out."
     ]
   }
 }

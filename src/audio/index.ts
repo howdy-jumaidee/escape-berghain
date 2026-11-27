@@ -112,6 +112,12 @@ export function startAudio(): void {
   bus.on('secret:dj', () => music?.sfxCrowd());
   bus.on('crowd:cheer', () => music?.cheer());
   bus.on('crowd:bump', () => music?.sfxBump());
+  // Face to face: the club drops away to a muffled thump while you talk.
+  bus.on('npc:focus', () => {
+    music?.setMix({ cutoff: 600, volume: 0.7, warm: 0 });
+    music?.sfxFocus();
+  });
+  bus.on('npc:unfocus', () => music?.setMix(ZONE_MIX[state.zone]));
   bus.on('game:finale', () => {
     music?.setFinale();
     music?.cheer();

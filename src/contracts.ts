@@ -163,6 +163,10 @@ export interface GameEvents {
   'riddle:answered': { correct: boolean };
   'npc:talk': { npc: NpcId; lineId: TextKey };
   'npc:silent': Record<string, never>;
+  /** A conversation starts: the camera goes to your eyes and looks at the NPC's face at (x, y, z). */
+  'npc:focus': { npc: NpcId; x: number; y: number; z: number };
+  /** The conversation is over. */
+  'npc:unfocus': Record<string, never>;
   'herd:synced': Record<string, never>;
   'item:consumed': { item: ItemId };
   'item:slipped': Record<string, never>;

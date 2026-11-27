@@ -121,5 +121,6 @@
       "M",
       "mute"
     ]
-  ]
+  ],
+  "talk_hint": "Space to continue. Esc to leave."
 }
