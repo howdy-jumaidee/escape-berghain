@@ -18,6 +18,8 @@ const pressed = new Set<string>();
 const RADIUS = 0.45;
 const SPEED = 5;
 const LEG_LENGTH = 0.8;
+/** Time in the club until the steering is fully drunk (trip makes it worse on top). */
+const SOBER_UP_SECONDS = 180;
 
 export type Resolver = (pos: THREE.Vector3, radius: number) => void;
 
@@ -46,6 +48,8 @@ export class Horse {
   private heading = 0;
   private turnVel = 0;
   private lurchIn = 2;
+  /** Seconds played. Steering gets harder with it. */
+  private playTime = 0;
   /** Which way the camera looks (yaw). WASD is relative to it, so W is always 'away from the camera'. */
   cameraYaw = Math.PI;
   private target = new THREE.Vector3();
@@ -125,14 +129,17 @@ export class Horse {
       input.set(input.x * c + input.z * sn, 0, -input.x * sn + input.z * c);
     }
 
-    // Drunk steering. You go where you're facing, not where you press. Turning is a loose spring that
-    // overshoots, speed builds slowly and carries on when you let go, and every few seconds you lurch.
-    // All of it gets worse as the trip rises.
+    // Drunk steering. You go where you're facing, not where you press. Turning is a spring, speed builds
+    // and carries on when you let go, and later you lurch. It starts soft so you can learn it, then gets
+    // worse the longer you're in the club and the higher your trip: `drunk` goes from 0 to 1.
+    if (state.started && !state.ending) this.playTime += dt;
+    const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.6 + k * 0.5);
     const wants = input.lengthSq() > 0;
     if (wants) {
-      const want = Math.atan2(input.x, input.z) + Math.sin(this.t * 0.9) * k * 0.5;
-      const stiffness = 26 - k * 10;
-      const damping = 4.2 - k * 2;
+      const want = Math.atan2(input.x, input.z) + Math.sin(this.t * 0.9) * drunk * 0.5;
+      // Sober: stiff and well damped, it just turns. Drunk: loose, it swings past and back.
+      const stiffness = 40 - drunk * 24;
+      const damping = 9 - drunk * 6.5;
       this.turnVel += (angleDiff(want, this.heading) * stiffness - this.turnVel * damping) * dt;
     } else {
       this.turnVel *= Math.exp(-3 * dt);
@@ -142,15 +149,15 @@ export class Horse {
 
     // How well you're lined up with where you want to go: badly lined up means slow.
     const aligned = wants ? Math.max(0, Math.cos(angleDiff(Math.atan2(input.x, input.z), this.heading))) : 0;
-    const speed = SPEED * (state.rat ? 1.3 : 1) * (0.35 + 0.65 * aligned);
+    const speed = SPEED * (state.rat ? 1.3 : 1) * (0.7 - drunk * 0.35 + (0.3 + drunk * 0.35) * aligned);
     this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(wants ? speed : 0);
 
-    // Lurch: a sideways stumble now and then.
+    // Lurch: a sideways stumble now and then. None at first; more often and harder as you get drunker.
     this.lurchIn -= dt;
-    if (this.lurchIn <= 0 && state.started) {
-      this.lurchIn = 1.2 + Math.random() * (3.5 - k * 2);
+    if (this.lurchIn <= 0 && state.started && drunk > 0.2) {
+      this.lurchIn = 1.2 + Math.random() * (4 - drunk * 2.5);
       const side = Math.random() < 0.5 ? -1 : 1;
-      const power = 1.2 + k * 2.2;
+      const power = drunk * 3.2;
       this.velocity.x += Math.cos(this.heading) * side * power;
       this.velocity.z -= Math.sin(this.heading) * side * power;
       this.swayVel += side * 2;
@@ -160,7 +167,7 @@ export class Horse {
     this.wet = this.wet.filter((w) => (w.left -= dt) > 0);
     const p = this.root.position;
     const slippy = this.wet.some((w) => (p.x - w.x) ** 2 + (p.z - w.z) ** 2 < w.r * w.r);
-    const grip = slippy ? 0.6 : wants ? 2.2 : 1.4;
+    const grip = slippy ? 0.6 : wants ? 4 - drunk * 1.8 : 3 - drunk * 1.6;
     this.velocity.lerp(this.target, 1 - Math.exp(-grip * dt));
     this.root.position.addScaledVector(this.velocity, dt);
     this.resolve(this.root.position, RADIUS * this.scale);
