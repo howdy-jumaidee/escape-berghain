@@ -67,6 +67,45 @@ Built early by Opus on Friday evening so Emma and the night bots start from a pl
 - [ ] NPC and prop models, counters, staircase, decals (#8)
 - [ ] Gemini Neon bug bash at 10:00
 
+### Phase 3b: Make it a club (Friday night, before the freeze)
+
+Berghain is packed and strange. The hall should feel full, the story should make you want to get home, and the whole thing should look like the building: raw concrete, not neon.
+
+**The crowd**
+- [ ] 250 dancers drawn in one batch, bobbing on the beat, thickest on the main floor, a toilet queue in the corridor
+- [ ] Dancers push the horse around and say one line when you bump them
+- [ ] Hide in the crowd: dancers block security torches. Open floor is where you get caught
+- [ ] The higher your trip, the more dancers have horse heads
+- [ ] Backlit so they read as black silhouettes against the haze
+- [ ] Weird regulars: leather choir humming the bassline (the music opens up near them), the 6 am cleaner (wet floor, the horse slides), sink queue (water lowers the trip), shoe collector, the DJ's cousin guarding the booth, a horse who is fine with being a horse
+
+**The story**
+- [ ] A reason to go home: the jacket also holds your phone. "Mum: lunch at 13:00? Don't be late again." Your name is on the keychain
+- [ ] Club clock in the HUD, Sunday 06:12 onwards. Make it home before 13:00 for the best ending, later and Mum saved you a plate
+- [ ] Riddle horse wants your keys first, so the chain runs in order
+- [ ] The herd were people once. Pass out three times and you join them: a fourth ending, HERD
+- [ ] Forgetting: past trip 85 the objective line scrambles and the spirit guide fades
+- [ ] Closing time: with all five memories the house lights flicker, sirens, every guard speeds up, the music peaks. Run
+
+**Look and feel**
+- [ ] Low resolution render with hard pixels, for grit and speed
+- [ ] Light shafts from high windows, lasers through the haze, strobes that stutter
+- [ ] Camera kicks on the kick drum
+- [ ] Crowd sound: murmur, whistles, a cheer when the kick drops back in
+
+**Brutalist type and UI**
+- [ ] Self-hosted fonts: Big Shoulders Display (titles), Saira Stencil One (zone signs, endings), Space Mono (labels), Fragment Mono (dialogue, HUD)
+- [ ] No rounded corners, no glow except the green exit sign. Trip as a big raw number
+- [ ] Captions as label-maker tape, dialogue as gaffer tape, stencilled zone names when you walk into a room, end cards as half-torn flyers
+
+**Code**
+- [ ] One owner for fragments (the game decides, others ask with `fragment:claim`)
+- [ ] Named input locks, so the riddle and the jacket can't unlock each other
+- [ ] One typed loader for the level and content files
+- [ ] One shared "stomp on the beat" counter for the herd and the DJ booth
+- [ ] Content key check in the build, so a typo in `content/` fails CI instead of showing `[story:...]`
+- [ ] `?debug` URL flags: skip intro, set fragments, jump the clock, show the console handle
+
 **Gate 3 (12:00): feature and asset freeze.** Full playthrough possible with all 3 endings. Merged to `main`.
 
 ## Phase 4: Polish and fix (Saturday 12:00 to 14:00)
@@ -87,13 +126,15 @@ Built early by Opus on Friday evening so Emma and the night bots start from a pl
 
 ## Cut list (in this order if behind)
 
-1. Konami rat
-2. Mirror easter egg
-3. Secret DJ ending
-4. Ice cream horse and brain freeze
-5. The herd
-6. Tourist selfie
-7. Riddle
-8. Intro animation
+1. Weird regulars beyond the leather choir and the cleaner
+2. Konami rat
+3. Mirror easter egg
+4. HERD ending
+5. Secret DJ ending
+6. Ice cream horse and brain freeze
+7. The herd
+8. Tourist selfie
+9. Riddle
+10. Intro animation
 
-Never cut: wobbly horse, dirty industrial look, blur, the 5 fragment chain, one working ending.
+Never cut: wobbly horse, dirty industrial look, the crowd, blur, the 5 fragment chain, one working ending.
