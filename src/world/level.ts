@@ -10,6 +10,7 @@ export interface LevelData {
   spawns: Record<ZoneId, [number, number]>;
   npcs: { id: NpcId; cell: [number, number] }[];
   markers: Record<string, [number, number]>;
+  patrols?: [number, number][][];
   grid: string[];
 }
 
@@ -57,6 +58,8 @@ const MODULES: Record<string, ModuleSpec> = {
   staircase_up: { size: { x: 3, y: 0.25, z: 4 }, material: grate },
   exit_door: { size: { x: 2, y: 2.6, z: 0.2 }, offset: { x: 0, z: CELL / 2 - 0.1 }, material: door },
   gate_shortcut: { size: { x: CELL, y: 3, z: 0.3 }, solid: { x: CELL, z: 0.6 }, material: steel, tall: true },
+  front_door: { size: { x: 0.3, y: 3, z: 2.4 }, solid: { x: 0.3, z: CELL }, offset: { x: CELL / 2 - 0.15, z: 0 }, material: door },
+  panorama_shutter: { size: { x: CELL, y: WALL_HEIGHT, z: 0.4 }, solid: { x: CELL, z: 0.4 }, offset: { x: 0, z: -CELL / 2 + 0.2 }, material: steel, tall: true },
 };
 
 /** Grid characters that are just markers on an ordinary floor cell. */

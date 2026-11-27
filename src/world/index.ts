@@ -4,7 +4,13 @@ import * as THREE from 'three';
 import { bus, state, cellCenter, CELL, type FragmentId, type ItemId } from '../contracts';
 import { placeModel } from '../look/models';
 import { buildLevel, resolveCircle, type BuiltLevel, type LevelData } from './level';
+import { Patrols } from './patrols';
 import level1 from '../../levels/level1.json';
+import story from '../../content/story.json';
+
+/** Panorama Bar shutters open after this much play time. */
+const SHUTTERS_AFTER = 600;
+const DOOR_RANGE = 2.2;
 
 const GRAB_RANGE = 1.8;
 const EXIT_RANGE = 2.4;
@@ -34,6 +40,13 @@ export class World {
   private t = 0;
   private player = new THREE.Vector3();
   private beam: THREE.Mesh | null = null;
+  private patrols: Patrols;
+  private playTime = 0;
+  private shuttersOpen = false;
+  private morning: THREE.SpotLight;
+  private doorPos: { x: number; z: number } | null = null;
+  private doorAt = -99;
+  private djScreen: { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture } | null = null;
 
   constructor() {
     this.level = buildLevel(level1 as unknown as LevelData);
@@ -65,6 +78,42 @@ export class World {
       glass.position.set(c.x, 1.4, c.z - CELL / 2 + 0.03);
       this.root.add(glass);
     }
+
+    // Security.
+    this.patrols = new Patrols(this.level, this.level.data.patrols ?? []);
+    this.root.add(this.patrols.root);
+
+    // Front door: the bouncer never lets you out this way.
+    const door = this.level.cells.get('front_door')?.[0];
+    if (door) {
+      const c = cellCenter(door[0], door[1]);
+      this.doorPos = { x: c.x + CELL / 2, z: c.z };
+    }
+
+    // Morning light for when the shutters go up. Created now at zero, so the light count never changes.
+    this.morning = new THREE.SpotLight(0xffd9a0, 0, 40, Math.PI / 4, 0.8);
+    this.morning.position.set(20, 6, 54);
+    this.morning.target.position.set(20, 0, 40);
+    this.root.add(this.morning, this.morning.target);
+
+    // DJ booth screen with the track names. Unreadable until you find your glasses.
+    const booth = this.level.data.markers?.dj_booth;
+    if (booth) {
+      const c = cellCenter(booth[0], booth[1]);
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 160;
+      const texture = new THREE.CanvasTexture(canvas);
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.8), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
+      screen.position.set(c.x, 2.2, c.z - 0.6);
+      screen.rotation.x = -0.5;
+      this.root.add(screen);
+      this.djScreen = { canvas, texture };
+      this.drawDjScreen(false);
+    }
+    bus.on('fragment:found', ({ id }) => {
+      if (id === 1) this.drawDjScreen(true);
+    });
 
     bus.on('player:moved', ({ x, z }) => this.player.set(x, 0, z));
     bus.on('player:grab', ({ x, z }) => this.grab(x, z));
@@ -130,7 +179,47 @@ export class World {
 
     if (this.beam) (this.beam.material as THREE.MeshBasicMaterial).opacity = 0.12 + Math.sin(this.t * 4) * 0.05;
 
+    // Front door.
+    if (this.doorPos && !state.ending && Math.hypot(p.x - this.doorPos.x, p.z - this.doorPos.z) < DOOR_RANGE && this.t - this.doorAt > 1.5) {
+      this.doorAt = this.t;
+      bus.emit('door:refused', {});
+      bus.emit('player:teleport', { x: this.doorPos.x + 3, z: this.doorPos.z });
+    }
+
+    // Morning.
+    if (state.started && !state.ending) this.playTime += dt;
+    if (!this.shuttersOpen && this.playTime > SHUTTERS_AFTER) {
+      this.shuttersOpen = true;
+      bus.emit('shutters:open', {});
+      bus.emit('ui:say', { key: 'story:shutters', seconds: 5 });
+    }
+    if (this.shuttersOpen) {
+      this.morning.intensity = Math.min(900, this.morning.intensity + dt * 200);
+      for (const o of this.root.children) {
+        if (o.name === 'panorama_shutter' && o.position.y < 9) o.position.y += dt * 1.2;
+      }
+    }
+
+    this.patrols.update(dt, p);
     this.cutaway(dt, cameraPos);
+  }
+
+  private drawDjScreen(sharp: boolean): void {
+    if (!this.djScreen) return;
+    const { canvas, texture } = this.djScreen;
+    const g = canvas.getContext('2d')!;
+    g.fillStyle = '#050805';
+    g.fillRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = '#22ff66';
+    g.font = '600 30px ui-monospace, Menlo, monospace';
+    const lines = sharp ? story.dj.tracks : [story.dj.screen_blurry, story.dj.screen_blurry, story.dj.screen_blurry];
+    lines.forEach((line, i) => g.fillText(line, 18, 46 + i * 44));
+    if (!sharp) {
+      g.filter = 'blur(6px)';
+      g.drawImage(canvas, 0, 0);
+      g.filter = 'none';
+    }
+    texture.needsUpdate = true;
   }
 
   private addPickup(
