@@ -54,6 +54,8 @@ export interface GameState {
   inputLocked: boolean;
   /** Who holds the input right now. */
   locks: string[];
+  /** Which floor you're on. 0 is the main hall level. */
+  floor: number;
   /** How many times you've passed out. Three and you join the herd. */
   passOuts: number;
   /** Closing time: all five memories found, the run for the exit. */
@@ -69,6 +71,8 @@ export const BEAT_SECONDS = 60 / BPM;
 
 /** Level grid cell size in metres. */
 export const CELL = 4;
+/** Height of one floor in metres. Floor n stands at y = n * FLOOR_HEIGHT. */
+export const FLOOR_HEIGHT = 7;
 
 /** World position (metres) of the centre of grid cell [col, row]. Row grows towards +z. */
 export function cellCenter(col: number, row: number): { x: number; z: number } {
@@ -86,6 +90,7 @@ export function createInitialState(): GameState {
     brainFreezeActive: false,
     inputLocked: false,
     locks: [],
+    floor: 0,
     passOuts: 0,
     finale: false,
     ending: null,
@@ -179,6 +184,8 @@ export interface GameEvents {
   /** Ask the world to put the player back in a zone. The world answers with player:teleport. */
   'player:respawn': { zone: ZoneId };
   'player:teleport': { x: number; z: number };
+  /** You changed floor (stairs, respawn). The world sets state.floor first, then emits this. */
+  'player:floor': { floor: number };
 
   /** One quarter note on the beat clock. `time` is performance.now() in ms when it lands. */
   beat: { n: number; time: number };

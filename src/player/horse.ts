@@ -2,7 +2,7 @@
 // Separate parts so code can wobble them. Emma's horse_*.glb parts replace the boxes when present:
 // horse_body, horse_neck, horse_head, horse_leg (used four times). Origin at the base, facing +Z.
 import * as THREE from 'three';
-import { bus, state, TRIP_MAX } from '../contracts';
+import { bus, state, TRIP_MAX, FLOOR_HEIGHT } from '../contracts';
 import { placeModel } from '../look/models';
 
 const keys = new Set<string>();
@@ -88,7 +88,7 @@ export class Horse {
     }
 
     bus.on('player:teleport', ({ x, z }) => {
-      this.root.position.set(x, 0, z);
+      this.root.position.set(x, state.floor * FLOOR_HEIGHT, z);
       this.velocity.set(0, 0, 0);
       this.turnVel = 0;
     });
@@ -99,6 +99,7 @@ export class Horse {
       this.turnVel = 0;
       this.lurchIn = 2;
     });
+    bus.on('player:floor', ({ floor }) => (this.root.position.y = floor * FLOOR_HEIGHT));
     bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
   }
 
