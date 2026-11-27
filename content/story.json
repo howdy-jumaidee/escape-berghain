@@ -12,7 +12,7 @@
     "fragment_1": "Glasses. We wear glasses. That's something.",
     "fragment_2": "47. Why do we know that number?",
     "fragment_3": "A ticket. We came in with a jacket. We had a whole outfit.",
-    "fragment_4": "That keychain... our street!",
+    "fragment_4": "Keys. A tag on the keychain says TONI. That's us. That's our street!",
     "fragment_5": "Our bike. By the river. We can get home.",
     "trip_high": "Everything is getting soft around the edges. Hurry.",
     "mate": "Mate. Clearer. Shakier. Worth it.",
@@ -21,16 +21,22 @@
     "stamp": "A stamp. 47. We had a number.",
     "jacket": "Our jacket! Shake it. Something rattles.",
     "all": "We remember. The street, the bike, the river. Go.",
-    "seen": "Torch. Don't let them see us."
+    "seen": "Torch. Don't let them see us.",
+    "phone": "Mum. Lunch at one. We are never late twice.",
+    "herd_warning_1": "That's once. The herd were people too, you know. They passed out three times.",
+    "herd_warning_2": "Twice. One more and we dance with them forever.",
+    "half_twelve": "Half twelve. Mum's lunch. We can still make it."
   },
   "losses": {
     "passed_out": "You wake up in the toilet queue. Someone is still talking about their ex.",
     "caught": "Animal control drops you back where you were. He asks if you can get him in next time."
   },
   "endings": {
-    "full_memory": "You wake up in your own bed. Human. There's a hoofprint on the pillow.",
+    "full_memory": "Home with time to spare. A shower, clean clothes, human hands. 12:58, Mum's door. There's a hoofprint on your pillow.",
     "partial_memory": "Monday, noon. The club is closing. You're outside in the queue. Still a horse. Try again?",
-    "secret_dj": "You never left. You are the resident horse DJ now."
+    "secret_dj": "You never left. You are the resident horse DJ now.",
+    "full_memory_late": "Mum saved you a plate. She doesn't ask why you smell like a stable. There's a hoofprint on your pillow.",
+    "herd": "You stopped looking for the exit. Now you dance in perfect sync with the others. Forever, or at least until Monday."
   },
   "title": "ESCAPE BERGHAIN",
   "start": {
@@ -65,7 +71,9 @@
   "ending_titles": {
     "full_memory": "HOME",
     "partial_memory": "NOT QUITE",
-    "secret_dj": "RESIDENT"
+    "secret_dj": "RESIDENT",
+    "herd": "HERD",
+    "full_memory_late": "LATE, BUT HOME"
   },
   "retry": "Press R to try again",
   "credits": {
@@ -88,7 +96,7 @@
     "3": "47. Somewhere near the bar, something has that number.",
     "4": "A ticket. The coat check is in the corner of the bar.",
     "5": "The riddle horse in the toilet corridor has been here since Friday. Ask him.",
-    "done": "Out the back. Go home."
+    "done": "RUN. Back exit. Now."
   },
   "stamp": {
     "label": "WRIST STAMP",
@@ -113,5 +121,39 @@
   },
   "shutters": "The shutters go up. Morning floods into Panorama Bar.",
   "door": "The front door is never the way out.",
-  "selfie_after": "They have a sticker over their camera now. Berghain rules."
+  "selfie_after": "They have a sticker over their camera now. Berghain rules.",
+  "phone": {
+    "from": "MUM",
+    "text": "Lunch at 13:00? Don't be late again. x",
+    "time": "06:02"
+  },
+  "finale": {
+    "start": "Closing time. House lights. Every torch in the building is looking for us. RUN.",
+    "sign": "CLOSING TIME"
+  },
+  "zones": {
+    "main_hall": "MAIN HALL",
+    "bar_cloakroom": "BAR / GARDEROBE",
+    "toilet_corridor": "TOILETS",
+    "panorama_bar": "PANORAMA BAR",
+    "back_exit": "BACK EXIT"
+  },
+  "clock": {
+    "day": "SUN",
+    "lunch": "LUNCH 13:00"
+  },
+  "crowd": {
+    "barks": [
+      "Careful.",
+      "Horse.",
+      "Nice costume.",
+      "Is it Monday?",
+      "Mind the hooves.",
+      "Who let the horse in?",
+      "Shh. This is the good part.",
+      "Same.",
+      "Love the commitment.",
+      "Sorry, sorry."
+    ]
+  }
 }

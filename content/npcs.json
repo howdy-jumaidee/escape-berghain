@@ -23,7 +23,8 @@
       ],
       "right": "Stairs. Up. Then out the back. Go.",
       "wrong": "Hm. Try the long way. Bring me a Mate if you find one."
-    }
+    },
+    "not_yet": "You've got nothing that opens anything. Come back with keys."
   },
   "patrick": {
     "name": "Patrick",
@@ -37,7 +38,8 @@
     "lines": [
       "...",
       "*stomps in perfect sync*"
-    ]
+    ],
+    "warning": "We were like you. We stopped looking for the exit."
   },
   "ice_cream_horse": {
     "name": "Ice cream horse",
@@ -112,6 +114,48 @@
     "name": "You, sort of",
     "lines": [
       "..."
+    ]
+  },
+  "leather_choir": {
+    "name": "Leather choir",
+    "lines": [
+      "Mmmm. Mmmm. Mmmm. They're humming the bassline.",
+      "Join us. Low notes only."
+    ]
+  },
+  "cleaner": {
+    "name": "Cleaner",
+    "lines": [
+      "Six o'clock. Every Sunday. Mind the floor.",
+      "Wet. Floor. Horse."
+    ]
+  },
+  "sink": {
+    "name": "Sink",
+    "lines": [
+      "You wait your turn. Cold water. Clearer."
+    ],
+    "busy": "Someone is washing their whole head in it. Wait a bit."
+  },
+  "shoe_collector": {
+    "name": "Shoe collector",
+    "lines": [
+      "Lost a shoe? I've got forty-one left ones.",
+      "Not yours. You don't wear shoes. You have hooves."
+    ]
+  },
+  "dj_cousin": {
+    "name": "The DJ's cousin",
+    "lines": [
+      "My cousin's playing. Family only.",
+      "Prove it. Stomp on the beat. Eight times."
+    ]
+  },
+  "calm_horse": {
+    "name": "Calm horse",
+    "lines": [
+      "I found out I was a horse years ago. Honestly? Best thing that ever happened.",
+      "Don't fight it too hard. But do go home."
     ]
   }
 }
