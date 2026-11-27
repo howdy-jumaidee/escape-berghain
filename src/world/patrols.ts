@@ -2,7 +2,6 @@
 // Guards walk fixed routes from levels/level1.json with a torch. If the torch finds you and stays on you,
 // you're caught: player:caught, and animal control drives you back to your last checkpoint.
 // A tourist selfie flash (selfie:flash) pulls the nearest guard over to look.
-// Rats are beneath their notice.
 import * as THREE from 'three';
 import { bus, state, cellCenter } from '../contracts';
 import { placeModel } from '../look/models';
@@ -10,7 +9,7 @@ import { resolveCircle, type BuiltLevel } from './level';
 
 const WALK = 2;
 const RUN = 3.6;
-const SIGHT = 8.5;
+const SIGHT = 11;
 /** Closing time: everyone moves faster and sees further. */
 const FINALE_SPEED = 1.5;
 const FINALE_SIGHT = 1.25;
@@ -38,6 +37,7 @@ export class Patrols {
   private blocker: (x: number, z: number) => boolean = () => false;
   private finale = false;
   private torches: THREE.SpotLight[] = [];
+  private beamMeshes: THREE.Mesh[] = [];
   private beams: THREE.MeshBasicMaterial;
 
   constructor(level: BuiltLevel, routes: [number, number][][]) {
@@ -68,6 +68,7 @@ export class Patrols {
       beam.rotation.x = -Math.PI / 2 - 0.12;
       beam.position.set(0.25, 1, SIGHT / 2 + 0.3);
       obj.add(beam);
+      this.beamMeshes.push(beam);
 
       obj.position.set(route[0].x, 0, route[0].z);
       this.root.add(obj);
@@ -80,17 +81,29 @@ export class Patrols {
       this.finale = true;
       this.beams.color.set(0xff3030);
       this.beams.opacity = 0.11;
-      this.torches.forEach((t) => t.color.set(0xff5040));
+      this.torches.forEach((t) => {
+        t.color.set(0xff5040);
+        t.distance = (SIGHT + 2) * FINALE_SIGHT;
+        t.target.position.z = SIGHT * FINALE_SIGHT;
+      });
+      this.beamMeshes.forEach((b) => {
+        b.scale.setScalar(FINALE_SIGHT);
+        b.position.z = (SIGHT * FINALE_SIGHT) / 2 + 0.3;
+      });
     });
-    bus.on('player:teleport', () => {
+    bus.on('player:respawn', () => {
       this.grace = GRACE;
-      this.guards.forEach((g) => (g.seen = 0));
+      this.guards.forEach((g) => {
+        g.seen = 0;
+        g.spotted = false;
+      });
     });
   }
 
   update(dt: number, player: THREE.Vector3): void {
     this.grace = Math.max(0, this.grace - dt);
-    const ignore = !state.started || !!state.ending || state.inputLocked || state.rat || this.grace > 0;
+    const ignore = !state.started || !!state.ending || state.inputLocked || this.grace > 0;
+    const sight = SIGHT * (this.finale ? FINALE_SIGHT : 1);
     let worst = 0;
 
     for (const g of this.guards) {
@@ -101,7 +114,7 @@ export class Patrols {
         // Freeze and keep the torch on you.
         g.heading = turn(g.heading, Math.atan2(player.x - p.x, player.z - p.z), dt * 6);
         const d = Math.hypot(player.x - p.x, player.z - p.z);
-        g.seen += (dt / CATCH_SECONDS) * (1.4 - (d / SIGHT) * 0.7) * (this.finale ? 1.3 : 1);
+        g.seen += (dt / CATCH_SECONDS) * (1.4 - (d / sight) * 0.7) * (this.finale ? 1.3 : 1);
         if (!g.spotted) {
           g.spotted = true;
           bus.emit('npc:talk', { npc: 'security', lineId: 'npcs:security.lines.0' });

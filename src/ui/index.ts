@@ -1,7 +1,7 @@
 // UI: title, intro, captions, dialogue, riddle, clues, endings. Issues #17 and #18.
 // Minimal: no HUD. The blur is your trip meter, the spirit guide's solidity is your memory.
 // Text only appears when you touch something: an object, a clue, a special NPC. Every word comes from content/.
-import { bus, state, lock, unlock, type EndingId } from '../contracts';
+import { bus, state, lock, unlock, PASS_OUTS_TO_HERD, type EndingId } from '../contracts';
 import { debug } from '../data';
 import { css } from './style';
 import { t, list, lookup } from './text';
@@ -36,6 +36,9 @@ export function startUi(): void {
   const hideTalk = () => {
     if (!riddleOpen) talk.classList.remove('on');
   };
+  const talkHint = el('div', 'eb-talk-hint', talk);
+  talkHint.textContent = t('story:talk_hint');
+  let focused = false;
   bus.on('npc:talk', ({ npc, lineId }) => {
     if (riddleOpen) return;
     talkName.textContent = t(`npcs:${npc}.name`);
@@ -43,12 +46,34 @@ export function startUi(): void {
     answers.replaceChildren();
     talk.classList.add('on');
     clearTimeout(talkTimer);
-    talkTimer = window.setTimeout(hideTalk, 4500);
+    // In a face to face conversation the line stays until you press Space.
+    if (!focused) talkTimer = window.setTimeout(hideTalk, 4500);
   });
   bus.on('npc:silent', hideTalk);
 
+  // Face to face: letterbox bars slide in, the dialogue moves to the centre.
+  const barTop = el('div', 'eb-bar-top', root);
+  const barBottom = el('div', 'eb-bar-bottom', root);
+  bus.on('npc:focus', () => {
+    focused = true;
+    clearTimeout(talkTimer);
+    for (const e of [barTop, barBottom, talk]) e.classList.add('focus');
+  });
+  bus.on('npc:unfocus', () => {
+    focused = false;
+    for (const e of [barTop, barBottom, talk]) e.classList.remove('focus');
+  });
+
   // Riddle: three answers, keys 1 to 3 or click.
   let riddleAnswers: { text: string; correct: boolean }[] = [];
+  const closeRiddle = () => {
+    if (!riddleOpen) return;
+    riddleOpen = false;
+    unlock('riddle');
+    answers.replaceChildren();
+    talk.classList.remove('on');
+    bus.emit('npc:unfocus', {});
+  };
   const answer = (i: number) => {
     const a = riddleAnswers[i];
     if (!riddleOpen || !a) return;
@@ -80,11 +105,43 @@ export function startUi(): void {
     if (riddleOpen && /^Digit[1-9]$/.test(e.code)) answer(Number(e.code.slice(5)) - 1);
   });
 
-  // Pass out: a short fade to black.
+  // View toggle hint: slowly fades in 2.8 s after landing, holds 9 s, then fades out (or immediately on V).
+  const viewHint = el('div', 'eb-view-hint', root);
+  viewHint.textContent = t('story:view_hint');
+  let viewHintIn = 0;
+  let viewHintOut = 0;
+  let viewHintDismissed = false;
+  const hideViewHint = () => {
+    viewHintDismissed = true;
+    clearTimeout(viewHintIn);
+    clearTimeout(viewHintOut);
+    viewHint.classList.remove('on');
+  };
+  bus.on('intro:land', () => {
+    if (viewHintDismissed) return;
+    viewHintIn = window.setTimeout(() => {
+      if (viewHintDismissed || state.ending) return;
+      viewHint.classList.add('on');
+      viewHintOut = window.setTimeout(() => viewHint.classList.remove('on'), 9000);
+    }, 2800);
+  });
+  addEventListener('keydown', (e) => {
+    if (e.code === 'KeyV' && state.started) hideViewHint();
+  });
+
+  // Pass out: a short fade to black. Keep it black on the 3rd pass-out while the herd ending fades in.
   const fade = el('div', 'eb-fade', root);
+  let fadeTimer = 0;
   bus.on('trip:max', () => {
+    closeRiddle();
+    lock('fade');
     fade.classList.add('on');
-    setTimeout(() => fade.classList.remove('on'), 1200);
+    clearTimeout(fadeTimer);
+    if (state.passOuts >= PASS_OUTS_TO_HERD) return;
+    fadeTimer = window.setTimeout(() => {
+      fade.classList.remove('on');
+      unlock('fade');
+    }, 1200);
   });
 
   // Fragment 2: the wrist stamp.
@@ -107,10 +164,17 @@ export function startUi(): void {
   el('h2', '', vanBox).textContent = t('story:caught.title');
   el('p', '', vanBox).textContent = t('story:caught.sub');
   const vanLine = el('p', '', vanBox);
+  let vanTimer = 0;
   bus.on('player:caught', () => {
+    closeRiddle();
+    lock('van');
     vanLine.textContent = `"${t('npcs:animal_control.lines.1')}"`;
     van.classList.add('on');
-    setTimeout(() => van.classList.remove('on'), 3000);
+    clearTimeout(vanTimer);
+    vanTimer = window.setTimeout(() => {
+      van.classList.remove('on');
+      unlock('van');
+    }, 3000);
   });
 
   // The tourists' flash.
@@ -122,7 +186,11 @@ export function startUi(): void {
 
   // Endings.
   const end = el('div', 'eb-end', root);
-  bus.on('ending:show', ({ ending }) => showEnd(end, ending));
+  bus.on('ending:show', ({ ending }) => {
+    closeRiddle();
+    hideViewHint();
+    showEnd(end, ending);
+  });
   addEventListener('keydown', (e) => {
     if (state.ending && e.code === 'KeyR') location.reload();
   });
@@ -131,8 +199,14 @@ export function startUi(): void {
   const cover = el('div', 'eb-cover', root);
   const box = el('div', '', cover);
   el('div', 'eb-title', box).textContent = t('story:title');
+  el('div', 'eb-tagline', box).textContent = t('story:start.tagline');
+  // Controls as a key / action list, easy to scan.
+  const controls = el('div', 'eb-controls', box);
+  for (const pair of (lookup('story:controls') as [string, string][] | undefined) ?? []) {
+    el('kbd', '', controls).textContent = pair[0];
+    el('span', '', controls).textContent = pair[1];
+  }
   el('div', 'eb-sub', box).textContent = t('story:start.sub');
-  el('div', 'eb-controls', box).textContent = t('story:controls');
   el('div', 'eb-go', box).textContent = t('story:start.button');
 
   const land = () => {

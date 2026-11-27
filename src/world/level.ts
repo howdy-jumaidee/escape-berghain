@@ -1,7 +1,8 @@
 // World: builds a level from grid JSON and answers collision queries. Issue #9.
 import * as THREE from 'three';
-import { CELL, cellCenter, type ZoneId } from '../contracts';
+import { CELL, CEILING, cellCenter, type ZoneId } from '../contracts';
 import { placeModel } from '../look/models';
+import { buildArchitecture } from './architecture';
 
 export type { LevelData } from '../data';
 import type { LevelData } from '../data';
@@ -12,6 +13,8 @@ export interface Collider {
   maxX: number;
   minZ: number;
   maxZ: number;
+  /** Height in metres, so cameras above low counters aren't clipped. */
+  height: number;
   /** Turned off by gates when they open. */
   enabled: boolean;
 }
@@ -36,12 +39,13 @@ const tile = new THREE.MeshStandardMaterial({ color: 0x4a4f4a, roughness: 0.6 })
 const grate = new THREE.MeshStandardMaterial({ color: 0x202022, roughness: 0.7, metalness: 0.5 });
 const door = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 0.6, metalness: 0.6 });
 
-const WALL_HEIGHT = 6;
+/** Outer walls go most of the way up; the cutaway hides the top in the top-down view. */
+const WALL_HEIGHT = 16;
 
 const MODULES: Record<string, ModuleSpec> = {
   hall_wall: { size: { x: CELL, y: WALL_HEIGHT, z: CELL }, solid: { x: CELL, z: CELL }, material: darkConcrete, tall: true },
-  hall_pillar: { size: { x: 1.2, y: 18, z: 1.2 }, solid: { x: 1.2, z: 1.2 }, material: concrete, tall: true },
-  hall_speaker: { size: { x: 1.5, y: 5, z: 1.5 }, solid: { x: 1.5, z: 1.5 }, material: steel, tall: true },
+  hall_pillar: { size: { x: 2.2, y: CEILING, z: 2.2 }, solid: { x: 2.2, z: 2.2 }, material: concrete, tall: true },
+  hall_speaker: { size: { x: 2.4, y: 6.5, z: 2.4 }, solid: { x: 2.4, z: 2.4 }, material: steel, tall: true },
   hall_dj_booth: { size: { x: 3, y: 1.2, z: 2 }, solid: { x: 3, z: 2 }, material: steel },
   bar_counter: { size: { x: 4, y: 1.1, z: 1.2 }, solid: { x: 4, z: 1.2 }, material: wood },
   cloakroom_counter: { size: { x: 4, y: 1.1, z: 1.2 }, solid: { x: 4, z: 1.2 }, material: wood },
@@ -115,6 +119,7 @@ export function buildLevel(data: LevelData): BuiltLevel {
           maxX: c.x + ox + spec.solid.x / 2,
           minZ: c.z + oz - spec.solid.z / 2,
           maxZ: c.z + oz + spec.solid.z / 2,
+          height: spec.size.y,
           enabled: true,
         };
         colliders.push(col);
@@ -122,6 +127,9 @@ export function buildLevel(data: LevelData): BuiltLevel {
       }
     });
   });
+
+  // Monumental Berghain hall architecture: flared pillar capitals, hanging coal hoppers, beams, 19 m ceiling, tall tiled windows.
+  root.add(buildArchitecture(data));
 
   // The floor under the walls, so the fog has something to sit on at the edges.
   const rows = data.grid.length;

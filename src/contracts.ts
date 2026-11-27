@@ -22,13 +22,18 @@ export type NpcId =
   | 'bouncer'
   | 'leather_choir'
   | 'cleaner'
-  | 'sink'
-  | 'shoe_collector'
-  | 'dj_cousin'
+  | 'leather_daddy'
+  | 'bartender_bear'
+  | 'drag_oracle'
+  | 'rubber_knight'
+  | 'old_raver'
+  | 'glitter_boy'
+  | 'darkroom_keeper'
+  | 'lighting_tech'
   | 'calm_horse';
 
 /** Things you can pick up or consume that aren't fragments. */
-export type ItemId = 'mate' | 'ice_cream' | 'water';
+export type ItemId = 'mate' | 'ice_cream';
 
 /** Model file names in public/models/, without .glb. Missing models fall back to a grey box. */
 export type ModelName = string;
@@ -50,14 +55,12 @@ export interface GameState {
   zone: ZoneId;
   clubMateActive: boolean;
   brainFreezeActive: boolean;
-  /** Konami rat mode. */
-  rat: boolean;
   /** True while any lock is held (dialogue, riddle, jacket). The horse stands still. Use lock() and unlock(). */
   inputLocked: boolean;
   /** Who holds the input right now. */
   locks: string[];
-  /** Club clock: minutes since Sunday 00:00. Starts at 06:12. Mum's lunch is at 13:00. */
-  minutes: number;
+  /** Which floor you're on. 0 is the main hall level. */
+  floor: number;
   /** How many times you've passed out. Three and you join the herd. */
   passOuts: number;
   /** Closing time: all five memories found, the run for the exit. */
@@ -71,8 +74,12 @@ export const TRIP_MAX = 100;
 export const BPM = 132;
 export const BEAT_SECONDS = 60 / BPM;
 
-/** Level grid cell size in metres. */
-export const CELL = 4;
+/** Level grid cell size in metres. Big, like the real hall. */
+export const CELL = 6;
+/** Height of one floor in metres. Floor n stands at y = n * FLOOR_HEIGHT. */
+/** The main hall ceiling. The real one is about 18 m. */
+export const CEILING = 19;
+export const FLOOR_HEIGHT = 9;
 
 /** World position (metres) of the centre of grid cell [col, row]. Row grows towards +z. */
 export function cellCenter(col: number, row: number): { x: number; z: number } {
@@ -88,18 +95,15 @@ export function createInitialState(): GameState {
     zone: 'main_hall',
     clubMateActive: false,
     brainFreezeActive: false,
-    rat: false,
     inputLocked: false,
     locks: [],
-    minutes: CLOCK_START,
+    floor: 0,
     passOuts: 0,
     finale: false,
     ending: null,
   };
 }
 
-export const CLOCK_START = 6 * 60 + 12;
-export const LUNCH = 13 * 60;
 export const PASS_OUTS_TO_HERD = 3;
 
 /** Hold the input (the horse stops). Each holder uses its own name, so one can't release another's lock. */
@@ -166,6 +170,10 @@ export interface GameEvents {
   'riddle:answered': { correct: boolean };
   'npc:talk': { npc: NpcId; lineId: TextKey };
   'npc:silent': Record<string, never>;
+  /** A conversation starts: the camera goes to your eyes and looks at the NPC's face at (x, y, z). */
+  'npc:focus': { npc: NpcId; x: number; y: number; z: number };
+  /** The conversation is over. */
+  'npc:unfocus': Record<string, never>;
   'herd:synced': Record<string, never>;
   'item:consumed': { item: ItemId };
   'item:slipped': Record<string, never>;
@@ -173,7 +181,6 @@ export interface GameEvents {
   'exit:reached': Record<string, never>;
   'ending:show': { ending: EndingId };
   'secret:dj': Record<string, never>;
-  'mirror:seen': Record<string, never>;
   'checkpoint:set': { zone: ZoneId };
   'zone:entered': { zone: ZoneId };
 
@@ -188,7 +195,8 @@ export interface GameEvents {
   /** Ask the world to put the player back in a zone. The world answers with player:teleport. */
   'player:respawn': { zone: ZoneId };
   'player:teleport': { x: number; z: number };
-  'player:rat': { active: boolean };
+  /** You changed floor (stairs, respawn). The world sets state.floor first, then emits this. */
+  'player:floor': { floor: number };
 
   /** One quarter note on the beat clock. `time` is performance.now() in ms when it lands. */
   beat: { n: number; time: number };
@@ -200,9 +208,6 @@ export interface GameEvents {
   'intro:land': Record<string, never>;
   /** Q: look down at yourself. With glasses on you can read the wrist stamp. */
   'player:look': Record<string, never>;
-  /** Coat check hands over the jacket. The UI runs the shake (mash Space) and answers with jacket:shaken. */
-  'jacket:start': Record<string, never>;
-  'jacket:shaken': Record<string, never>;
   /** The tourists' camera flash. Security comes to look. */
   'selfie:flash': { x: number; z: number };
   /** How close security is to catching you, 0 to 1. 0 when nobody sees you. */
@@ -212,8 +217,6 @@ export interface GameEvents {
   /** Morning: Panorama Bar shutters open. */
   'shutters:open': Record<string, never>;
 
-  /** The club clock moved on one minute. */
-  'clock:tick': { minutes: number };
   /** Closing time. All five memories: the run for the exit. */
   'game:finale': Record<string, never>;
   /** The cleaner mopped here. The horse slides. */

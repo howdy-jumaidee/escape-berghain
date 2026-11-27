@@ -46,15 +46,23 @@
     { "id": "ice_cream_horse", "cell": [4, 10] },
     { "id": "bouncer", "cell": [1, 4] },
     { "id": "leather_choir", "cell": [9, 5] },
-    { "id": "cleaner", "cell": [13, 2] }
+    { "id": "cleaner", "cell": [13, 2] },
+    { "id": "leather_daddy", "cell": [15, 4] },
+    { "id": "bartender_bear", "cell": [13, 1] },
+    { "id": "drag_oracle", "cell": [6, 11] },
+    { "id": "rubber_knight", "cell": [1, 7] },
+    { "id": "old_raver", "cell": [12, 11] },
+    { "id": "glitter_boy", "cell": [4, 8] },
+    { "id": "darkroom_keeper", "cell": [15, 6] },
+    { "id": "lighting_tech", "cell": [8, 1] }
   ],
   "markers": {
     "dj_booth": [5, 1]
   },
   "crowd": {
-    "main_hall": 3.2,
-    "panorama_bar": 1.6,
-    "bar_cloakroom": 0.7
+    "main_hall": 6,
+    "panorama_bar": 3,
+    "bar_cloakroom": 1.4
   },
   "grid": [
     "#################",

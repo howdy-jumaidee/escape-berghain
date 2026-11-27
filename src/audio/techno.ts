@@ -221,6 +221,7 @@ export class Techno {
     const t = this.ctx.currentTime;
     const src = this.ctx.createBufferSource();
     src.buffer = this.noise;
+    src.loop = true;
     const bp = this.ctx.createBiquadFilter();
     bp.type = 'bandpass';
     bp.frequency.value = 1100;
@@ -508,6 +509,7 @@ export class Techno {
     const ctx = this.ctx;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
+    src.loop = true;
     const f = ctx.createBiquadFilter();
     f.type = type;
     f.frequency.value = freq;
@@ -569,15 +571,12 @@ export class Techno {
     this.tone(t, 70, 50, 1.2, 0.3, 'sine');
   }
 
-  sfxShimmer(): void {
-    const t = this.ctx.currentTime;
-    [1318.5, 1568, 1975.5, 2637].forEach((f, i) => this.tone(t + i * 0.05, f, f * 1.01, 0.8, 0.05, 'sine', 0.7));
-  }
 
-  /** A glass of cold water. */
-  sfxWater(): void {
+
+  /** Pulled into a conversation: a low swoop. */
+  sfxFocus(): void {
     const t = this.ctx.currentTime;
-    for (let i = 0; i < 4; i++) this.tone(t + i * 0.09, 500 + i * 60, 300 + i * 40, 0.08, 0.08, 'sine');
+    this.tone(t, 320, 70, 0.5, 0.18, 'sine', 0.5);
   }
 
   /** Bumping into a dancer. */

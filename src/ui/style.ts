@@ -16,10 +16,15 @@ export const css = /* css */ `
 .eb-ui * { box-sizing: border-box; }
 
 /* Captions: what you find, what the spirit guide says. */
-.eb-say { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); max-width: min(640px, 88vw);
+.eb-say { position: absolute; left: 50%; bottom: 20%; z-index: 4; transform: translateX(-50%); max-width: min(640px, 88vw);
   text-align: center; font: 400 16px/1.5 var(--mono); color: var(--paper); text-shadow: 0 0 8px #000, 0 0 2px #000;
   opacity: 0; transition: opacity 0.4s; }
 .eb-say.on { opacity: 1; }
+
+/* View toggle reminder: quiet dim grey, bottom right. */
+.eb-view-hint { position: absolute; right: 24px; bottom: 20px; font: 400 11px/1 var(--mono); color: #8a8a8a;
+  opacity: 0; transition: opacity 2.2s ease; }
+.eb-view-hint.on { opacity: 1; }
 
 /* Dialogue: a name and a line, bottom left. */
 .eb-talk { position: absolute; left: 32px; bottom: 32px; max-width: min(520px, 86vw); opacity: 0; transition: opacity 0.2s; text-shadow: 0 0 8px #000; }
@@ -31,13 +36,30 @@ export const css = /* css */ `
 .eb-answers button:hover, .eb-answers button:focus-visible { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
 .eb-answers kbd { font: 400 13px var(--mono); color: var(--dim); margin-right: 14px; }
 
+/* Face to face conversations: letterbox, centred dialogue, the NPC fills the frame. */
+.eb-bar-top, .eb-bar-bottom { position: absolute; left: 0; right: 0; height: 11vh; background: #000; transition: transform 0.45s ease-out; }
+.eb-bar-top { top: 0; transform: translateY(-100%); }
+.eb-bar-bottom { bottom: 0; transform: translateY(100%); }
+.eb-bar-top.focus, .eb-bar-bottom.focus { transform: none; }
+.eb-talk.focus { left: 50%; bottom: 3vh; transform: translateX(-50%); width: min(720px, 90vw); text-align: center; z-index: 1; }
+.eb-talk.focus p { font-size: 19px; }
+.eb-talk.focus b { font-size: 12px; }
+.eb-talk-hint { display: none; margin-top: 12px; font: 400 11px var(--mono); color: #6a6a6a; }
+.eb-talk.focus .eb-talk-hint { display: block; }
+.eb-talk.focus .eb-answers { justify-content: center; text-align: left; }
+
 /* Title and intro: pitch black. */
-.eb-cover { position: absolute; inset: 0; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
+.eb-cover { position: absolute; inset: 0; z-index: 10; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }
-.eb-title { font: 400 clamp(28px, 5vw, 56px)/1.1 var(--mono); letter-spacing: 0.04em; }
-.eb-sub, .eb-controls { margin-top: 18px; font: 400 12px/1.8 var(--mono); color: var(--dim); }
-.eb-controls { max-width: 460px; margin-left: auto; margin-right: auto; }
-.eb-go { margin-top: 40px; display: inline-block; font: 400 14px/1 var(--mono); color: var(--paper); border-bottom: 1px solid var(--paper); padding-bottom: 6px; }
+.eb-title { font: 400 clamp(32px, 6vw, 64px)/1.1 var(--mono); letter-spacing: 0.04em; }
+.eb-tagline { margin-top: 14px; font: 400 15px/1.5 var(--mono); color: #bdbdbd; }
+.eb-controls { display: grid; grid-template-columns: auto auto; justify-content: center; column-gap: 18px; row-gap: 10px;
+  margin: 40px auto 0; text-align: left; align-items: center; }
+.eb-controls kbd { justify-self: end; min-width: 2.4em; padding: 3px 8px; border: 1px solid #5a5a5a; border-radius: 3px;
+  font: 400 13px/1.2 var(--mono); color: var(--paper); text-align: center; }
+.eb-controls span { font: 400 15px/1.2 var(--mono); color: #d0d0d0; }
+.eb-sub { margin-top: 36px; font: 400 13px/1.6 var(--mono); color: #9a9a9a; }
+.eb-go { margin-top: 22px; display: inline-block; font: 400 14px/1 var(--mono); color: var(--paper); border-bottom: 1px solid var(--paper); padding-bottom: 6px; }
 .eb-intro { font: 400 clamp(16px, 2.2vw, 24px)/1.4 var(--mono); color: #d8d8d8; max-width: 80vw; transition: opacity 0.25s; position: relative; }
 .eb-swirl { position: absolute; inset: 0; width: 100%; height: 100%; }
 .eb-skip { position: absolute; bottom: 20px; right: 24px; font: 400 11px var(--mono); color: #444; }
@@ -62,7 +84,7 @@ export const css = /* css */ `
 .eb-fade.on { opacity: 1; }
 
 /* Endings. */
-.eb-end { position: absolute; inset: 0; background: rgba(0,0,0,0.94); display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 1.4s; pointer-events: none; }
+.eb-end { position: absolute; inset: 0; z-index: 10; background: rgba(0,0,0,0.94); display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 1.4s; pointer-events: none; }
 .eb-end.on { opacity: 1; pointer-events: auto; }
 .eb-end h1 { margin: 0; font: 400 clamp(36px, 7vw, 72px)/1 var(--mono); letter-spacing: 0.06em; }
 .eb-end p { max-width: 520px; margin: 22px auto 0; font: 400 16px/1.6 var(--mono); color: #bdbdbd; }

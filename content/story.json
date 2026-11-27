@@ -2,12 +2,12 @@
   "_owner": "Robin. Draft lines, rewrite freely.",
   "intro": [
     "Sunday. 06:12.",
-    "Psst. That's us.",
+    "You came in on Friday. You horsed around a little too hard.",
+    "Psst. Down here. That's us.",
     "There are no mirrors in here, so you didn't notice.",
     "We're a horse.",
-    "We live somewhere. Let's go home."
+    "Somewhere out there is a stable. Ours. Let's trot home."
   ],
-  "controls": "WASD to stagger. Space to grab and talk. Q to look at yourself. E to stomp. V to change view. M to mute.",
   "spirit_guide": {
     "fragment_1": "Glasses. We wear glasses. That's something.",
     "fragment_2": "47. Why do we know that number?",
@@ -35,6 +35,7 @@
   "title": "ESCAPE BERGHAIN",
   "start": {
     "button": "Click to go in",
+    "tagline": "Out of the stable since Friday.",
     "sub": "Headphones on. Sound up.",
     "skip": "Space to skip"
   },
@@ -94,5 +95,33 @@
   "selfie_after": "They have a sticker over their camera now. Berghain rules.",
   "finale": {
     "start": "Closing time. House lights. Every torch in the building is looking for us. RUN."
-  }
+  },
+  "controls": [
+    [
+      "WASD",
+      "walk (harder than it looks)"
+    ],
+    [
+      "Space",
+      "grab, talk"
+    ],
+    [
+      "Q",
+      "look at yourself"
+    ],
+    [
+      "E",
+      "stomp on the beat"
+    ],
+    [
+      "V",
+      "change view"
+    ],
+    [
+      "M",
+      "mute"
+    ]
+  ],
+  "talk_hint": "Space to continue. Esc to leave.",
+  "view_hint": "V to change view"
 }

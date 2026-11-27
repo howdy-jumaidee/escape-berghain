@@ -46,7 +46,7 @@ export function startAudio(): void {
           fallback = 0;
           removeEventListener('keydown', retry);
           removeEventListener('pointerdown', retry);
-        } else if (!fallback) {
+        } else if (!fallback && !document.hidden) {
           fallback = startFallbackBeat();
           addEventListener('keydown', retry);
           addEventListener('pointerdown', retry);
@@ -61,7 +61,7 @@ export function startAudio(): void {
   });
 
   addEventListener('keydown', (e) => {
-    if (e.code !== 'KeyM' || !music) return;
+    if (e.code !== 'KeyM' || e.repeat || !music) return;
     muted = !muted;
     music.muted = muted;
   });
@@ -72,7 +72,9 @@ export function startAudio(): void {
     else void music.ctx.resume();
   });
 
-  bus.on('zone:entered', ({ zone }) => music?.setMix(ZONE_MIX[zone]));
+  bus.on('zone:entered', ({ zone }) => {
+    if (!state.ending) music?.setMix(ZONE_MIX[zone]);
+  });
   bus.on('trip:changed', ({ trip }) => music?.setTrip(trip / TRIP_MAX, state.brainFreezeActive));
 
   bus.on('player:step', () => music?.sfxStep());
@@ -81,11 +83,9 @@ export function startAudio(): void {
   bus.on('item:consumed', ({ item }) => {
     if (!music) return;
     if (item === 'mate') music.sfxMate();
-    else if (item === 'water') music.sfxWater();
     else {
       music.sfxIce();
       music.setTrip(state.trip / TRIP_MAX, true);
-      setTimeout(() => music?.setTrip(state.trip / TRIP_MAX, false), 5000);
     }
   });
   bus.on('riddle:answered', ({ correct }) => {
@@ -105,12 +105,22 @@ export function startAudio(): void {
     music?.dive(3, 300);
   });
   bus.on('selfie:flash', () => music?.sfxCamera());
-  bus.on('jacket:shaken', () => music?.sfxKeys());
+  bus.on('fragment:found', ({ id }) => {
+    if (id === 4) music?.sfxKeys();
+  });
   bus.on('door:refused', () => music?.sfxBad());
   bus.on('shutters:open', () => music?.sfxGate());
   bus.on('secret:dj', () => music?.sfxCrowd());
   bus.on('crowd:cheer', () => music?.cheer());
   bus.on('crowd:bump', () => music?.sfxBump());
+  // Face to face: the club drops away to a muffled thump while you talk.
+  bus.on('npc:focus', () => {
+    music?.setMix({ cutoff: 600, volume: 0.7, warm: 0 });
+    music?.sfxFocus();
+  });
+  bus.on('npc:unfocus', () => {
+    if (!state.ending) music?.setMix(ZONE_MIX[state.zone]);
+  });
   bus.on('game:finale', () => {
     music?.setFinale();
     music?.cheer();
@@ -121,7 +131,6 @@ export function startAudio(): void {
     music?.setChoir(near);
     music?.setMix(near ? { ...ZONE_MIX[state.zone], cutoff: 18000, volume: 1.1 } : ZONE_MIX[state.zone]);
   });
-  bus.on('mirror:seen', () => music?.sfxShimmer());
   bus.on('trip:max', () => music?.dive(2.5));
   bus.on('ending:show', ({ ending }) => {
     if (!music) return;
