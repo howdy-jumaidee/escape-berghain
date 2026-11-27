@@ -9,6 +9,7 @@ import { TripFx } from './fx/trip';
 import { startGame } from './game';
 import { startUi } from './ui';
 import { Npcs } from './npc';
+import { startAudio } from './audio';
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -33,6 +34,7 @@ scene.add(npcs.root);
 const fx = new TripFx(renderer, scene, camera);
 startGame();
 startUi();
+startAudio();
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
