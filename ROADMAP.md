@@ -47,12 +47,13 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 | Who | What | Issue |
 |---|---|---|
 | Gemini Neon | Bug bash on the `dev` preview, then fixes | label `bug` |
-| Gemini Neon | Tune drunk steering and the blur curve: hard but fair | see issues |
+| Gemini Neon | Tune drunk steering and the blur curve: hard but fair. Steering now ramps (see below) | see issues |
 | SuperGrok | Balance patrols against crowd cover; guards push through dancers | see issues |
 | Mistral | Caption timing and sizes in Fragment Mono; audio mix pass per zone | see issues |
 | Emma | Models in the build (#7, #8), real lighting in `src/look/` (#5) | |
 | Robin | Rewrite the story drafts in `content/` (#22), 3 cold playtests, pitch (#23) | |
 
+- [x] **Steering ramps up.** It started too aggressive. Now you start almost sober (stiff, steady, no lurching) and it gets looser over about 3 minutes in the club, plus more with the trip: overshooting turns, slower to line up, sideways lurches. Tune `SOBER_UP_SECONDS` in `src/player/horse.ts`
 - [ ] Only `fix/` branches after 12:00
 - [ ] 3 cold playtests by outsiders, run by Robin
 
@@ -63,7 +64,7 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 Only after Gate 4 is safe. Each one is an issue for one model, in its own folder.
 
 - [x] **Different views.** V cycles top down, follow and eyes
-- [ ] **Multiple floors.** The staircase actually goes up: Panorama Bar as a real second floor above the main hall, seen through a gap in the ceiling. One `levels/level1.json` grid per floor, the stairs move you between them, the camera rises with you
+- [ ] **Multiple floors** (Dee wants these). The staircase actually goes up: Panorama Bar as a real second floor above the main hall, seen through a gap in the ceiling. One `levels/level1.json` grid per floor, the stairs move you between them, the camera rises with you
 - [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out
 - [ ] Convert fonts to woff2 (smaller download)
 - [ ] Mobile touch controls
