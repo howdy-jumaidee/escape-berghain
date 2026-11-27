@@ -1,5 +1,5 @@
 {
-  "_owner": "Emma and Dee. Each character is one 4 x 4 m cell. Loader comes in issue #9.",
+  "_owner": "Emma and Dee. Each character is one 4 x 4 m cell. Cell [col, row] centre is at x = col*4+2, z = row*4+2.",
   "cellSize": 4,
   "legend": {
     "#": "hall_wall",
@@ -13,9 +13,13 @@
     "U": "staircase_up",
     "I": "panorama_ice_cream",
     "E": "exit_door",
+    "G": "gate_shortcut",
+    "M": "mate",
     "@": "player_start",
     "1": "fragment_1",
-    "3": "fragment_3"
+    "3": "fragment_3",
+    "F": "front_door",
+    "W": "panorama_shutter"
   },
   "zones": {
     "main_hall": [[1, 1], [10, 8]],
@@ -24,19 +28,52 @@
     "panorama_bar": [[1, 9], [10, 11]],
     "back_exit": [[11, 9], [15, 11]]
   },
+  "spawns": {
+    "main_hall": [5, 6],
+    "bar_cloakroom": [13, 2],
+    "toilet_corridor": [13, 7],
+    "panorama_bar": [5, 10],
+    "back_exit": [13, 10]
+  },
+  "npcs": [
+    { "id": "friday_guy", "cell": [2, 6] },
+    { "id": "tourists", "cell": [8, 2] },
+    { "id": "herd", "cell": [8, 7] },
+    { "id": "patrick", "cell": [12, 2] },
+    { "id": "coat_check", "cell": [15, 2] },
+    { "id": "philosopher", "cell": [12, 6] },
+    { "id": "riddle_horse", "cell": [14, 8] },
+    { "id": "ice_cream_horse", "cell": [4, 10] },
+    { "id": "bouncer", "cell": [1, 4] },
+    { "id": "leather_choir", "cell": [9, 5] },
+    { "id": "cleaner", "cell": [13, 2] }
+  ],
+  "markers": {
+    "dj_booth": [5, 1]
+  },
+  "crowd": {
+    "main_hall": 3.2,
+    "panorama_bar": 1.6,
+    "bar_cloakroom": 0.7
+  },
   "grid": [
     "#################",
-    "#S...D....S#B..C#",
+    "#S1..D....S#B..C#",
     "#..P...P...#....#",
-    "#....1.....#..3.#",
-    "#..P...P......U.#",
-    "#..........#TTTT#",
+    "#..........#M.3.#",
+    "F..P...P......U.#",
+    "#..........#TT.T#",
     "#....@.....#....#",
     "#..P...P...#....#",
-    "#..........#....#",
-    "######U##########",
+    "#.........M#....#",
+    "######U######G###",
     "#..I.......#....#",
-    "#..........#...E#",
-    "#################"
+    "#.......M......E#",
+    "##WWWWWWW########"
+  ],
+  "patrols": [
+    [[2, 3], [9, 3], [9, 8], [2, 8]],
+    [[12, 2], [14, 2], [14, 7], [12, 7], [14, 7], [14, 2]],
+    [[1, 11], [10, 11], [10, 10], [5, 10], [10, 10], [10, 11]]
   ]
 }

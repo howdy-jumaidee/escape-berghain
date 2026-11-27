@@ -42,6 +42,14 @@ Post your verdict with `gh pr review <n> --comment -b "Opus review: approve|chan
 
 Lighting and haze live in `src/look/scene.ts`. That file is yours.
 
+Model names the game already loads (drop the `.glb` in `public/models/` and it replaces the grey box):
+- Level, from `levels/level1.json`: `hall_wall`, `hall_floor`, `hall_pillar`, `hall_speaker`, `hall_dj_booth`, `bar_counter`, `cloakroom_counter`, `toilet_cubicle`, `staircase_up`, `panorama_ice_cream`, `exit_door`, `gate_shortcut`
+- Horse, separate parts: `horse_body`, `horse_neck`, `horse_head`, `horse_leg` (one leg, used four times, origin at the hoof)
+- NPCs: `npc_<id>`, e.g. `npc_riddle_horse`, `npc_patrick`, `npc_herd`, `npc_ice_cream_horse`, `npc_friday_guy`, `npc_coat_check`, `npc_philosopher`, `npc_tourists`
+- Props: `prop_glasses`, `prop_ticket`, `prop_mate`
+
+The camera only draws below 9 m (a cutaway so the 18 m pillars don't block the view). Model full height anyway.
+
 ## Robin (Lovable, GitHub website)
 
 Lovable stays off the game repo. It can't import an existing repo, and it commits straight to `main`, which skips CI and review.

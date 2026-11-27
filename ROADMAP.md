@@ -1,84 +1,74 @@
 # Roadmap
 
-Deadline: Saturday 28 Nov, 16:00. Each phase ends with a gate. Nothing from a later phase starts until the gate passes, except night shift work.
+Deadline: Saturday 28 Nov, 16:00. Each phase ends with a gate.
 
-## What we ship
-
-Escape Berghain is a web app. It runs in the browser with nothing to install, and it lives on Vercel with a public URL that judges open on their own laptop.
-
-- **Live game:** production deploy of `main` on Vercel (URL in the README once it's up). This is the link in the pitch and the demo
-- **Previews:** every PR gets its own Vercel URL. Somebody plays it before merge
-- Desktop Chrome, Firefox and Safari. Keyboard controls. Mobile is out of scope
-- Static Vite build, no server, no accounts, no keys
-
-## Sound
-
-The music is Berghain techno: dark, hard and driving, around 132 BPM. Four on the floor kick with the long rumble tail under it, off beat hats, a clap on 2 and 4, a low droning stab. No vocals, no house, no EDM drops. Upstairs in Panorama Bar it stays techno but warmer and brighter. In the toilet corridor it's muffled through the wall.
-
-It's generated live in the browser with the Web Audio API, so there are no tracks to license and nothing to download. The whole game shares one beat clock (`BPM` in `contracts.ts`): strobes, the herd dance and the secret DJ stomp all lock to it. As the trip rises the music bends with you: the filter drifts and the pitch wobbles.
+**Play it:** https://escape-berghain.vercel.app (production, from `main`). Every PR also gets a Vercel preview (behind Vercel login for now, #36).
 
 Every gate ends with a recap: `docs/recaps/phase-<n>.md` (see `docs/recaps/TEMPLATE.md`). The recap covers the gate verdict, evals (build, preview walkthrough, "done when" tests, playtest notes) and bug testing (bug bash, console errors, issues filed). Dee writes it in chat and in the file.
 
-## Phase 0: Foundation (Friday evening, 2 hours)
+## Where we are
 
-- [x] Scaffold: Vite, TypeScript, Three.js, postprocessing, Rapier
-- [x] `contracts.ts` with state, types and event bus
-- [x] Greybox hall, wobbly box horse, trip meter with chromatic aberration and camera wobble
-- [x] Model loader with grey box fallback, model viewer at `/?viewer=<name>`
-- [ ] GitHub repo public, `main` and `dev`, branch protection, CI
-- [ ] Vercel connected, production on `main`, previews on PRs
-- [ ] All issues created
-- [ ] Emma: greybox kit and one lighting mood shot everyone agrees on
-- [ ] Robin: judging criteria read, first draft of `content/`, pitch site started in its own Lovable project
+The whole game is playable start to finish in the browser. You wake up as a horse on the dance floor, find five memories, slip past security through a packed crowd, and stagger out the back exit. Four endings. Generated Berghain techno. What's left is polish, Emma's models and lighting, playtests and the pitch, plus nice-to-haves if there's time.
 
-**Gate 0:** the greybox build is live on its public Vercel URL and Emma has a PR preview working from Cursor.
+## Direction (decided Friday night)
 
-## Phase 1: First playable (Friday night, before sleep)
+- **Minimal.** No HUD. The blur is your trip meter, the spirit guide's solidity is your memory. Text only appears when you touch something: an object, a clue, a special NPC
+- **One typeface: Fragment Mono**, like the poster. Pitch black title and intro
+- **Intro:** pitch black, the lines one by one ("There are no mirrors in here..."), a thin white swirl, then you're the horse
+- **Hard to steer**, like someone drunk and high on two legs: you go where you face, turning overshoots, you lurch
+- **Sound:** Berghain techno at 132 BPM, generated live with Web Audio. One beat clock for music, strobes, the herd and the DJ booth
 
-- [ ] Horse controller with spring wobble and hoof grab (#2, #3)
-- [ ] Trip meter with blur, Mate and brain freeze (#4)
-- [ ] Level loader from grid JSON, collisions (#9)
-- [ ] Fragment 1 (glasses) pickup and one checkpoint (#11)
-- [ ] Back exit triggers an ending (#13)
-- [ ] Emma's first models in the build: horse parts, wall, floor, pillar, speaker (#7)
-- [ ] Lighting and haze in `src/look/` (#5)
+## Done
 
-**Gate 1:** walk through the hall in moody light, grab the glasses, blur rises, reach the exit, see an ending. Merged to `main`.
+**Foundation (Phase 0).** Vite, TypeScript, Three.js, postprocessing. `contracts.ts` event bus. Model loader with grey box fallback and `/?viewer=<name>`. Public repo, `main` and `dev`, branch protection, CI. Vercel production on `main`.
 
-## Phase 2: Night shift (Friday night to Saturday 08:00)
+**First playable (Phase 1, #24 to #34).** Jointed horse with spring wobble, grab and stomp. Level loader from grid JSON with collisions. Trip blur, double vision, colour drift, Mate and brain freeze. Endings and losses. Title, captions, dialogue, end cards. NPC dialogue from JSON, the riddle, the herd sync dance. Generated techno with zone mixing.
 
-Grok bots on `night-shift` issues only, PRs into `dev`:
-- [ ] NPC dialogue from JSON (#14)
-- [ ] Riddle UI (#15)
-- [ ] Herd sync dance (#16)
-- [ ] End cards and credits (#18)
-- [ ] Audio manager, generated Berghain techno at 132 BPM, SFX (#19)
-- [ ] Konami rat and mirror easter eggs (#21)
+**Content complete (Phase 3, #37 to #46).** The five memory chain: glasses under the speaker, the wrist stamp (Q, only with glasses), ticket 47, keys from the coat check, the riddle horse. Security patrols with torches, animal control van, tourist selfie. Bouncer at the front door. Visible spirit guide. Secret DJ ending. Panorama shutters open after 10 minutes.
 
-**Gate 2 (08:00):** night PRs reviewed by Opus, merged or closed.
+**Make it a club (Phase 3b, #47 to #60).**
+- [x] 250 dancers on the beat, a toilet queue, they shove you, they hide you from torches (they block about half the sight lines), more horse heads the higher you are
+- [x] Leather choir (the music opens up) and the 6 am cleaner (wet floor, you slide)
+- [x] Riddle horse wants your keys first, so the chain runs in order
+- [x] HERD ending: pass out three times and you join them
+- [x] Closing time: all five memories, house lights, red torches, faster guards, sirens, the acid line peaks
+- [x] Low-res render, light shafts, lasers, stuttering strobes, camera kick on the beat, crowd murmur and cheers
+- [x] Code: one fragment owner, named input locks, typed data loader, shared beat counter, content key check in CI, `?debug` flags
 
-## Phase 3: Content complete (Saturday 08:00 to 12:00)
+**Minimal pass (this PR chain).**
+- [x] No HUD, Fragment Mono only, pitch black title and minimal swirl intro
+- [x] Drunk steering
+- [x] Jacket story simplified: give the ticket, get the keys. No minigame, no phone, no clock
+- [x] Cut list items 1 to 3 cut: extra regulars, Konami rat, mirror
+- [x] Nice-to-have started: three views (V): top down, follow cam, the horse's own eyes
 
-- [ ] All 5 fragments in the chain (#11)
-- [ ] All NPCs placed with lines (#14, #22)
-- [ ] Patrols, caught loss, pass out loss (#12, #13)
-- [ ] Intro, HUD, title (#17)
-- [ ] Secret DJ ending (#20)
-- [ ] NPC and prop models, counters, staircase, decals (#8)
-- [ ] Gemini Neon bug bash at 10:00
+## Now: Phase 4, polish and fix (Saturday morning to 14:00)
 
-**Gate 3 (12:00): feature and asset freeze.** Full playthrough possible with all 3 endings. Merged to `main`.
+| Who | What | Issue |
+|---|---|---|
+| Gemini Neon | Bug bash on the `dev` preview, then fixes | label `bug` |
+| Gemini Neon | Tune drunk steering and the blur curve: hard but fair | see issues |
+| SuperGrok | Balance patrols against crowd cover; guards push through dancers | see issues |
+| Mistral | Caption timing and sizes in Fragment Mono; audio mix pass per zone | see issues |
+| Emma | Models in the build (#7, #8), real lighting in `src/look/` (#5) | |
+| Robin | Rewrite the story drafts in `content/` (#22), 3 cold playtests, pitch (#23) | |
 
-## Phase 4: Polish and fix (Saturday 12:00 to 14:00)
-
-- [ ] Only `fix/` branches merge
-- [ ] Neon bug bash, then fixes
+- [ ] Only `fix/` branches after 12:00
 - [ ] 3 cold playtests by outsiders, run by Robin
-- [ ] Blur curve and difficulty tuning
 
-**Gate 4 (14:00):** production deploy from `main`, live URL opened and played on a laptop that isn't ours. 60 second backup video recorded.
+**Gate 4 (14:00):** production deploy from `main`, live URL played on a laptop that isn't ours. 60 second backup video recorded.
 
-## Phase 5: Ship and pitch (Saturday 14:00 to 16:00)
+## Next: nice-to-haves
+
+Only after Gate 4 is safe. Each one is an issue for one model, in its own folder.
+
+- [x] **Different views.** V cycles top down, follow and eyes
+- [ ] **Multiple floors.** The staircase actually goes up: Panorama Bar as a real second floor above the main hall, seen through a gap in the ceiling. One `levels/level1.json` grid per floor, the stairs move you between them, the camera rises with you
+- [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out
+- [ ] Convert fonts to woff2 (smaller download)
+- [ ] Mobile touch controls
+
+## Pitch (Saturday 14:00 to 16:00)
 
 - [ ] Lovable sizzle video
 - [ ] Pitch slides and demo script
@@ -87,13 +77,13 @@ Grok bots on `night-shift` issues only, PRs into `dev`:
 
 ## Cut list (in this order if behind)
 
-1. Konami rat
-2. Mirror easter egg
-3. Secret DJ ending
-4. Ice cream horse and brain freeze
-5. The herd
-6. Tourist selfie
-7. Riddle
-8. Intro animation
+Already cut: weird regulars beyond the leather choir and the cleaner, Konami rat, mirror easter egg.
 
-Never cut: wobbly horse, dirty industrial look, blur, the 5 fragment chain, one working ending.
+1. HERD ending
+2. Secret DJ ending
+3. Ice cream horse and brain freeze
+4. The herd
+5. Tourist selfie
+6. Riddle (fragment 5 becomes a plain pickup)
+
+Never cut: wobbly horse, dirty industrial look, the crowd, blur, the 5 fragment chain, one working ending.

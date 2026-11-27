@@ -1,33 +1,133 @@
 {
   "_owner": "Robin. Draft lines, rewrite freely.",
   "riddle_horse": {
-    "lines": ["Been here since Friday. You look new. Answer me this."],
+    "name": "Riddle horse",
+    "lines": [
+      "Been here since Friday. You look new. Answer me this."
+    ],
     "riddle": {
       "question": "I have keys but open no doors in here. I wait by the river for you. What am I?",
       "answers": [
-        { "text": "A piano", "correct": false },
-        { "text": "My bike", "correct": true },
-        { "text": "The bouncer", "correct": false }
+        {
+          "text": "A piano",
+          "correct": false
+        },
+        {
+          "text": "My bike",
+          "correct": true
+        },
+        {
+          "text": "The bouncer",
+          "correct": false
+        }
       ],
       "right": "Stairs. Up. Then out the back. Go.",
       "wrong": "Hm. Try the long way. Bring me a Mate if you find one."
-    }
+    },
+    "not_yet": "You've got nothing that opens anything. Come back with keys."
   },
-  "patrick": { "lines": ["I'm Patrick. From accounting. I'm definitely not a horse.", "Exit's that way. Trust me. I do numbers."] },
-  "herd": { "lines": ["...", "*stomps in perfect sync*"] },
-  "ice_cream_horse": { "lines": ["Eis?"] },
-  "friday_guy": { "lines": ["Exit? Left for about 128. Then up.", "I came in Friday. What day is it? Don't tell me."] },
-  "coat_check": { "lines": ["Ticket."], "with_ticket": "Nice jacket. For a horse." },
+  "patrick": {
+    "name": "Patrick",
+    "lines": [
+      "I'm Patrick. From accounting. I'm definitely not a horse.",
+      "Exit's that way. Trust me. I do numbers."
+    ]
+  },
+  "herd": {
+    "name": "The herd",
+    "lines": [
+      "...",
+      "*stomps in perfect sync*"
+    ],
+    "warning": "We were like you. We stopped looking for the exit."
+  },
+  "ice_cream_horse": {
+    "name": "Ice cream horse",
+    "lines": [
+      "Eis?"
+    ]
+  },
+  "friday_guy": {
+    "name": "Friday guy",
+    "lines": [
+      "Exit? Left for about 128. Then up.",
+      "I came in Friday. What day is it? Don't tell me."
+    ]
+  },
+  "coat_check": {
+    "name": "Coat check",
+    "lines": [
+      "Ticket."
+    ],
+    "with_ticket": "Nice jacket. For a horse.",
+    "jacket": "Nice jacket. For a horse. Something jingles in the pocket.",
+    "empty": "You already have your jacket."
+  },
   "philosopher": {
-    "lines": ["Who are you, really?"],
+    "name": "Philosopher",
+    "lines": [
+      "Who are you, really?"
+    ],
     "answers_by_fragments": {
-      "0": ["A horse?", "I don't know."],
-      "3": ["Someone with glasses and a jacket.", "A horse with a coat check ticket."],
-      "5": ["Someone who lives by the river.", "Someone going home."]
+      "0": [
+        "A horse?",
+        "I don't know."
+      ],
+      "3": [
+        "Someone with glasses and a jacket.",
+        "A horse with a coat check ticket."
+      ],
+      "5": [
+        "Someone who lives by the river.",
+        "Someone going home."
+      ]
     }
   },
-  "tourists": { "lines": ["Oh my god, the costume! Selfie!"] },
-  "security": { "lines": ["Hey. Horse. Stop."] },
-  "animal_control": { "lines": ["Come on, buddy. Into the van.", "Hey, any chance you could get me in sometime?"] },
-  "bouncer": { "lines": ["Heute nicht."] }
+  "tourists": {
+    "name": "Tourists",
+    "lines": [
+      "Oh my god, the costume! Selfie!",
+      "Sorry. We put a sticker on it."
+    ]
+  },
+  "security": {
+    "name": "Security",
+    "lines": [
+      "Hey. Horse. Stop.",
+      "Torch says you're a horse."
+    ]
+  },
+  "animal_control": {
+    "name": "Animal control",
+    "lines": [
+      "Come on, buddy. Into the van.",
+      "Hey, any chance you could get me in sometime?"
+    ]
+  },
+  "bouncer": {
+    "name": "Bouncer",
+    "lines": [
+      "Heute nicht."
+    ]
+  },
+  "spirit_guide": {
+    "name": "You, sort of",
+    "lines": [
+      "..."
+    ]
+  },
+  "leather_choir": {
+    "name": "Leather choir",
+    "lines": [
+      "Mmmm. Mmmm. Mmmm. They're humming the bassline.",
+      "Join us. Low notes only."
+    ]
+  },
+  "cleaner": {
+    "name": "Cleaner",
+    "lines": [
+      "Six o'clock. Every Sunday. Mind the floor.",
+      "Wet. Floor. Horse."
+    ]
+  }
 }

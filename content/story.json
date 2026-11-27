@@ -7,15 +7,20 @@
     "We're a horse.",
     "We live somewhere. Let's go home."
   ],
-  "controls": "WASD to walk. Space to grab with your hooves. Good luck.",
+  "controls": "WASD to stagger. Space to grab and talk. Q to look at yourself. E to stomp. V to change view. M to mute.",
   "spirit_guide": {
     "fragment_1": "Glasses. We wear glasses. That's something.",
     "fragment_2": "47. Why do we know that number?",
     "fragment_3": "A ticket. We came in with a jacket. We had a whole outfit.",
     "fragment_4": "That keychain... our street!",
     "fragment_5": "Our bike. By the river. We can get home.",
-    "trip_high": "Everything is getting soft around the edges. Hurry.",
-    "mate": "Mate. Clearer. Shakier. Worth it."
+    "mate": "Mate. Clearer. Shakier. Worth it.",
+    "look_blurry": "Everything is a smudge. We need our glasses first.",
+    "look_again": "Still 47. Still a horse.",
+    "stamp": "A stamp. 47. We had a number.",
+    "all": "We remember. The street, the bike, the river. Go.",
+    "herd_warning_1": "That's once. The herd were people too, you know. They passed out three times.",
+    "herd_warning_2": "Twice. One more and we dance with them forever."
   },
   "losses": {
     "passed_out": "You wake up in the toilet queue. Someone is still talking about their ex.",
@@ -24,6 +29,70 @@
   "endings": {
     "full_memory": "You wake up in your own bed. Human. There's a hoofprint on the pillow.",
     "partial_memory": "Monday, noon. The club is closing. You're outside in the queue. Still a horse. Try again?",
-    "secret_dj": "You never left. You are the resident horse DJ now."
+    "secret_dj": "You never left. You are the resident horse DJ now.",
+    "herd": "You stopped looking for the exit. Now you dance in perfect sync with the others. Forever, or at least until Monday."
+  },
+  "title": "ESCAPE BERGHAIN",
+  "start": {
+    "button": "Click to go in",
+    "sub": "Headphones on. Sound up.",
+    "skip": "Space to skip"
+  },
+  "items": {
+    "glasses_slip_1": "It slips. Hooves are not hands.",
+    "glasses_slip_2": "Again. Come on.",
+    "ice_cream": "Brain freeze. Everything goes sharp.",
+    "mate_found": "A bottle of MATE. Space to drink."
+  },
+  "herd": {
+    "hint": "Stand in their line. E on the beat. Four times.",
+    "miss": "Off beat. They pretend not to notice.",
+    "synced": "The herd turns as one and stares at the bar."
+  },
+  "gate": {
+    "locked": "A door to the stairs. Locked. The riddle horse might know something.",
+    "open": "Somewhere a door clicks open."
+  },
+  "ending_titles": {
+    "full_memory": "HOME",
+    "partial_memory": "NOT QUITE",
+    "secret_dj": "RESIDENT",
+    "herd": "HERD"
+  },
+  "retry": "Press R to try again",
+  "credits": {
+    "heading": "GARDEROBE",
+    "ticket": "No. 47",
+    "lines": [
+      "Escape Berghain",
+      "Team Five",
+      "Code: Dee",
+      "3D and look: Emma",
+      "Story and pitch: Robin",
+      "Music: made live in your browser",
+      "No real horses were harmed."
+    ]
+  },
+  "stamp": {
+    "label": "WRIST STAMP",
+    "number": "47"
+  },
+  "caught": {
+    "title": "ANIMAL CONTROL",
+    "sub": "Van ride. Back to where you were."
+  },
+  "dj": {
+    "hint": "The decks are right there. Stomp on the beat. Eight times.",
+    "screen_blurry": "▒▒▒▒ ▒▒▒▒▒▒ ▒▒▒",
+    "tracks": [
+      "Dee - Hoof Theory (Sunday Mix)",
+      "Emma - Concrete Haze",
+      "Robin - No Mirrors"
+    ]
+  },
+  "door": "The front door is never the way out.",
+  "selfie_after": "They have a sticker over their camera now. Berghain rules.",
+  "finale": {
+    "start": "Closing time. House lights. Every torch in the building is looking for us. RUN."
   }
 }
