@@ -1,7 +1,9 @@
-// Game boot. Owned by Dee (Opus only).
+// Game boot. Owned by Dee (Opus only). Creates each system and runs the frame loop.
+// Systems never import each other. They talk through the bus; this file only wires and ticks them.
 import * as THREE from 'three';
 import { bus, state } from './contracts';
 import { buildScene } from './look/scene';
+import { World } from './world';
 import { Horse } from './player/horse';
 import { TripFx } from './fx/trip';
 
@@ -9,21 +11,23 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'h
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
+// Cutaway: nothing above 9 m is drawn, like a dollhouse with the roof off.
+renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), 9)];
 
-const { scene, strobes } = buildScene();
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+const { scene, strobes, flicker } = buildScene();
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200);
 
-const horse = new Horse(() => {});
-// Until the UI lands (click to start), start right away.
-state.started = true;
+const world = new World();
+scene.add(world.root);
+
+const horse = new Horse((pos, r) => world.resolve(pos, r));
+horse.setPosition(world.level.start.x, world.level.start.z);
 scene.add(horse.root);
 
-const fx = new TripFx(renderer, scene, camera);
-const hud = document.getElementById('hud')!;
 
-bus.on('trip:max', () => {
-  hud.textContent = 'You passed out in the toilet queue. (Losses come in issue #13)';
-});
+const fx = new TripFx(renderer, scene, camera);
+// Until the UI lands (click to start), start right away.
+state.started = true;
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
@@ -32,7 +36,16 @@ addEventListener('resize', () => {
   fx.composer.setSize(innerWidth, innerHeight);
 });
 
-const camOffset = new THREE.Vector3(0, 14, 12);
+// Strobes flash on the beat clock.
+let flash = 0;
+bus.on('beat', ({ n }) => {
+  flash = 1;
+  strobes.forEach((l, i) => (l.userData.on = (n + i) % 2 === 0));
+});
+
+// Fixed, angled, top down camera.
+const camOffset = new THREE.Vector3(0, 24, 14);
+camera.position.copy(horse.root.position).add(camOffset);
 const timer = new THREE.Timer();
 let t = 0;
 
@@ -42,17 +55,20 @@ renderer.setAnimationLoop(() => {
   t += dt;
 
   horse.update(dt);
+  world.update(dt, camera.position);
 
   const target = horse.root.position.clone().add(camOffset);
   camera.position.lerp(target, 1 - Math.exp(-4 * dt));
   fx.setCameraBase(camera.position);
   camera.lookAt(horse.root.position);
 
-  // 128 BPM strobes.
-  const beat = (t * 128) / 60;
-  strobes.forEach((l, i) => (l.intensity = (Math.sin(beat * Math.PI + i * Math.PI) > 0.6 ? 60 : 4)));
+  flash = Math.max(0, flash - dt * 7);
+  strobes.forEach((l) => (l.intensity = l.userData.on ? 60 + flash * 900 : 40));
+  flicker.intensity = Math.random() < 0.04 ? 10 : 120 + Math.sin(t * 50) * 15;
 
   fx.update(dt);
-  if (!state.ending && state.trip < 100) hud.textContent = `Trip ${Math.round(state.trip)}  ·  WASD to walk`;
   fx.render(dt);
 });
+
+// Handy in the console while playtesting: window.eb.state, window.eb.bus.
+(window as unknown as { eb: unknown }).eb = { state, bus };
