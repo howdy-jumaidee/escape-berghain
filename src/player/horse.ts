@@ -41,6 +41,10 @@ export class Horse {
   private lastStepPhase = 0;
   private resolve: Resolver;
   private scale = 1;
+  private input = new THREE.Vector3();
+  private target = new THREE.Vector3();
+  /** Wet floor from the cleaner: x, z, radius, seconds left. */
+  private wet: { x: number; z: number; r: number; left: number }[] = [];
 
   constructor(resolve: Resolver) {
     this.resolve = resolve;
@@ -78,6 +82,7 @@ export class Horse {
       this.root.position.set(x, 0, z);
       this.velocity.set(0, 0, 0);
     });
+    bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
     bus.on('player:rat', ({ active }) => {
       this.mat.color.set(active ? 0x6b6b70 : 0x8b5a2b);
     });
@@ -92,7 +97,7 @@ export class Horse {
     const k = state.trip / TRIP_MAX;
     const wobbleBoost = 1 + k * 2;
 
-    const input = new THREE.Vector3();
+    const input = this.input.set(0, 0, 0);
     if (free) {
       input.set(
         (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0),
@@ -114,7 +119,11 @@ export class Horse {
     }
 
     const speed = SPEED * (state.rat ? 1.3 : 1);
-    this.velocity.lerp(input.multiplyScalar(speed), 1 - Math.exp(-6 * dt));
+    // Wet floor: almost no grip, you keep sliding.
+    this.wet = this.wet.filter((w) => (w.left -= dt) > 0);
+    const p = this.root.position;
+    const slippy = this.wet.some((w) => (p.x - w.x) ** 2 + (p.z - w.z) ** 2 < w.r * w.r);
+    this.velocity.lerp(this.target.copy(input).multiplyScalar(speed), 1 - Math.exp(-(slippy ? 0.7 : 6) * dt));
     this.root.position.addScaledVector(this.velocity, dt);
     this.resolve(this.root.position, RADIUS * this.scale);
 
