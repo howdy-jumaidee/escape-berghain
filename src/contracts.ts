@@ -3,7 +3,7 @@
 
 export type FragmentId = 1 | 2 | 3 | 4 | 5;
 
-export type EndingId = 'full_memory' | 'partial_memory' | 'secret_dj';
+export type EndingId = 'full_memory' | 'partial_memory' | 'secret_dj' | 'herd';
 
 export type ZoneId = 'main_hall' | 'bar_cloakroom' | 'toilet_corridor' | 'panorama_bar' | 'back_exit';
 
@@ -19,10 +19,16 @@ export type NpcId =
   | 'tourists'
   | 'security'
   | 'animal_control'
-  | 'bouncer';
+  | 'bouncer'
+  | 'leather_choir'
+  | 'cleaner'
+  | 'sink'
+  | 'shoe_collector'
+  | 'dj_cousin'
+  | 'calm_horse';
 
 /** Things you can pick up or consume that aren't fragments. */
-export type ItemId = 'mate' | 'ice_cream';
+export type ItemId = 'mate' | 'ice_cream' | 'water';
 
 /** Model file names in public/models/, without .glb. Missing models fall back to a grey box. */
 export type ModelName = string;
@@ -46,8 +52,16 @@ export interface GameState {
   brainFreezeActive: boolean;
   /** Konami rat mode. */
   rat: boolean;
-  /** A dialogue or riddle is open. The horse stands still. */
+  /** True while any lock is held (dialogue, riddle, jacket). The horse stands still. Use lock() and unlock(). */
   inputLocked: boolean;
+  /** Who holds the input right now. */
+  locks: string[];
+  /** Club clock: minutes since Sunday 00:00. Starts at 06:12. Mum's lunch is at 13:00. */
+  minutes: number;
+  /** How many times you've passed out. Three and you join the herd. */
+  passOuts: number;
+  /** Closing time: all five memories found, the run for the exit. */
+  finale: boolean;
   ending: EndingId | null;
 }
 
@@ -76,14 +90,74 @@ export function createInitialState(): GameState {
     brainFreezeActive: false,
     rat: false,
     inputLocked: false,
+    locks: [],
+    minutes: CLOCK_START,
+    passOuts: 0,
+    finale: false,
     ending: null,
   };
+}
+
+export const CLOCK_START = 6 * 60 + 12;
+export const LUNCH = 13 * 60;
+export const PASS_OUTS_TO_HERD = 3;
+
+/** Hold the input (the horse stops). Each holder uses its own name, so one can't release another's lock. */
+export function lock(name: string): void {
+  if (!state.locks.includes(name)) state.locks.push(name);
+  state.inputLocked = true;
+}
+
+export function unlock(name: string): void {
+  state.locks = state.locks.filter((l) => l !== name);
+  state.inputLocked = state.locks.length > 0;
+}
+
+/**
+ * Counts stomps that land on the beat clock, in a row. Used by the herd and the DJ booth.
+ * Feed it every `beat` event and every stomp; it returns how many in a row so far, or 0 after a miss.
+ */
+export class BeatCounter {
+  private beatN = 0;
+  private beatTime = 0;
+  private lastN = -10;
+  count = 0;
+  constructor(private windowMs = 150) {}
+
+  beat(n: number, time: number): void {
+    this.beatN = n;
+    this.beatTime = time;
+  }
+
+  /** Returns the streak after this stomp. 0 means it missed (or the clock hasn't started). */
+  stomp(time: number): number {
+    if (!this.beatTime) return 0;
+    const period = BEAT_SECONDS * 1000;
+    const since = time - this.beatTime;
+    const nearest = since < period / 2 ? this.beatN : this.beatN + 1;
+    const err = Math.min(Math.abs(since), Math.abs(period - since));
+    if (err > this.windowMs) {
+      this.count = 0;
+      return 0;
+    }
+    if (nearest === this.lastN) return this.count;
+    this.count = nearest === this.lastN + 1 ? this.count + 1 : 1;
+    this.lastN = nearest;
+    return this.count;
+  }
+
+  reset(): void {
+    this.count = 0;
+    this.lastN = -10;
+  }
 }
 
 /** Every event in the game. Systems talk only through these. */
 export interface GameEvents {
   'game:start': Record<string, never>;
 
+  /** Ask for a fragment. Only the game system adds fragments; it answers with fragment:found. */
+  'fragment:claim': { id: FragmentId };
   'fragment:found': { id: FragmentId };
   'trip:changed': { trip: number };
   'trip:max': Record<string, never>;
@@ -137,6 +211,19 @@ export interface GameEvents {
   'door:refused': Record<string, never>;
   /** Morning: Panorama Bar shutters open. */
   'shutters:open': Record<string, never>;
+
+  /** The club clock moved on one minute. */
+  'clock:tick': { minutes: number };
+  /** Closing time. All five memories: the run for the exit. */
+  'game:finale': Record<string, never>;
+  /** The cleaner mopped here. The horse slides. */
+  'floor:wet': { x: number; z: number; radius: number; seconds: number };
+  /** Standing with the leather choir: the music opens up. */
+  'music:choir': { near: boolean };
+  /** The crowd cheers (a drop, the secret DJ, closing time). */
+  'crowd:cheer': Record<string, never>;
+  /** You bumped into a dancer. */
+  'crowd:bump': Record<string, never>;
 }
 
 type Handler<T> = (payload: T) => void;
