@@ -10,6 +10,7 @@ const TALK_RANGE = 2.4;
 const WALK_AWAY = 4.5;
 const HERD_STOMPS = 4;
 const STOMP_WINDOW_MS = 150;
+const SELFIE_RANGE = 3.4;
 
 const HORSES = new Set<NpcId>(['riddle_horse', 'patrick', 'herd', 'ice_cream_horse']);
 const COLOURS: Partial<Record<NpcId, number>> = {
@@ -21,6 +22,7 @@ const COLOURS: Partial<Record<NpcId, number>> = {
   coat_check: 0x303844,
   philosopher: 0x40406a,
   tourists: 0xb07a3a,
+  bouncer: 0x0e0e0e,
 };
 
 interface Npc {
@@ -47,6 +49,13 @@ export class Npcs {
   private herdSynced = false;
   private herdHintAt = -1e9;
   private herdMissAt = -1e9;
+  private selfieTaken = false;
+  /** After the secret DJ ending starts, everyone turns to the booth. */
+  private crowdLooksAt: THREE.Vector3 | null = null;
+  private guide: THREE.Group;
+  private guideMat: THREE.MeshStandardMaterial;
+  private guidePulse = 0;
+  private guideVisible = false;
 
   constructor() {
     const spots = (level1 as unknown as { npcs: { id: NpcId; cell: [number, number] }[] }).npcs ?? [];
@@ -68,15 +77,58 @@ export class Npcs {
       this.beatPulse = 1;
     });
     bus.on('riddle:answered', ({ correct }) => this.riddleAnswered(correct));
+
+    // Coat check: the shake is done, the keys fall out.
+    bus.on('jacket:shaken', () => {
+      if (state.fragments.includes(4)) return;
+      state.fragments.push(4);
+      bus.emit('fragment:found', { id: 4 });
+      state.checkpoint = state.zone;
+      bus.emit('checkpoint:set', { zone: state.zone });
+    });
+    bus.on('door:refused', () => bus.emit('npc:talk', { npc: 'bouncer', lineId: 'npcs:bouncer.lines.0' }));
+    bus.on('secret:dj', () => {
+      const booth = (level1 as unknown as { markers?: Record<string, [number, number]> }).markers?.dj_booth;
+      if (!booth) return;
+      const c = cellCenter(booth[0], booth[1]);
+      this.crowdLooksAt = new THREE.Vector3(c.x, 0, c.z);
+    });
+
+    // The spirit guide: a tiny faint ghost of human you. More solid with every memory.
+    this.guideMat = new THREE.MeshStandardMaterial({
+      color: 0xbfe9ff,
+      emissive: 0x6fb8ff,
+      emissiveIntensity: 0.6,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    this.guide = new THREE.Group();
+    this.guide.add(placeModel('npc_spirit_guide', { x: 0.3, y: 0.9, z: 0.2 }, this.guideMat));
+    this.guide.visible = false;
+    this.root.add(this.guide);
+    bus.on('intro:land', () => {
+      this.guideVisible = true;
+      this.guide.visible = true;
+      this.guide.position.copy(this.player).add(new THREE.Vector3(-1.2, 0, -0.8));
+    });
+    bus.on('ui:say', ({ key }) => {
+      if (key.startsWith('story:spirit_guide') || key.startsWith('story:intro')) this.guidePulse = 1;
+    });
   }
 
   update(dt: number): void {
+    this.updateGuide(dt);
+    this.checkSelfie();
     this.beatPulse = Math.max(0, this.beatPulse - dt * 4);
     const bounce = this.beatPulse * this.beatPulse;
     for (const npc of this.npcs) {
       const sync = npc.id === 'herd';
       npc.objects.forEach((o, i) => {
-        if (sync) {
+        if (this.crowdLooksAt) {
+          o.lookAt(this.crowdLooksAt.x, o.position.y, this.crowdLooksAt.z);
+          o.position.y = bounce * 0.2;
+        } else if (sync) {
           // Perfect sync: hop and twist on every beat, all three the same.
           o.position.y = bounce * 0.25;
           o.rotation.y = Math.PI + Math.sin(this.beatN * Math.PI * 0.5) * 0.6;
@@ -134,7 +186,13 @@ export class Npcs {
         }
         return bus.emit('riddle:show', {});
       case 'coat_check':
-        return say(state.fragments.includes(3) ? 'with_ticket' : 'lines.0');
+        if (!state.fragments.includes(3)) return say('lines.0');
+        if (state.fragments.includes(4)) return say('empty');
+        say('jacket');
+        bus.emit('ui:say', { key: 'story:spirit_guide.jacket', seconds: 3 });
+        return bus.emit('jacket:start', {});
+      case 'tourists':
+        return say(this.selfieTaken ? 'lines.1' : 'lines.0');
       case 'herd':
         say(`lines.${best.line++ % 2}`);
         return bus.emit('ui:say', { key: 'story:herd.hint', seconds: 4 });
@@ -150,6 +208,29 @@ export class Npcs {
         say(`lines.${best.line++ % lines.length}`);
       }
     }
+  }
+
+  private updateGuide(dt: number): void {
+    if (!this.guideVisible) return;
+    this.guidePulse = Math.max(0, this.guidePulse - dt * 0.8);
+    const want = this.player.clone().add(new THREE.Vector3(-1.2, 0, -0.8));
+    this.guide.position.lerp(want, 1 - Math.exp(-2.5 * dt));
+    this.guide.position.y = 0.4 + Math.sin(performance.now() / 600) * 0.12;
+    this.guide.lookAt(this.player.x, this.guide.position.y, this.player.z);
+    const solid = 0.12 + state.fragments.length * 0.13;
+    this.guideMat.opacity = Math.min(0.85, solid + this.guidePulse * 0.25);
+    this.guideMat.emissiveIntensity = 0.4 + this.guidePulse;
+  }
+
+  private checkSelfie(): void {
+    if (this.selfieTaken || !state.started || state.ending || state.rat) return;
+    const t = this.npcs.find((n) => n.id === 'tourists');
+    if (!t || t.pos.distanceTo(this.player) > SELFIE_RANGE) return;
+    this.selfieTaken = true;
+    this.talking = t;
+    bus.emit('npc:talk', { npc: 'tourists', lineId: 'npcs:tourists.lines.0' });
+    bus.emit('selfie:flash', { x: t.pos.x, z: t.pos.z });
+    setTimeout(() => bus.emit('ui:say', { key: 'story:selfie_after', seconds: 3 }), 3500);
   }
 
   private riddleAnswered(correct: boolean): void {
