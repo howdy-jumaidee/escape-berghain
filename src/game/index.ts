@@ -1,4 +1,4 @@
-// Game: the rules. Fragments, the club clock, endings, losses, closing time and easter eggs. Issues #11, #13, #20, #21.
+// Game: the rules. Fragments, endings, losses, closing time and the secret DJ. Issues #11, #13, #20, #21.
 // Listens on the bus and decides what happens. Draws nothing itself.
 // It is the only system that adds fragments: others emit fragment:claim and this answers with fragment:found.
 import {
@@ -12,13 +12,9 @@ import {
 } from '../contracts';
 import { level, debug } from '../data';
 
-const RAT_SECONDS = 30;
 const DJ_STOMPS = 8;
 const DJ_RANGE = 2.8;
 const PASS_OUT_TRIP = 45;
-/** Real seconds per club minute. A good run (about 8 minutes) gets home around 11:30. */
-const SECONDS_PER_MINUTE = 1.5;
-const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
 
 export function startGame(): void {
   // Fragments: one owner.
@@ -74,77 +70,12 @@ export function startGame(): void {
   });
 
   bus.on('door:refused', () => bus.emit('ui:say', { key: 'story:door', seconds: 3 }));
-  let warned = false;
-  bus.on('trip:changed', ({ trip }) => {
-    if (trip > 70 && !warned) {
-      warned = true;
-      bus.emit('ui:say', { key: 'story:spirit_guide.trip_high', seconds: 4 });
-    }
-    if (trip < 50) warned = false;
-  });
-
-  // The club clock. Sunday 06:12 onwards; Mum's lunch is at 13:00.
-  state.minutes += Math.floor(debug.time / SECONDS_PER_MINUTE);
-  let acc = 0;
-  let lastFrame = performance.now();
-  const clock = () => {
-    const now = performance.now();
-    const dt = Math.min(0.25, (now - lastFrame) / 1000);
-    lastFrame = now;
-    if (state.started && !state.ending) {
-      acc += dt;
-      while (acc >= SECONDS_PER_MINUTE) {
-        acc -= SECONDS_PER_MINUTE;
-        state.minutes++;
-        bus.emit('clock:tick', { minutes: state.minutes });
-        if (state.minutes === 12 * 60 + 30) bus.emit('ui:say', { key: 'story:spirit_guide.half_twelve', seconds: 4 });
-      }
-    }
-    requestAnimationFrame(clock);
-  };
-  requestAnimationFrame(clock);
-
   // Playtest flags.
   if (debug.trip !== null) state.trip = Math.max(0, Math.min(99, debug.trip));
   bus.on('intro:land', () => debug.fragments.forEach((id) => found(id)));
 
-  // Konami code: rat for 30 seconds.
-  let k = 0;
-  let ratTimer = 0;
-  addEventListener('keydown', (e) => {
-    if (e.repeat) return;
-    k = e.code === KONAMI[k] ? k + 1 : e.code === KONAMI[0] ? 1 : 0;
-    if (k < KONAMI.length) return;
-    k = 0;
-    if (!state.started || state.ending) return;
-    state.rat = true;
-    bus.emit('player:rat', { active: true });
-    bus.emit('ui:say', { key: 'story:easter.rat', seconds: 3 });
-    clearTimeout(ratTimer);
-    ratTimer = window.setTimeout(() => {
-      state.rat = false;
-      bus.emit('player:rat', { active: false });
-      bus.emit('ui:say', { key: 'story:easter.rat_end', seconds: 2 });
-    }, RAT_SECONDS * 1000);
-  });
-
   if (level.markers.dj_booth) startDjBooth(level.markers.dj_booth);
 
-  // The only mirror in the building, behind the ice cream counter.
-  const m = level.markers.mirror;
-  if (m) {
-    const c = cellCenter(m[0], m[1]);
-    // Mirror hangs on the north wall of the cell; you stand between it and the counter.
-    const spot = { x: c.x, z: c.z - 1.4 };
-    let last = -Infinity;
-    bus.on('player:moved', ({ x, z }) => {
-      const now = performance.now();
-      if (Math.hypot(x - spot.x, z - spot.z) > 1.1 || now - last < 8000) return;
-      last = now;
-      bus.emit('mirror:seen', {});
-      bus.emit('ui:say', { key: 'story:easter.mirror', seconds: 2 });
-    });
-  }
 }
 
 function found(id: FragmentId): void {

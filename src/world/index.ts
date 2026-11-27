@@ -66,18 +66,6 @@ export class World {
       this.exitPos = { x: c.x, z: c.z + 1 };
     }
 
-    // The only mirror in the building, on the wall behind the ice cream counter.
-    const mirror = this.level.data.markers?.mirror;
-    if (mirror) {
-      const c = cellCenter(mirror[0], mirror[1]);
-      const glass = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.4, 2),
-        new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.05, metalness: 1 }),
-      );
-      glass.position.set(c.x, 1.4, c.z - CELL / 2 + 0.03);
-      this.root.add(glass);
-    }
-
     // Security.
     this.patrols = new Patrols(this.level, this.level.data.patrols ?? []);
     this.root.add(this.patrols.root);
@@ -190,7 +178,6 @@ export class World {
     if (!this.shuttersOpen && this.playTime > SHUTTERS_AFTER) {
       this.shuttersOpen = true;
       bus.emit('shutters:open', {});
-      bus.emit('ui:say', { key: 'story:shutters', seconds: 5 });
     }
     if (this.shuttersOpen) {
       this.morning.intensity = Math.min(900, this.morning.intensity + dt * 200);

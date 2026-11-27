@@ -71,8 +71,19 @@ bus.on('beat', ({ n }) => {
 let houseLights = 0;
 bus.on('game:finale', () => (houseLights = 1));
 
-// Fixed, angled, top down camera.
+// Three views, V cycles them: top down (the default), a low follow cam behind the horse, and the horse's own eyes.
+type View = 'top' | 'follow' | 'eyes';
+const VIEWS: View[] = ['top', 'follow', 'eyes'];
+let view: View = 'top';
+addEventListener('keydown', (e) => {
+  if (e.code !== 'KeyV' || e.repeat || !state.started) return;
+  view = VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length];
+  horse.root.visible = view !== 'eyes';
+  baseFov = view === 'top' ? FOV : 62;
+});
+let baseFov = FOV;
 const camOffset = new THREE.Vector3(0, 24, 14);
+const lookAt = new THREE.Vector3();
 camera.position.copy(horse.root.position).add(camOffset);
 const timer = new THREE.Timer();
 const follow = new THREE.Vector3();
@@ -87,14 +98,29 @@ renderer.setAnimationLoop(() => {
   world.update(dt, camera.position);
   npcs.update(dt);
 
-  follow.copy(horse.root.position).add(camOffset);
-  camera.position.lerp(follow, 1 - Math.exp(-4 * dt));
+  const h = horse.facing;
+  const fwdX = Math.sin(h);
+  const fwdZ = Math.cos(h);
+  if (view === 'top') {
+    follow.copy(horse.root.position).add(camOffset);
+    lookAt.copy(horse.root.position);
+    horse.cameraYaw = Math.PI;
+  } else if (view === 'follow') {
+    follow.set(horse.root.position.x - fwdX * 6, 3.6, horse.root.position.z - fwdZ * 6);
+    lookAt.set(horse.root.position.x + fwdX * 4, 1.2, horse.root.position.z + fwdZ * 4);
+    horse.cameraYaw = Math.atan2(fwdX, fwdZ);
+  } else {
+    follow.set(horse.root.position.x + fwdX * 0.9, 1.75, horse.root.position.z + fwdZ * 0.9);
+    lookAt.set(horse.root.position.x + fwdX * 10, 1.5, horse.root.position.z + fwdZ * 10);
+    horse.cameraYaw = Math.atan2(fwdX, fwdZ);
+  }
+  camera.position.lerp(follow, 1 - Math.exp(-(view === 'eyes' ? 12 : 4) * dt));
   fx.setCameraBase(camera.position);
-  camera.lookAt(horse.root.position);
+  camera.lookAt(lookAt);
 
   // Kick: a small zoom punch on every beat.
   kick = Math.max(0, kick - dt * 6);
-  camera.fov = FOV - kick * kick * 1.2;
+  camera.fov = baseFov - kick * kick * 1.2;
   camera.updateProjectionMatrix();
 
   flash = Math.max(0, flash - dt * 7);

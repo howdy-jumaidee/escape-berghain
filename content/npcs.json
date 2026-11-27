@@ -60,7 +60,7 @@
       "Ticket."
     ],
     "with_ticket": "Nice jacket. For a horse.",
-    "jacket": "Nice jacket. For a horse.",
+    "jacket": "Nice jacket. For a horse. Something jingles in the pocket.",
     "empty": "You already have your jacket."
   },
   "philosopher": {
@@ -128,34 +128,6 @@
     "lines": [
       "Six o'clock. Every Sunday. Mind the floor.",
       "Wet. Floor. Horse."
-    ]
-  },
-  "sink": {
-    "name": "Sink",
-    "lines": [
-      "You wait your turn. Cold water. Clearer."
-    ],
-    "busy": "Someone is washing their whole head in it. Wait a bit."
-  },
-  "shoe_collector": {
-    "name": "Shoe collector",
-    "lines": [
-      "Lost a shoe? I've got forty-one left ones.",
-      "Not yours. You don't wear shoes. You have hooves."
-    ]
-  },
-  "dj_cousin": {
-    "name": "The DJ's cousin",
-    "lines": [
-      "My cousin's playing. Family only.",
-      "Prove it. Stomp on the beat. Eight times."
-    ]
-  },
-  "calm_horse": {
-    "name": "Calm horse",
-    "lines": [
-      "I found out I was a horse years ago. Honestly? Best thing that ever happened.",
-      "Don't fight it too hard. But do go home."
     ]
   }
 }
