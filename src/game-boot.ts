@@ -1,7 +1,7 @@
 // Game boot. Owned by Dee (Opus only). Creates each system and runs the frame loop.
 // Systems never import each other. They talk through the bus; this file only wires and ticks them.
 import * as THREE from 'three';
-import { bus, state, BEAT_SECONDS } from './contracts';
+import { bus, state, BEAT_SECONDS, FLOOR_HEIGHT } from './contracts';
 import { debug } from './data';
 import { buildScene } from './look/scene';
 import { World } from './world';
@@ -22,7 +22,10 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.domElement.style.imageRendering = 'pixelated';
 document.body.appendChild(renderer.domElement);
 // Cutaway: nothing above 9 m is drawn, like a dollhouse with the roof off.
-renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), 9)];
+const cutaway = new THREE.Plane(new THREE.Vector3(0, -1, 0), 9);
+renderer.clippingPlanes = [cutaway];
+// On another floor the cutaway moves up with you.
+bus.on('player:floor', ({ floor }) => (cutaway.constant = floor * FLOOR_HEIGHT + 9));
 
 const { scene, strobes, flicker, lasers, house } = buildScene();
 const camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 0.1, 200);
@@ -106,12 +109,12 @@ renderer.setAnimationLoop(() => {
     lookAt.copy(horse.root.position);
     horse.cameraYaw = Math.PI;
   } else if (view === 'follow') {
-    follow.set(horse.root.position.x - fwdX * 6, 3.6, horse.root.position.z - fwdZ * 6);
-    lookAt.set(horse.root.position.x + fwdX * 4, 1.2, horse.root.position.z + fwdZ * 4);
+    follow.set(horse.root.position.x - fwdX * 6, horse.root.position.y + 3.6, horse.root.position.z - fwdZ * 6);
+    lookAt.set(horse.root.position.x + fwdX * 4, horse.root.position.y + 1.2, horse.root.position.z + fwdZ * 4);
     horse.cameraYaw = Math.atan2(fwdX, fwdZ);
   } else {
-    follow.set(horse.root.position.x + fwdX * 0.9, 1.75, horse.root.position.z + fwdZ * 0.9);
-    lookAt.set(horse.root.position.x + fwdX * 10, 1.5, horse.root.position.z + fwdZ * 10);
+    follow.set(horse.root.position.x + fwdX * 0.9, horse.root.position.y + 1.75, horse.root.position.z + fwdZ * 0.9);
+    lookAt.set(horse.root.position.x + fwdX * 10, horse.root.position.y + 1.5, horse.root.position.z + fwdZ * 10);
     horse.cameraYaw = Math.atan2(fwdX, fwdZ);
   }
   camera.position.lerp(follow, 1 - Math.exp(-(view === 'eyes' ? 12 : 4) * dt));
