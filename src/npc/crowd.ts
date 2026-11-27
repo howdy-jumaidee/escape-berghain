@@ -40,6 +40,11 @@ export class Crowd {
   private hop: number[] = [];
   private horseRank: number[] = [];
   private queue: boolean[] = [];
+  /** Where each dancer started; their spot drifts around it. */
+  private origin: number[] = [];
+  private drift: number[] = [];
+  /** 0 bob, 1 side step, 2 twist, 3 big jumper. */
+  private style: number[] = [];
   private bodies: THREE.InstancedMesh;
   private heads: THREE.InstancedMesh;
   private horseHeads: THREE.InstancedMesh;
@@ -63,7 +68,11 @@ export class Crowd {
     const add = (x: number, z: number, queue = false) => {
       if (avoid.some((a) => (a.x - x) ** 2 + (a.z - z) ** 2 < a.r * a.r)) return;
       this.home.push(x, z);
+      this.origin.push(x, z);
+      this.drift.push(x, z);
       this.pos.push(x, z);
+      const r = rand();
+      this.style.push(queue ? 0 : r < 0.4 ? 0 : r < 0.7 ? 1 : r < 0.9 ? 2 : 3);
       this.vel.push(0, 0);
       this.phase.push(rand() * Math.PI * 2);
       this.yaw.push(rand() * Math.PI * 2);
@@ -140,7 +149,7 @@ export class Crowd {
     this.cheer = Math.max(this.cheer, seconds);
   }
 
-  update(dt: number, beatPulse: number): void {
+  update(dt: number, beatPulse: number, beatN = 0): void {
     this.t += dt;
     this.cheer = Math.max(0, this.cheer - dt);
     const horseShare = 0.1 + (state.trip / TRIP_MAX) * 0.75;
@@ -150,8 +159,20 @@ export class Crowd {
     const d = this.dummy;
     const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
 
+    const side = beatN % 2 === 0 ? 1 : -1;
     for (let i = 0; i < this.n; i++) {
       const ix = i * 2;
+      // Shuffle around: now and then pick a new spot near where they started, and drift there slowly.
+      if (!this.queue[i]) {
+        if (Math.random() < dt * 0.12) {
+          const a = Math.random() * Math.PI * 2;
+          const r = Math.random() * 1.1;
+          this.drift[ix] = this.origin[ix] + Math.cos(a) * r;
+          this.drift[ix + 1] = this.origin[ix + 1] + Math.sin(a) * r;
+        }
+        this.home[ix] += (this.drift[ix] - this.home[ix]) * Math.min(1, dt * 0.4);
+        this.home[ix + 1] += (this.drift[ix + 1] - this.home[ix + 1]) * Math.min(1, dt * 0.4);
+      }
       // Spring back home after being pushed.
       this.vel[ix] += (this.home[ix] - this.pos[ix]) * 4 * dt;
       this.vel[ix + 1] += (this.home[ix + 1] - this.pos[ix + 1]) * 4 * dt;
@@ -174,10 +195,15 @@ export class Crowd {
         yaw = Math.atan2(this.faceTarget.x - x, this.faceTarget.z - z) + Math.sin(this.t * 0.7 + ph) * 0.4;
       }
       if (queue) yaw = -Math.PI / 2 + Math.sin(this.t * 0.3 + ph) * 0.1;
-      const jump = queue ? 0 : pulse * this.hop[i] * frenzy + (this.cheer > 0 ? Math.abs(Math.sin(this.t * 9 + ph)) * 0.3 : 0);
+      const style = this.style[i];
+      const big = style === 3 ? 2.6 : 1;
+      const jump = queue ? 0 : pulse * this.hop[i] * frenzy * big + (this.cheer > 0 ? Math.abs(Math.sin(this.t * 9 + ph)) * 0.3 : 0);
       const sway = Math.sin(this.t * 2.2 + ph) * (queue ? 0.03 : 0.09) * frenzy;
+      // Side steppers move left and right with the beat; twisters swing their hips.
+      const stepOut = style === 1 ? side * 0.16 * (1 - pulse * 0.5) : 0;
+      if (style === 2) yaw += Math.sin(beatN * Math.PI * 0.5 + ph) * 0.5;
 
-      d.position.set(x, jump, z);
+      d.position.set(x + Math.cos(yaw) * stepOut, jump, z - Math.sin(yaw) * stepOut);
       d.rotation.set(0, yaw, sway);
       d.updateMatrix();
       this.bodies.setMatrixAt(i, d.matrix);

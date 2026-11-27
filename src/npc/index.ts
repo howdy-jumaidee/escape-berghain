@@ -35,9 +35,36 @@ interface Npc {
   id: NpcId;
   objects: THREE.Object3D[];
   holders: THREE.Object3D[];
+  /** Where each figure started, where it's drifting to, and when it picks a new spot. */
+  homes: THREE.Vector3[];
+  targets: THREE.Vector3[];
+  retarget: number[];
   pos: THREE.Vector3;
   line: number;
 }
+
+/** How each regular dances: hop height, side step, twist, and how far they wander from their spot (metres). */
+interface DanceStyle {
+  hop: number;
+  step: number;
+  twist: number;
+  wander: number;
+}
+const DEFAULT_STYLE: DanceStyle = { hop: 0.12, step: 0.12, twist: 0.3, wander: 1.4 };
+const STYLES: Partial<Record<NpcId, DanceStyle>> = {
+  friday_guy: { hop: 0.3, step: 0.2, twist: 0.9, wander: 2.2 },
+  patrick: { hop: 0.05, step: 0.3, twist: 0.15, wander: 1.6 },
+  tourists: { hop: 0.18, step: 0.05, twist: 0.2, wander: 1.2 },
+  philosopher: { hop: 0.03, step: 0.08, twist: 0.4, wander: 1 },
+  riddle_horse: { hop: 0.04, step: 0.05, twist: 0.25, wander: 0.5 },
+  ice_cream_horse: { hop: 0.06, step: 0.1, twist: 0.2, wander: 0.4 },
+  // Working: they stay put and just nod along.
+  coat_check: { hop: 0.03, step: 0, twist: 0.1, wander: 0 },
+  bouncer: { hop: 0.02, step: 0, twist: 0, wander: 0 },
+  cleaner: { hop: 0.02, step: 0, twist: 0.15, wander: 0 },
+};
+const WANDER_SPEED = 0.6;
+const STOP_FOR_PLAYER = 3.5;
 
 export class Npcs {
   readonly root = new THREE.Group();
@@ -157,7 +184,7 @@ export class Npcs {
     this.checkSelfie();
     this.mop(dt);
     this.beatPulse = Math.max(0, this.beatPulse - dt * 4);
-    this.crowd.update(dt, this.beatPulse);
+    this.crowd.update(dt, this.beatPulse, this.beatN);
     const bounce = this.beatPulse * this.beatPulse;
     for (const npc of this.npcs) {
       npc.objects.forEach((o, i) => {
@@ -174,11 +201,52 @@ export class Npcs {
           o.rotation.y = Math.atan2(npc.pos.x - npc.holders[i].position.x, npc.pos.z - npc.holders[i].position.z);
           o.rotation.z = Math.sin(this.t * 1.1) * 0.08;
         } else {
-          o.position.y = bounce * 0.05 * ((i % 2) + 1);
-          o.lookAt(this.player.x, o.position.y, this.player.z);
+          this.danceAndWander(npc, i, o, bounce, dt);
         }
       });
+      // Keep the talk spot on the figures as they move.
+      if (npc.id !== 'cleaner' && npc.holders.length) {
+        npc.pos.set(0, 0, 0);
+        npc.holders.forEach((h) => npc.pos.add(h.position));
+        npc.pos.multiplyScalar(1 / npc.holders.length);
+      }
     }
+  }
+
+  /** Regulars dance on the beat and drift around their spot. Walk up to one and they stop and look at you. */
+  private danceAndWander(npc: Npc, i: number, o: THREE.Object3D, bounce: number, dt: number): void {
+    const style = STYLES[npc.id] ?? DEFAULT_STYLE;
+    const h = npc.holders[i];
+    const toPlayer = Math.hypot(this.player.x - h.position.x, this.player.z - h.position.z);
+    const attentive = toPlayer < STOP_FOR_PLAYER;
+    let yaw = o.rotation.y;
+
+    if (style.wander > 0 && !attentive && state.started) {
+      npc.retarget[i] -= dt;
+      const tgt = npc.targets[i];
+      const dx = tgt.x - h.position.x;
+      const dz = tgt.z - h.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.1 || npc.retarget[i] <= 0) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * style.wander;
+        tgt.set(npc.homes[i].x + Math.cos(a) * r, 0, npc.homes[i].z + Math.sin(a) * r);
+        npc.retarget[i] = 3 + Math.random() * 5;
+      } else {
+        const step = Math.min(d, WANDER_SPEED * dt);
+        h.position.x += (dx / d) * step;
+        h.position.z += (dz / d) * step;
+        yaw = Math.atan2(dx, dz);
+      }
+    }
+    if (attentive) yaw = Math.atan2(this.player.x - h.position.x, this.player.z - h.position.z);
+
+    // Dance: hop on the beat, step side to side every other beat, a twist.
+    const side = this.beatN % 2 === 0 ? 1 : -1;
+    o.position.y = bounce * style.hop * (attentive ? 0.4 : 1);
+    o.position.x = Math.cos(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
+    o.position.z = -Math.sin(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
+    o.rotation.y = yaw + (attentive ? 0 : Math.sin(this.beatN * Math.PI * 0.5 + i) * style.twist);
   }
 
   private spawn(id: NpcId, col: number, row: number): void {
@@ -206,7 +274,16 @@ export class Npcs {
       objects.push(o);
       holders.push(holder);
     }
-    this.npcs.push({ id, objects, holders, pos, line: 0 });
+    this.npcs.push({
+      id,
+      objects,
+      holders,
+      homes: holders.map((h) => h.position.clone()),
+      targets: holders.map((h) => h.position.clone()),
+      retarget: holders.map(() => Math.random() * 4),
+      pos,
+      line: 0,
+    });
   }
 
   private talk(at: THREE.Vector3): void {
