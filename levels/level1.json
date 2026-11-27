@@ -44,11 +44,22 @@
     { "id": "philosopher", "cell": [12, 6] },
     { "id": "riddle_horse", "cell": [14, 8] },
     { "id": "ice_cream_horse", "cell": [4, 10] },
-    { "id": "bouncer", "cell": [1, 4] }
+    { "id": "bouncer", "cell": [1, 4] },
+    { "id": "leather_choir", "cell": [9, 5] },
+    { "id": "cleaner", "cell": [13, 2] },
+    { "id": "sink", "cell": [15, 7] },
+    { "id": "shoe_collector", "cell": [10, 4] },
+    { "id": "dj_cousin", "cell": [6, 1] },
+    { "id": "calm_horse", "cell": [8, 10] }
   ],
   "markers": {
     "mirror": [3, 10],
     "dj_booth": [5, 1]
+  },
+  "crowd": {
+    "main_hall": 3.2,
+    "panorama_bar": 1.6,
+    "bar_cloakroom": 0.7
   },
   "grid": [
     "#################",
