@@ -21,7 +21,7 @@ const NO_DANCE = new Set([
   'fragment_1', 'fragment_3', 'mate',
 ]);
 /** Partly solid cells: keep this far from the centre. */
-const KEEP_CLEAR: Record<string, number> = { hall_pillar: 1.15, hall_speaker: 1.35 };
+const KEEP_CLEAR: Record<string, number> = { hall_pillar: 1.7, hall_speaker: 1.9 };
 
 export interface Spot {
   x: number;

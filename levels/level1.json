@@ -60,9 +60,9 @@
     "dj_booth": [5, 1]
   },
   "crowd": {
-    "main_hall": 3.2,
-    "panorama_bar": 1.6,
-    "bar_cloakroom": 0.7
+    "main_hall": 6,
+    "panorama_bar": 3,
+    "bar_cloakroom": 1.4
   },
   "grid": [
     "#################",

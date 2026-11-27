@@ -22,13 +22,13 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.domElement.style.imageRendering = 'pixelated';
 document.body.appendChild(renderer.domElement);
 // Cutaway: nothing above 9 m is drawn, like a dollhouse with the roof off.
-const cutaway = new THREE.Plane(new THREE.Vector3(0, -1, 0), 9);
+// In the top-down view nothing above 12 m is drawn (a dollhouse with the roof off). The low views see all the way up.
+const CUTAWAY = 12;
+const cutaway = new THREE.Plane(new THREE.Vector3(0, -1, 0), CUTAWAY);
 renderer.clippingPlanes = [cutaway];
-// On another floor the cutaway moves up with you.
-bus.on('player:floor', ({ floor }) => (cutaway.constant = floor * FLOOR_HEIGHT + 9));
 
 const { scene, strobes, flicker, lasers, house } = buildScene();
-const camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 0.1, 300);
 
 const world = new World();
 scene.add(world.root);
@@ -85,7 +85,7 @@ addEventListener('keydown', (e) => {
   baseFov = view === 'top' ? FOV : 62;
 });
 let baseFov = FOV;
-const camOffset = new THREE.Vector3(0, 24, 14);
+const camOffset = new THREE.Vector3(0, 28, 16);
 const lookAt = new THREE.Vector3();
 
 // Face to face: walk into a special NPC and the camera is pulled into your eyes, staring at their face.
@@ -135,6 +135,7 @@ renderer.setAnimationLoop(() => {
     lookAt.set(horse.root.position.x + fwdX * 10, horse.root.position.y + 1.5, horse.root.position.z + fwdZ * 10);
     horse.cameraYaw = Math.atan2(fwdX, fwdZ);
   }
+  cutaway.constant = state.floor * FLOOR_HEIGHT + (view === 'top' && !focus ? CUTAWAY : 1000);
   let focusFov = 0;
   let roll = 0;
   if (focus) {

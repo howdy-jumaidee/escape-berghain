@@ -16,7 +16,7 @@ addEventListener('blur', () => keys.clear());
 const pressed = new Set<string>();
 
 const RADIUS = 0.45;
-const SPEED = 5;
+const SPEED = 6;
 const LEG_LENGTH = 0.8;
 /** Time in the club until the steering is fully drunk (trip makes it worse on top). */
 const SOBER_UP_SECONDS = 90;

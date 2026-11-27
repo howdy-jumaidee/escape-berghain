@@ -74,10 +74,12 @@ export const TRIP_MAX = 100;
 export const BPM = 132;
 export const BEAT_SECONDS = 60 / BPM;
 
-/** Level grid cell size in metres. */
-export const CELL = 4;
+/** Level grid cell size in metres. Big, like the real hall. */
+export const CELL = 6;
 /** Height of one floor in metres. Floor n stands at y = n * FLOOR_HEIGHT. */
-export const FLOOR_HEIGHT = 7;
+/** The main hall ceiling. The real one is about 18 m. */
+export const CEILING = 19;
+export const FLOOR_HEIGHT = 9;
 
 /** World position (metres) of the centre of grid cell [col, row]. Row grows towards +z. */
 export function cellCenter(col: number, row: number): { x: number; z: number } {

@@ -79,8 +79,8 @@ export class World {
 
     // Morning light for when the shutters go up. Created now at zero, so the light count never changes.
     this.morning = new THREE.SpotLight(0xffd9a0, 0, 40, Math.PI / 4, 0.8);
-    this.morning.position.set(20, 6, 54);
-    this.morning.target.position.set(20, 0, 40);
+    this.morning.position.set(5 * CELL, 8, 13.5 * CELL);
+    this.morning.target.position.set(5 * CELL, 0, 10 * CELL);
     this.root.add(this.morning, this.morning.target);
 
     // DJ booth screen with the track names. Unreadable until you find your glasses.
