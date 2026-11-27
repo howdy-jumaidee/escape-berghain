@@ -13,7 +13,9 @@ document.body.appendChild(renderer.domElement);
 const { scene, strobes } = buildScene();
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
 
-const horse = new Horse();
+const horse = new Horse(() => {});
+// Until the UI lands (click to start), start right away.
+state.started = true;
 scene.add(horse.root);
 
 const fx = new TripFx(renderer, scene, camera);
@@ -39,7 +41,7 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(timer.getDelta(), 0.05);
   t += dt;
 
-  horse.update(dt, 1 + state.trip / 50);
+  horse.update(dt);
 
   const target = horse.root.position.clone().add(camOffset);
   camera.position.lerp(target, 1 - Math.exp(-4 * dt));
