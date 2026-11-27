@@ -121,6 +121,22 @@ export interface GameEvents {
 
   /** Show a line of text from content/. */
   'ui:say': { key: TextKey; seconds?: number };
+
+  /** The intro horse hits the dance floor. Music opens up, the game begins. */
+  'intro:land': Record<string, never>;
+  /** Q: look down at yourself. With glasses on you can read the wrist stamp. */
+  'player:look': Record<string, never>;
+  /** Coat check hands over the jacket. The UI runs the shake (mash Space) and answers with jacket:shaken. */
+  'jacket:start': Record<string, never>;
+  'jacket:shaken': Record<string, never>;
+  /** The tourists' camera flash. Security comes to look. */
+  'selfie:flash': { x: number; z: number };
+  /** How close security is to catching you, 0 to 1. 0 when nobody sees you. */
+  'player:seen': { amount: number };
+  /** The bouncer turns you around at the front door. */
+  'door:refused': Record<string, never>;
+  /** Morning: Panorama Bar shutters open. */
+  'shutters:open': Record<string, never>;
 }
 
 type Handler<T> = (payload: T) => void;
