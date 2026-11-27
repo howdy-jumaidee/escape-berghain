@@ -1,0 +1,185 @@
+// World: builds a level from grid JSON and answers collision queries. Issue #9.
+import * as THREE from 'three';
+import { CELL, cellCenter, type NpcId, type ZoneId } from '../contracts';
+import { placeModel } from '../look/models';
+
+export interface LevelData {
+  cellSize: number;
+  legend: Record<string, string>;
+  zones: Record<ZoneId, [[number, number], [number, number]]>;
+  spawns: Record<ZoneId, [number, number]>;
+  npcs: { id: NpcId; cell: [number, number] }[];
+  markers: Record<string, [number, number]>;
+  grid: string[];
+}
+
+/** A solid box on the floor plan, in world metres. */
+export interface Collider {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  /** Turned off by gates when they open. */
+  enabled: boolean;
+}
+
+/** Greybox size per module, metres. Emma's .glb of the same name replaces the box. */
+interface ModuleSpec {
+  size: { x: number; y: number; z: number };
+  /** Footprint that blocks the horse. Omit for walkable modules. */
+  solid?: { x: number; z: number };
+  /** Offset of the model inside the cell, metres. */
+  offset?: { x: number; z: number };
+  material: THREE.Material;
+  /** Tall things fade out when they block the camera's view of the horse. */
+  tall?: boolean;
+}
+
+const concrete = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.95 });
+const darkConcrete = new THREE.MeshStandardMaterial({ color: 0x262626, roughness: 1 });
+const steel = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.5, metalness: 0.7 });
+const wood = new THREE.MeshStandardMaterial({ color: 0x2b1d14, roughness: 0.8 });
+const tile = new THREE.MeshStandardMaterial({ color: 0x4a4f4a, roughness: 0.6 });
+const grate = new THREE.MeshStandardMaterial({ color: 0x202022, roughness: 0.7, metalness: 0.5 });
+const door = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 0.6, metalness: 0.6 });
+
+const WALL_HEIGHT = 6;
+
+const MODULES: Record<string, ModuleSpec> = {
+  hall_wall: { size: { x: CELL, y: WALL_HEIGHT, z: CELL }, solid: { x: CELL, z: CELL }, material: darkConcrete, tall: true },
+  hall_pillar: { size: { x: 1.2, y: 18, z: 1.2 }, solid: { x: 1.2, z: 1.2 }, material: concrete, tall: true },
+  hall_speaker: { size: { x: 1.5, y: 5, z: 1.5 }, solid: { x: 1.5, z: 1.5 }, material: steel, tall: true },
+  hall_dj_booth: { size: { x: 3, y: 1.2, z: 2 }, solid: { x: 3, z: 2 }, material: steel },
+  bar_counter: { size: { x: 4, y: 1.1, z: 1.2 }, solid: { x: 4, z: 1.2 }, material: wood },
+  cloakroom_counter: { size: { x: 4, y: 1.1, z: 1.2 }, solid: { x: 4, z: 1.2 }, material: wood },
+  toilet_cubicle: { size: { x: 4, y: 2.4, z: 2 }, solid: { x: 4, z: 2 }, offset: { x: 0, z: -1 }, material: tile, tall: true },
+  panorama_ice_cream: { size: { x: 3, y: 1.1, z: 1.2 }, solid: { x: 3, z: 1.2 }, material: wood },
+  staircase_up: { size: { x: 3, y: 0.25, z: 4 }, material: grate },
+  exit_door: { size: { x: 2, y: 2.6, z: 0.2 }, offset: { x: 0, z: CELL / 2 - 0.1 }, material: door },
+  gate_shortcut: { size: { x: CELL, y: 3, z: 0.3 }, solid: { x: CELL, z: 0.6 }, material: steel, tall: true },
+};
+
+/** Grid characters that are just markers on an ordinary floor cell. */
+const FLOOR_MARKERS = new Set(['hall_floor', 'player_start', 'fragment_1', 'fragment_3', 'mate']);
+
+export interface BuiltLevel {
+  root: THREE.Group;
+  colliders: Collider[];
+  /** Objects that fade when they hide the horse. */
+  tall: THREE.Object3D[];
+  /** Cells by legend name, e.g. cells.get('fragment_1') = [[5, 3]]. */
+  cells: Map<string, [number, number][]>;
+  /** Collider and model for each gate, keyed by legend name. */
+  gates: Map<string, { collider: Collider; object: THREE.Object3D }>;
+  start: { x: number; z: number };
+  zoneAt(x: number, z: number): ZoneId | null;
+  spawn(zone: ZoneId): { x: number; z: number };
+  data: LevelData;
+}
+
+export function buildLevel(data: LevelData): BuiltLevel {
+  const root = new THREE.Group();
+  root.name = 'level';
+  const colliders: Collider[] = [];
+  const tall: THREE.Object3D[] = [];
+  const cells = new Map<string, [number, number][]>();
+  const gates = new Map<string, { collider: Collider; object: THREE.Object3D }>();
+  let start = cellCenter(1, 1);
+
+  data.grid.forEach((line, row) => {
+    [...line].forEach((ch, col) => {
+      const name = data.legend[ch];
+      if (!name) return;
+      const list = cells.get(name) ?? [];
+      list.push([col, row]);
+      cells.set(name, list);
+
+      const c = cellCenter(col, row);
+      if (name === 'player_start') start = c;
+
+      // Every non wall cell gets a floor tile.
+      if (name !== 'hall_wall') {
+        const floor = placeModel('hall_floor', { x: CELL, y: 0.05, z: CELL }, concrete);
+        floor.position.set(c.x, -0.05, c.z);
+        root.add(floor);
+      }
+      if (FLOOR_MARKERS.has(name)) return;
+
+      const spec = MODULES[name];
+      if (!spec) return;
+      const obj = placeModel(name, spec.size, spec.material);
+      const ox = spec.offset?.x ?? 0;
+      const oz = spec.offset?.z ?? 0;
+      obj.position.set(c.x + ox, 0, c.z + oz);
+      root.add(obj);
+      if (spec.tall) tall.push(obj);
+
+      if (spec.solid) {
+        const col: Collider = {
+          minX: c.x + ox - spec.solid.x / 2,
+          maxX: c.x + ox + spec.solid.x / 2,
+          minZ: c.z + oz - spec.solid.z / 2,
+          maxZ: c.z + oz + spec.solid.z / 2,
+          enabled: true,
+        };
+        colliders.push(col);
+        if (name.startsWith('gate_')) gates.set(name, { collider: col, object: obj });
+      }
+    });
+  });
+
+  // The floor under the walls, so the fog has something to sit on at the edges.
+  const rows = data.grid.length;
+  const cols = Math.max(...data.grid.map((l) => l.length));
+  const base = new THREE.Mesh(new THREE.PlaneGeometry(cols * CELL + 40, rows * CELL + 40), darkConcrete);
+  base.rotation.x = -Math.PI / 2;
+  base.position.set((cols * CELL) / 2, -0.06, (rows * CELL) / 2);
+  root.add(base);
+
+  function zoneAt(x: number, z: number): ZoneId | null {
+    const col = Math.floor(x / CELL);
+    const row = Math.floor(z / CELL);
+    for (const [zone, [[c0, r0], [c1, r1]]] of Object.entries(data.zones) as [ZoneId, [[number, number], [number, number]]][]) {
+      if (col >= c0 && col <= c1 && row >= r0 && row <= r1) return zone;
+    }
+    return null;
+  }
+
+  function spawn(zone: ZoneId): { x: number; z: number } {
+    const cell = data.spawns[zone];
+    return cell ? cellCenter(cell[0], cell[1]) : start;
+  }
+
+  return { root, colliders, tall, cells, gates, start, zoneAt, spawn, data };
+}
+
+/** Push a circle of `radius` at `pos` out of every enabled collider. Mutates pos. */
+export function resolveCircle(colliders: Collider[], pos: THREE.Vector3, radius: number): void {
+  for (let pass = 0; pass < 2; pass++) {
+    for (const c of colliders) {
+      if (!c.enabled) continue;
+      const nx = Math.max(c.minX, Math.min(pos.x, c.maxX));
+      const nz = Math.max(c.minZ, Math.min(pos.z, c.maxZ));
+      const dx = pos.x - nx;
+      const dz = pos.z - nz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= radius * radius) continue;
+      if (d2 > 1e-8) {
+        const d = Math.sqrt(d2);
+        pos.x = nx + (dx / d) * radius;
+        pos.z = nz + (dz / d) * radius;
+      } else {
+        // Centre is inside the box: push out along the shortest axis.
+        const left = pos.x - c.minX;
+        const right = c.maxX - pos.x;
+        const up = pos.z - c.minZ;
+        const down = c.maxZ - pos.z;
+        const m = Math.min(left, right, up, down);
+        if (m === left) pos.x = c.minX - radius;
+        else if (m === right) pos.x = c.maxX + radius;
+        else if (m === up) pos.z = c.minZ - radius;
+        else pos.z = c.maxZ + radius;
+      }
+    }
+  }
+}

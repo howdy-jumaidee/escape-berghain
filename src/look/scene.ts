@@ -1,56 +1,67 @@
-// Look: lights, fog, greybox hall. Owned by Emma. Replace boxes with models from public/models/.
+// Look: lights, fog and haze. Owned by Emma. The level geometry is built by src/world/ from levels/level1.json.
+// World coordinates: cell [col, row] centre is at x = col*4+2, z = row*4+2. Main hall is x 4..44, z 4..36.
+// The lights below are placeholders at the right spots so every zone reads. Emma: retune freely (issue #5).
 import * as THREE from 'three';
-import { placeModel } from './models';
 
-export function buildScene(): { scene: THREE.Scene; strobes: THREE.PointLight[] } {
+export interface Look {
+  scene: THREE.Scene;
+  /** Flash on the beat. */
+  strobes: THREE.PointLight[];
+  /** Toilet corridor tube light. Flickers. */
+  flicker: THREE.PointLight;
+}
+
+export function buildScene(): Look {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050505);
-  scene.fog = new THREE.FogExp2(0x0a0610, 0.035);
+  scene.fog = new THREE.FogExp2(0x0a0610, 0.02);
 
-  scene.add(new THREE.AmbientLight(0x221a2a, 0.6));
+  scene.add(new THREE.AmbientLight(0x2a2035, 1.6));
+  scene.add(new THREE.HemisphereLight(0x2a2245, 0x080808, 1.4));
 
-  const work = new THREE.SpotLight(0xdfe8ff, 40, 40, Math.PI / 7, 0.6);
-  work.position.set(-8, 16, -6);
-  work.target.position.set(-6, 0, -6);
+  // One cold white work light cutting through the haze over the dance floor.
+  const work = new THREE.SpotLight(0xdfe8ff, 900, 50, Math.PI / 7, 0.6);
+  work.position.set(10, 17, 30);
+  work.target.position.set(13, 0, 27);
   scene.add(work, work.target);
 
-  const concrete = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.95 });
-  const steel = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.5, metalness: 0.7 });
-
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), concrete);
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
-
-  // Pillars, 18 m like the real hall.
-  for (const x of [-12, -4, 4, 12]) {
-    for (const z of [-10, 0, 10]) {
-      const p = placeModel('hall_pillar', { x: 1.2, y: 18, z: 1.2 }, concrete);
-      p.position.set(x, 0, z);
-      scene.add(p);
-    }
-  }
-
-  // Speaker towers.
-  for (const x of [-7, 7]) {
-    const s = placeModel('hall_speaker', { x: 1.5, y: 5, z: 1.5 }, steel);
-    s.position.set(x, 0, -14);
-    scene.add(s);
-  }
-
-  // Back exit: green sign.
-  const exit = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 0.5, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0x22ff66 }),
-  );
-  exit.position.set(0, 3.5, 19.9);
-  scene.add(exit);
-
+  // Red and purple strobes near the DJ booth.
   const strobes = [0xff1744, 0x9c27ff].map((c, i) => {
-    const l = new THREE.PointLight(c, 30, 30);
-    l.position.set(i === 0 ? -6 : 6, 6, -8);
+    const l = new THREE.PointLight(c, 300, 40);
+    l.position.set(i === 0 ? 15 : 31, 7, 12);
     scene.add(l);
     return l;
   });
 
-  return { scene, strobes };
+  // Bar: dirty amber.
+  const bar = new THREE.PointLight(0xff8a3c, 160, 20);
+  bar.position.set(54, 4, 9);
+  scene.add(bar);
+
+  // Toilet corridor: sick green tube light.
+  const flicker = new THREE.PointLight(0xc8ffd8, 120, 18);
+  flicker.position.set(54, 3, 28);
+  scene.add(flicker);
+
+  // Panorama Bar: warmer, pinker.
+  const pano = new THREE.PointLight(0xff4fa0, 260, 30);
+  pano.position.set(22, 5, 43);
+  scene.add(pano);
+
+  // Back exit: green exit sign, morning leaking under the door.
+  const exit = new THREE.PointLight(0x22ff66, 120, 16);
+  exit.position.set(62, 3, 46);
+  scene.add(exit);
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.08), new THREE.MeshBasicMaterial({ color: 0x22ff66 }));
+  sign.position.set(62, 3.2, 47.8);
+  scene.add(sign);
+  const morning = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 0.6),
+    new THREE.MeshBasicMaterial({ color: 0xffe9c0, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
+  morning.rotation.x = -Math.PI / 2;
+  morning.position.set(62, 0.02, 47.4);
+  scene.add(morning);
+
+  return { scene, strobes, flicker };
 }
