@@ -9,6 +9,10 @@ export interface Look {
   strobes: THREE.PointLight[];
   /** Toilet corridor tube light. Flickers. */
   flicker: THREE.PointLight;
+  /** Lasers from the DJ booth. game-boot sweeps them on the beat. */
+  lasers: THREE.Group;
+  /** House lights: off all night, on at closing time. */
+  house: THREE.HemisphereLight;
 }
 
 export function buildScene(): Look {
@@ -63,5 +67,39 @@ export function buildScene(): Look {
   morning.position.set(62, 0.02, 47.4);
   scene.add(morning);
 
-  return { scene, strobes, flicker };
+  // Light shafts from the high windows, cutting down through the haze.
+  const shaftMat = new THREE.MeshBasicMaterial({
+    color: 0xcfd8ff,
+    transparent: true,
+    opacity: 0.045,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  for (const [x, z] of [[9, 8], [19, 6], [29, 8], [39, 6]]) {
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 2.4, 12, 16, 1, true), shaftMat);
+    shaft.position.set(x, 4.5, z + 6);
+    shaft.rotation.x = 0.55;
+    scene.add(shaft);
+  }
+
+  // Lasers fanning out from the DJ booth.
+  const lasers = new THREE.Group();
+  lasers.position.set(22, 3.2, 7);
+  const laserMats = [0x22ff66, 0xff1744].map(
+    (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
+  for (let i = 0; i < 8; i++) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 34), laserMats[i % 2]);
+    beam.geometry.translate(0, 0, 17);
+    beam.rotation.y = (i / 7 - 0.5) * 1.6;
+    beam.rotation.x = 0.1;
+    lasers.add(beam);
+  }
+  scene.add(lasers);
+
+  const house = new THREE.HemisphereLight(0xfff4e0, 0x403830, 0);
+  scene.add(house);
+
+  return { scene, strobes, flicker, lasers, house };
 }
