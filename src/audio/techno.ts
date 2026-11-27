@@ -459,6 +459,43 @@ export class Techno {
     [1318.5, 1568, 1975.5, 2637].forEach((f, i) => this.tone(t + i * 0.05, f, f * 1.01, 0.8, 0.05, 'sine', 0.7));
   }
 
+  /** The horse lands on the dance floor. */
+  sfxThud(): void {
+    const t = this.ctx.currentTime;
+    this.tone(t, 90, 32, 0.9, 0.6, 'sine', 0.4);
+    this.noiseHit(t, 0.25, 'lowpass', 500, 0.5, this.sfx, 0.5);
+  }
+
+  /** Animal control. */
+  sfxSiren(): void {
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 4; i++) this.tone(t + i * 0.5, i % 2 ? 660 : 880, i % 2 ? 880 : 660, 0.48, 0.07, 'square');
+  }
+
+  /** Tourist camera: shutter click and flash whine. */
+  sfxCamera(): void {
+    const t = this.ctx.currentTime;
+    this.tone(t, 3000, 6000, 0.25, 0.03, 'sine');
+    this.noiseHit(t + 0.25, 0.03, 'highpass', 3000, 0.4, this.sfx);
+    this.noiseHit(t + 0.3, 0.04, 'bandpass', 1500, 0.3, this.sfx);
+  }
+
+  /** Keys falling out of a jacket. */
+  sfxKeys(): void {
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 6; i++) {
+      const f = 2400 + Math.random() * 2400;
+      this.tone(t + i * 0.06 + Math.random() * 0.03, f, f * 0.98, 0.25, 0.06, 'triangle', 0.3);
+    }
+  }
+
+  /** The crowd turns to the new resident. */
+  sfxCrowd(): void {
+    const t = this.ctx.currentTime;
+    this.noiseHit(t, 2.5, 'bandpass', 700, 0.25, this.sfx, 0.8);
+    this.tone(t, 55, 40, 2, 0.4, 'sine', 0.5);
+  }
+
   private tone(t: number, f0: number, f1: number, len: number, vol: number, type: OscillatorType, verb = 0): void {
     const ctx = this.ctx;
     const o = ctx.createOscillator();
