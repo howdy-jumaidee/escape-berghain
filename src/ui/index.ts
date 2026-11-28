@@ -1,7 +1,7 @@
 // UI: title, intro, captions, dialogue, riddle, clues, endings. Issues #17 and #18.
 // Minimal: no HUD. The blur is your trip meter, the spirit guide's solidity is your memory.
 // Text only appears when you touch something: an object, a clue, a special NPC. Every word comes from content/.
-import { bus, state, lock, unlock, PASS_OUTS_TO_HERD, type EndingId } from '../contracts';
+import { bus, state, lock, unlock, PASS_OUTS_TO_HERD, type EndingId, type NpcId } from '../contracts';
 import { debug } from '../data';
 import { css } from './style';
 import { t, list, lookup } from './text';
@@ -68,7 +68,7 @@ export function startUi(): void {
   // Riddle & talk-back choices: keys 1 to 3 or click.
   let riddleAnswers: { text: string; correct: boolean }[] = [];
   let activeChoices: { id: string; textKey: string }[] = [];
-  let activeChoiceNpc = '';
+  let activeChoiceNpc: NpcId | '' = '';
   const resetConversationUi = () => {
     focused = false;
     clearTimeout(talkTimer);
@@ -115,7 +115,7 @@ export function startUi(): void {
     activeChoiceNpc = '';
     unlock('choice');
     answers.replaceChildren();
-    window.dispatchEvent(new CustomEvent('eb:choice-picked', { detail: { npc, choiceId: c.id, index: i } }));
+    if (npc) bus.emit('npc:choice-picked', { npc, choiceId: c.id, index: i });
   };
   bus.on('riddle:show', () => {
     clearTimeout(talkTimer);
@@ -137,9 +137,8 @@ export function startUi(): void {
     );
     talk.classList.add('on');
   });
-  window.addEventListener('eb:choices', (ev) => {
-    const detail = (ev as CustomEvent<{ npc: string; promptKey?: string; choices: { id: string; textKey: string }[] }>).detail;
-    if (!detail || state.ending || riddleOpen) {
+  bus.on('npc:choices', (detail) => {
+    if (state.ending || riddleOpen) {
       unlock('choice');
       return;
     }
@@ -149,7 +148,6 @@ export function startUi(): void {
     activeChoices = detail.choices ?? [];
     lock('choice');
     talkName.textContent = t(`npcs:${detail.npc}.name`);
-    if (detail.promptKey) talkText.textContent = t(detail.promptKey);
     answers.replaceChildren(
       ...activeChoices.map((c, i) => {
         const b = el('button', '');
