@@ -100,6 +100,7 @@ const REARM_RANGE = 4.5;
 
 interface Convo {
   npc: Npc;
+  holderIndex: number;
   keys: string[];
   i: number;
   after?: () => void;
@@ -120,22 +121,19 @@ interface LimbRig {
 
 /** Find the limb pivots once the glTF has replaced the grey box. Missing parts are skipped. */
 function limbRig(root: THREE.Object3D): LimbRig | null {
-  const cached = root.userData.rig as LimbRig | undefined;
-  if (cached) return cached;
-  if (root.userData.rigMiss) return null;
+  const modelNode = root.children[0]?.children[0] ?? root.children[0];
+  if (!modelNode) return null;
+  if (root.userData.rigSource === modelNode) return (root.userData.rig as LimbRig | null) ?? null;
   const rig: LimbRig = { swing: 0, vel: 0 };
   root.traverse((c) => {
     if (c.name === 'legL' || c.name === 'legR' || c.name === 'armL' || c.name === 'armR' || c.name === 'head') {
       rig[c.name] = c;
     }
   });
-  if (!rig.legL && !rig.armL && !rig.head) {
-    root.userData.rigTries = ((root.userData.rigTries as number) ?? 0) + 1;
-    if ((root.userData.rigTries as number) > 180) root.userData.rigMiss = true;
-    return null;
-  }
-  root.userData.rig = rig;
-  return rig;
+  root.userData.rigSource = modelNode;
+  const found = !!(rig.legL || rig.legR || rig.armL || rig.armR || rig.head);
+  root.userData.rig = found ? rig : null;
+  return found ? rig : null;
 }
 
 export class Npcs {
@@ -146,12 +144,14 @@ export class Npcs {
   private talking: Npc | null = null;
   private riddleSolved = false;
   private riddleMateSpawned = false;
+  private riddleTimer = 0;
   private beatN = 0;
   private beatPulse = 0;
   private herd = new BeatCounter();
   private herdSynced = false;
   private herdHintAt = -1e9;
   private herdMissAt = -1e9;
+  private unicornAt = -1e9;
   private selfieTaken = false;
   private crowdLooksAt: THREE.Vector3 | null = null;
   private guide: THREE.Group;
@@ -161,10 +161,15 @@ export class Npcs {
   private barkAt = 0;
   private choirNear = false;
   private mopTimer = MOP_EVERY;
+  private cleanerPhase = 0;
   private t = 0;
   private puddleGeo = new THREE.CircleGeometry(PUDDLE_RADIUS, 24);
   private puddles: { mesh: THREE.Mesh; left: number }[] = [];
   private convo: Convo | null = null;
+  /** Currently focused NPC figure (covers active convo plus keepFocus riddle state until npc:unfocus). */
+  private focused: { npc: Npc; holderIndex: number } | null = null;
+  /** Optional world XZ target for the focused NPC to face (e.g. when focus camera dodges a wall). */
+  private focusLookTarget: { x: number; z: number } | null = null;
   /** Who has already had their say and is waiting for you to walk away first. */
   private disarmed = new Set<Npc>();
   /** Has this NPC done their full conversation once? After that, they just say one line. */
@@ -194,7 +199,7 @@ export class Npcs {
 
     bus.on('player:moved', ({ x, z }) => {
       this.player.set(x, 0, z);
-      if (this.talking && this.talking.pos.distanceTo(this.player) > WALK_AWAY) {
+      if (this.talking && (state.floor !== 0 || this.talking.pos.distanceTo(this.player) > WALK_AWAY)) {
         this.talking = null;
         bus.emit('npc:silent', {});
       }
@@ -219,6 +224,26 @@ export class Npcs {
       this.herd.beat(n, time);
     });
     bus.on('riddle:answered', ({ correct }) => this.riddleAnswered(correct));
+    bus.on('npc:unfocus', () => {
+      this.focused = null;
+      this.focusLookTarget = null;
+    });
+    const abortConvo = () => {
+      clearTimeout(this.riddleTimer);
+      this.riddleTimer = 0;
+      if (this.convo) {
+        this.endConvo(false);
+      } else if (this.focused) {
+        this.focused = null;
+        this.focusLookTarget = null;
+        bus.emit('npc:unfocus', {});
+        bus.emit('npc:silent', {});
+      }
+      unlock('talk');
+    };
+    bus.on('player:caught', abortConvo);
+    bus.on('trip:max', abortConvo);
+    bus.on('ending:show', abortConvo);
     bus.on('door:refused', () => bus.emit('npc:talk', { npc: 'bouncer', lineId: 'npcs:bouncer.lines.0' }));
     bus.on('secret:dj', () => {
       if (!booth) return;
@@ -291,21 +316,29 @@ export class Npcs {
     this.crowd.update(dt, this.beatPulse, this.beatN);
     const bounce = this.beatPulse * this.beatPulse;
     for (const npc of this.npcs) {
+      const activeFocus = this.convo?.npc === npc ? this.convo : this.focused?.npc === npc ? this.focused : null;
       npc.objects.forEach((o, i) => {
-        if (this.crowdLooksAt) {
+        if (activeFocus && i === activeFocus.holderIndex) {
+          this.holdForConvo(npc, i, o, dt);
+        } else if (this.crowdLooksAt) {
           o.lookAt(this.crowdLooksAt.x, o.position.y, this.crowdLooksAt.z);
           o.position.y = bounce * 0.2;
         } else if (npc.id === 'herd') {
           // Perfect sync: hop and twist on every beat, all three the same.
+          o.position.x = 0;
+          o.position.z = 0;
           o.position.y = bounce * 0.25;
           o.rotation.y = Math.PI + Math.sin(this.beatN * Math.PI * 0.5) * 0.6;
+          o.rotation.z = 0;
+          this.animateHerdLimbs(o, dt);
         } else if (npc.id === 'leather_choir') {
           // Heads together, swaying as one, humming the bassline.
-          o.position.y = 0;
+          o.position.set(0, 0, 0);
           o.rotation.y = Math.atan2(npc.pos.x - npc.holders[i].position.x, npc.pos.z - npc.holders[i].position.z);
           o.rotation.z = Math.sin(this.t * 1.1) * 0.08;
+          this.animateChoirLimbs(o);
         } else {
-          this.danceAndWander(npc, i, o, bounce, dt);
+          this.danceAndWander(npc, i, o, bounce, dt, !!activeFocus);
         }
       });
       // Keep the talk spot on the figures as they move.
@@ -317,15 +350,86 @@ export class Npcs {
     }
   }
 
+  /** Point the focused NPC toward the actual camera spot (used when focus cam dodges a wall). */
+  setFocusFacing(x: number, z: number): void {
+    this.focusLookTarget = { x, z };
+    const f = this.focused;
+    if (!f) return;
+    const h = f.npc.holders[f.holderIndex] ?? f.npc.holders[0];
+    const o = f.npc.objects[f.holderIndex] ?? f.npc.objects[0];
+    if (h && o) o.rotation.y = Math.atan2(x - h.position.x, z - h.position.z);
+  }
+
+  /** Keep the focused NPC centred, facing the camera (or player), and calm while talking. */
+  private holdForConvo(npc: Npc, i: number, o: THREE.Object3D, dt: number): void {
+    const h = npc.holders[i];
+    const k = 1 - Math.exp(-14 * dt);
+    o.position.multiplyScalar(1 - k);
+    o.rotation.z *= 1 - k;
+    const lookX = this.focusLookTarget?.x ?? this.player.x;
+    const lookZ = this.focusLookTarget?.z ?? this.player.z;
+    const targetYaw = Math.atan2(lookX - h.position.x, lookZ - h.position.z);
+    const diff = Math.atan2(Math.sin(targetYaw - o.rotation.y), Math.cos(targetYaw - o.rotation.y));
+    o.rotation.y += diff * (1 - Math.exp(-12 * dt));
+    const rig = limbRig(o);
+    if (rig) {
+      rig.swing *= 1 - k;
+      rig.vel *= 1 - k;
+      const breath = Math.sin(this.t * 1.8) * 0.04;
+      if (rig.legL) rig.legL.rotation.x = rig.swing;
+      if (rig.legR) rig.legR.rotation.x = -rig.swing;
+      if (rig.armL) rig.armL.rotation.x = -rig.swing * 0.5 + breath;
+      if (rig.armR) rig.armR.rotation.x = rig.swing * 0.5 - breath;
+      if (rig.head) {
+        rig.head.rotation.x = Math.sin(this.t * 2.2) * 0.05;
+        rig.head.rotation.z = Math.sin(this.t * 1.1) * 0.03;
+      }
+    }
+  }
+
+  /** Tight synchronous beat swing for all three herd horses. */
+  private animateHerdLimbs(o: THREE.Object3D, dt: number): void {
+    const rig = limbRig(o);
+    if (!rig) return;
+    const dir = this.beatN % 2 === 0 ? 1 : -1;
+    const target = dir * Math.sin(this.beatPulse * Math.PI * 0.65) * 0.65;
+    rig.vel += (target - rig.swing) * 36 * dt;
+    rig.vel *= Math.exp(-6.5 * dt);
+    rig.swing += rig.vel * dt;
+    if (rig.legL) rig.legL.rotation.x = rig.swing;
+    if (rig.legR) rig.legR.rotation.x = -rig.swing;
+    if (rig.armL) rig.armL.rotation.x = -rig.swing * 0.85;
+    if (rig.armR) rig.armR.rotation.x = rig.swing * 0.85;
+    if (rig.head) {
+      rig.head.rotation.x = this.beatPulse * 0.22;
+      rig.head.rotation.z = 0;
+    }
+  }
+
+  /** Gentle unison sway for the leather choir. */
+  private animateChoirLimbs(o: THREE.Object3D): void {
+    const rig = limbRig(o);
+    if (!rig) return;
+    const sway = Math.sin(this.t * 1.1) * 0.14;
+    if (rig.legL) rig.legL.rotation.x = sway * 0.35;
+    if (rig.legR) rig.legR.rotation.x = -sway * 0.35;
+    if (rig.armL) rig.armL.rotation.x = -0.18 + sway;
+    if (rig.armR) rig.armR.rotation.x = -0.18 - sway;
+    if (rig.head) {
+      rig.head.rotation.x = 0.08 + Math.sin(this.t * 1.1) * 0.08;
+      rig.head.rotation.z = Math.sin(this.t * 1.1) * 0.06;
+    }
+  }
+
   /** Regulars dance on the beat and drift around their spot. Walk up to one and they stop and look at you. */
-  private danceAndWander(npc: Npc, i: number, o: THREE.Object3D, bounce: number, dt: number): void {
+  private danceAndWander(npc: Npc, i: number, o: THREE.Object3D, bounce: number, dt: number, freezeWander = false): void {
     const style = STYLES[npc.id] ?? DEFAULT_STYLE;
     const h = npc.holders[i];
-    const toPlayer = Math.hypot(this.player.x - h.position.x, this.player.z - h.position.z);
+    const toPlayer = state.floor === 0 ? Math.hypot(this.player.x - h.position.x, this.player.z - h.position.z) : Infinity;
     const attentive = toPlayer < STOP_FOR_PLAYER;
     let yaw = o.rotation.y;
 
-    if (style.wander > 0 && !attentive && state.started) {
+    if (style.wander > 0 && !attentive && !freezeWander && state.started) {
       npc.retarget[i] -= dt;
       const tgt = npc.targets[i];
       const dx = tgt.x - h.position.x;
@@ -351,6 +455,7 @@ export class Npcs {
     o.position.x = Math.cos(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
     o.position.z = -Math.sin(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
     o.rotation.y = yaw + (attentive ? 0 : Math.sin(this.beatN * Math.PI * 0.5 + i) * style.twist);
+    o.rotation.z = 0;
     // Fake ragdoll: limbs are separate pivots in the glTF. A spring lets the swing overshoot the beat.
     const rig = limbRig(o);
     if (rig) {
@@ -409,21 +514,50 @@ export class Npcs {
     });
   }
 
+  private closestHolder(npc: Npc, at: THREE.Vector3): number {
+    let bestIdx = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < npc.holders.length; i++) {
+      const h = npc.holders[i];
+      const d = Math.hypot(h.position.x - at.x, h.position.z - at.z);
+      if (d < bestD) {
+        bestD = d;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
   private talk(at: THREE.Vector3): void {
-    if (state.ending) return;
+    if (state.ending || state.floor !== 0) return;
     let best: Npc | null = null;
+    let bestHolder = 0;
     let bestD = TALK_RANGE;
     for (const npc of this.npcs) {
-      const d = npc.pos.distanceTo(at) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0);
+      const idx = this.closestHolder(npc, at);
+      const h = npc.holders[idx];
+      const dHolder = h ? Math.hypot(h.position.x - at.x, h.position.z - at.z) : npc.pos.distanceTo(at);
+      const d = Math.min(dHolder, npc.pos.distanceTo(at) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
       if (d < bestD) {
         best = npc;
+        bestHolder = idx;
         bestD = d;
       }
     }
-    if (!best) return;
+    if (!best) {
+      // Rare Unicorn Easter Egg: press Space right next to one of the rare unicorns for a moment of crisp clarity.
+      const now = performance.now();
+      if (now - this.unicornAt > 25000 && this.crowd.nearUnicorn(at.x, at.z, 0, 2.4)) {
+        this.unicornAt = now;
+        bus.emit('item:consumed', { item: 'ice_cream' });
+        bus.emit('crowd:cheer', {});
+        bus.emit('ui:say', { key: 'story:unicorn.blessing', seconds: 4.5 });
+      }
+      return;
+    }
     this.talking = best;
     const npc = best;
-    if (FOCUS.has(npc.id)) return this.startConvo(npc);
+    if (FOCUS.has(npc.id)) return this.startConvo(npc, bestHolder);
     const say = (key: string) => bus.emit('npc:talk', { npc: npc.id, lineId: `npcs:${npc.id}.${key}` });
 
     switch (npc.id) {
@@ -442,7 +576,7 @@ export class Npcs {
   private choir(): void {
     const c = this.npcs.find((n) => n.id === 'leather_choir');
     if (!c) return;
-    const near = c.pos.distanceTo(this.player) < CHOIR_RANGE;
+    const near = state.floor === 0 && c.pos.distanceTo(this.player) < CHOIR_RANGE;
     if (near === this.choirNear) return;
     this.choirNear = near;
     bus.emit('music:choir', { near });
@@ -463,10 +597,13 @@ export class Npcs {
     }
     this.puddles = this.puddles.filter((p) => p.left > 0);
     if (!cleaner || !state.started) return;
+    // Pause patrol translation and mopping while talking so the cleaner stays in frame.
+    if (this.convo?.npc === cleaner || this.focused?.npc === cleaner) return;
     // Shuffle back and forth along the bar.
+    this.cleanerPhase += dt * 0.15;
     const h = cleaner.holders[0];
     const homeX = cellCenter(level.npcs.find((n) => n.id === 'cleaner')!.cell[0], 0).x;
-    h.position.x = homeX + Math.sin(this.t * 0.15) * 4;
+    h.position.x = homeX + Math.sin(this.cleanerPhase) * 4;
     cleaner.pos.x = h.position.x;
     this.mopTimer -= dt;
     if (this.mopTimer > 0) return;
@@ -513,7 +650,7 @@ export class Npcs {
   }
 
   private checkSelfie(): void {
-    if (this.selfieTaken || !state.started || state.ending) return;
+    if (this.selfieTaken || !state.started || state.ending || state.floor !== 0) return;
     const t = this.npcs.find((n) => n.id === 'tourists');
     if (!t || t.pos.distanceTo(this.player) > SELFIE_RANGE) return;
     this.selfieTaken = true;
@@ -527,27 +664,40 @@ export class Npcs {
 
   /** Stumble into a special NPC and they pull you into a conversation. */
   private bumpInto(): void {
+    if (state.floor !== 0) return;
     for (const npc of this.npcs) {
       if (!FOCUS.has(npc.id)) continue;
-      const d = npc.pos.distanceTo(this.player);
-      if (d > REARM_RANGE) this.disarmed.delete(npc);
-      const range = npc.id === 'leather_choir' ? 2.2 : BUMP_RANGE;
+      const holderIndex = this.closestHolder(npc, this.player);
+      const h = npc.holders[holderIndex];
+      const d = h ? Math.hypot(h.position.x - this.player.x, h.position.z - this.player.z) : npc.pos.distanceTo(this.player);
+      if (d > REARM_RANGE && npc.pos.distanceTo(this.player) > REARM_RANGE) this.disarmed.delete(npc);
+      const range = npc.id === 'leather_choir' ? 1.5 : BUMP_RANGE;
       if (d < range && !this.disarmed.has(npc) && !this.convo && state.started && !state.ending && !state.inputLocked) {
-        this.startConvo(npc);
+        this.startConvo(npc, holderIndex);
         return;
       }
     }
   }
 
-  private startConvo(npc: Npc): void {
+  private startConvo(npc: Npc, holderIndex = this.closestHolder(npc, this.player)): void {
     if (this.convo || state.ending) return;
+    clearTimeout(this.riddleTimer);
+    this.riddleTimer = 0;
     const { keys, after, keepFocus } = this.script(npc);
     if (!keys.length) return;
-    this.convo = { npc, keys, i: 0, after, keepFocus };
+    this.convo = { npc, holderIndex, keys, i: 0, after, keepFocus };
+    this.focused = { npc, holderIndex };
     this.disarmed.add(npc);
     this.talking = npc;
     lock('talk');
-    const h = npc.holders[0];
+    const h = npc.holders[holderIndex] ?? npc.holders[0];
+    const o = npc.objects[holderIndex] ?? npc.objects[0];
+    // Zero dance offset and turn the figure to face the player immediately so the camera frames them cleanly.
+    if (o && h) {
+      o.position.set(0, 0, 0);
+      o.rotation.z = 0;
+      o.rotation.y = Math.atan2(this.player.x - h.position.x, this.player.z - h.position.z);
+    }
     // Eye height, so their eyes sit right in the middle of the frame.
     const face = (SIZES[npc.id]?.y ?? (HORSES.has(npc.id) ? 2.2 : 1.8)) - 0.32;
     bus.emit('npc:focus', { npc: npc.id, x: h.position.x, y: face, z: h.position.z });
@@ -594,11 +744,14 @@ export class Npcs {
   }
 
   private endConvo(finished: boolean): void {
+    clearTimeout(this.riddleTimer);
+    this.riddleTimer = 0;
     const c = this.convo;
     if (!c) return;
     this.convo = null;
     unlock('talk');
     if (finished && c.keepFocus) return c.after?.();
+    this.focused = null;
     bus.emit('npc:unfocus', {});
     bus.emit('npc:silent', {});
     if (finished) c.after?.();
@@ -610,7 +763,11 @@ export class Npcs {
     this.talking = horse;
     bus.emit('npc:talk', { npc: 'riddle_horse', lineId: `npcs:riddle_horse.riddle.${correct ? 'right' : 'wrong'}` });
     // Let his answer land in your face, then let go.
-    setTimeout(() => {
+    clearTimeout(this.riddleTimer);
+    this.riddleTimer = window.setTimeout(() => {
+      this.riddleTimer = 0;
+      if (this.convo) return;
+      this.focused = null;
       bus.emit('npc:unfocus', {});
       bus.emit('npc:silent', {});
     }, 3000);
@@ -625,12 +782,13 @@ export class Npcs {
   }
 
   private inHerdLine(x: number, z: number): boolean {
+    if (state.floor !== 0) return false;
     const herd = this.npcs.find((n) => n.id === 'herd');
     return !!herd && Math.abs(z - herd.pos.z) < 1.8 && Math.abs(x - herd.pos.x) < 6;
   }
 
   private herdHint(): void {
-    if (this.herdSynced || !this.inHerdLine(this.player.x, this.player.z)) return;
+    if (this.herdSynced || state.floor !== 0 || !this.inHerdLine(this.player.x, this.player.z)) return;
     const now = performance.now();
     if (now - this.herdHintAt < 20000) return;
     this.herdHintAt = now;
@@ -638,7 +796,7 @@ export class Npcs {
   }
 
   private stomp(x: number, z: number, time: number): void {
-    if (this.herdSynced || !this.inHerdLine(x, z)) return;
+    if (this.herdSynced || state.floor !== 0 || !this.inHerdLine(x, z)) return;
     const streak = this.herd.stomp(time);
     if (streak === 0) {
       if (time - this.herdMissAt > 3000) {

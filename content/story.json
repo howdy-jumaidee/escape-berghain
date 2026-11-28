@@ -9,19 +9,22 @@
     "Somewhere out there is a stable. Ours. Let's trot home."
   ],
   "spirit_guide": {
-    "first": "First memory: your glasses, under a speaker.",
-    "fragment_1": "Glasses. Next: press Q and look at your front leg.",
-    "fragment_2": "It says 47. Next: find ticket 47 by the bar.",
-    "fragment_3": "Ticket 47. Next: give it to coat check.",
-    "fragment_4": "Your keys. Next: the riddle horse, in the toilets.",
-    "fragment_5": "That's the way out. Next: the back exit.",
-    "mate": "Mate. Clearer. Shakier. Worth it.",
+    "first": "First memory: your glasses, under a speaker. Try not to step on anyone's leather.",
+    "fragment_1": "Glasses. Wait, why do we have horse eyelashes? Press Q, check our front leg.",
+    "fragment_2": "47. We paid 25 euros to become livestock. Find ticket 47 by the bar.",
+    "fragment_3": "Ticket 47. Next: hand it to coat check. Act natural.",
+    "fragment_4": "Your keys. No thumbs to hold them. Next: the riddle horse, in the toilets.",
+    "fragment_5": "That's the way out. Next: the back exit. Trot like you own the place.",
+    "mate": "Mate. Clearer. Shakier. Classic Berlin hydration.",
     "look_blurry": "Everything is a smudge. We need our glasses first.",
     "look_again": "Still 47. Still a horse.",
     "stamp": "A stamp. 47. We had a number.",
     "all": "We remember. The street, the bike, the river. Go.",
     "herd_warning_1": "That's once. The herd were people too, you know. They passed out three times.",
-    "herd_warning_2": "Twice. One more and we dance with them forever."
+    "herd_warning_2": "Twice. One more blackout and we legally belong to the Panorama Bar herd."
+  },
+  "unicorn": {
+    "blessing": "The rare unicorn nods once. Your vision snaps razor sharp. You feel weirdly hydrated."
   },
   "losses": {
     "passed_out": "You wake up in the toilet queue. Someone is still talking about their ex.",

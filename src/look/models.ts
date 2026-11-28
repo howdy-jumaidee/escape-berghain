@@ -2,6 +2,7 @@
 // Drop <name>.glb into public/models/ and it replaces the box automatically.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.Object3D | null>>();
@@ -13,11 +14,32 @@ function fetchModel(name: string): Promise<THREE.Object3D | null> {
       name,
       loader
         .loadAsync(`${import.meta.env.BASE_URL}models/${name}.glb`)
-        .then((gltf) => gltf.scene)
+        .then((gltf) => {
+          gltf.scene.traverse((child) => {
+            const mesh = child as THREE.Mesh;
+            if (mesh.isMesh) mesh.geometry?.computeBoundingSphere();
+          });
+          return gltf.scene;
+        })
         .catch(() => null),
     );
   }
   return cache.get(name)!;
+}
+
+function cloneModel(model: THREE.Object3D, disableCulling = false): THREE.Object3D {
+  const clone = cloneSkinned(model);
+  clone.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    if (disableCulling || (mesh as THREE.SkinnedMesh).isSkinnedMesh) mesh.frustumCulled = false;
+    if (mesh.material) {
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map((m) => m.clone())
+        : mesh.material.clone();
+    }
+  });
+  return clone;
 }
 
 /**
@@ -34,11 +56,12 @@ export function placeModel(name: string, size: THREE.Vector3Like, material: THRE
   fetchModel(name).then((model) => {
     if (!model) return;
     group.remove(box);
-    group.add(model.clone(true));
+    box.geometry.dispose();
+    group.add(cloneModel(model, name === 'npc_spirit_guide'));
   });
   return group;
 }
 
 export function loadModel(name: string): Promise<THREE.Object3D | null> {
-  return fetchModel(name).then((m) => (m ? m.clone(true) : null));
+  return fetchModel(name).then((m) => (m ? cloneModel(m) : null));
 }

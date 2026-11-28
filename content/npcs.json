@@ -39,6 +39,7 @@
     ],
     "talk": [
       "I'm Patrick. From accounting. Definitely not a horse.",
+      "That donkey over there? He's in HR. We don't make eye contact.",
       "The way out is behind the DJ booth, straight through the big speaker. I've done the numbers.",
       "Don't tell anyone about the hooves. Mine or yours."
     ]
@@ -77,11 +78,11 @@
   "coat_check": {
     "name": "Coat check",
     "lines": [
-      "Ticket."
+      "Ticket. And no, I'm not checking a saddle."
     ],
     "with_ticket": "Nice jacket. For a horse.",
     "jacket": "Nice jacket. For a horse. Something jingles in the pocket.",
-    "empty": "You already have your jacket."
+    "empty": "You already have your jacket. Move along, pony."
   },
   "philosopher": {
     "name": "Philosopher",
@@ -137,10 +138,10 @@
   "bouncer": {
     "name": "Bouncer",
     "lines": [
-      "Heute nicht."
+      "Heute nicht. Too many horses already. Try Tresor."
     ],
     "talk": [
-      "Heute nicht.",
+      "Heute nicht. Too many horses already.",
       "...",
       "The back door was never the problem. The front door is."
     ]
@@ -177,10 +178,10 @@
   "leather_daddy": {
     "name": "Leather daddy",
     "lines": [
-      "Breathe, cutie."
+      "Breathe, cutie. Love the pony-play commitment."
     ],
     "talk": [
-      "Stop right there. Breathe. You look lost, cutie.",
+      "Stop right there. Breathe. Love the pony-play commitment, babe. Where'd you get the hooves, KitKat?",
       "Coat check won't give anyone anything without a ticket. Not even a horse.",
       "And the number you're looking for? It's on your wrist. Has been all night."
     ]
@@ -202,7 +203,7 @@
       "The cards don't lie, darling. I do."
     ],
     "talk": [
-      "Sit, foal. The cards have been waiting for you.",
+      "Sit, foal. Don't stare at the unicorn on the floor, darling, he's been on the guestlist since 2009.",
       "First card: the Glasses. Then the Number. Then the Ticket. Then the Keys.",
       "Last card: the Bike. Reversed. The riddle horse holds it. Don't tell him I told you."
     ]

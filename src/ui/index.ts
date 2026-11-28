@@ -66,6 +66,12 @@ export function startUi(): void {
 
   // Riddle: three answers, keys 1 to 3 or click.
   let riddleAnswers: { text: string; correct: boolean }[] = [];
+  const resetConversationUi = () => {
+    focused = false;
+    clearTimeout(talkTimer);
+    for (const e of [barTop, barBottom, talk]) e.classList.remove('focus');
+    talk.classList.remove('on');
+  };
   const closeRiddle = () => {
     if (!riddleOpen) return;
     riddleOpen = false;
@@ -102,6 +108,7 @@ export function startUi(): void {
     talk.classList.add('on');
   });
   addEventListener('keydown', (e) => {
+    if (riddleOpen && e.code === 'Escape') closeRiddle();
     if (riddleOpen && /^Digit[1-9]$/.test(e.code)) answer(Number(e.code.slice(5)) - 1);
   });
 
@@ -134,6 +141,7 @@ export function startUi(): void {
   let fadeTimer = 0;
   bus.on('trip:max', () => {
     closeRiddle();
+    resetConversationUi();
     lock('fade');
     fade.classList.add('on');
     clearTimeout(fadeTimer);
@@ -167,6 +175,7 @@ export function startUi(): void {
   let vanTimer = 0;
   bus.on('player:caught', () => {
     closeRiddle();
+    resetConversationUi();
     lock('van');
     vanLine.textContent = `"${t('npcs:animal_control.lines.1')}"`;
     van.classList.add('on');
@@ -188,6 +197,7 @@ export function startUi(): void {
   const end = el('div', 'eb-end', root);
   bus.on('ending:show', ({ ending }) => {
     closeRiddle();
+    resetConversationUi();
     hideViewHint();
     showEnd(end, ending);
   });
