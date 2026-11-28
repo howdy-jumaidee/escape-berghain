@@ -562,12 +562,12 @@
   "darkroom_keeper": {
     "name": "Darkroom keeper",
     "lines": [
-      "Not yet."
+      "Tonight the walls move. Count the kicks."
     ],
     "talk": [
       "...",
-      "The way out is through the darkroom. Nobody's ever come back to say otherwise.",
-      "Not tonight, though. It's closed for... reasons. Come back when the walls stop moving."
+      "The darkroom's open tonight. The walls move. Count the kicks.",
+      "Read the flyers. The Friday guy left directions. Nobody has ever followed them sober."
     ],
     "choices": [
       {
@@ -604,7 +604,7 @@
       "trusted_glitter": [
         "...",
         "Glitter boy sent you? He sends everyone somewhere. It is usually the toilets.",
-        "The darkroom stays closed either way. Especially for his friends."
+        "This time he's right. The darkroom's open. Count the kicks. Don't tell him I said so."
       ]
     }
   },

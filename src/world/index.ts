@@ -7,6 +7,7 @@ import { placeModel } from '../look/models';
 import { buildLevel, resolveCircle, type BuiltLevel } from './level';
 import { buildGalleries, type Galleries } from './galleries';
 import { buildPanorama, type Panorama } from './panorama';
+import { Darkroom } from './darkroom';
 import { Patrols } from './patrols';
 
 /** Panorama Bar shutters open after this much play time. */
@@ -59,6 +60,8 @@ export class World {
   readonly root: THREE.Group;
   private galleries: Galleries;
   private pano: Panorama;
+  /** The darkroom maze east of the toilets (levels/darkroom.json). */
+  readonly darkroom: Darkroom;
   private pickups: Pickup[] = [];
   private exitPos: { x: number; z: number } | null = null;
   private exitDone = false;
@@ -88,6 +91,10 @@ export class World {
     // Panorama Bar: a real room on the 9 m south gallery (floor 1), grid in levels/level1_floor1.json.
     this.pano = buildPanorama();
     this.root.add(this.pano.root);
+
+    // The darkroom maze behind the toilets, through the door cell [16, 6].
+    this.darkroom = new Darkroom();
+    this.root.add(this.darkroom.root);
 
     for (const [col, row] of this.level.cells.get('fragment_1') ?? []) {
       this.addPickup({ kind: 'fragment', fragment: 1, slips: 2 }, 'prop_glasses', { x: 0.45, y: 0.12, z: 0.18 }, 0x9fe8ff, col, row);
@@ -179,6 +186,7 @@ export class World {
   resolve(pos: THREE.Vector3, radius: number, floor = state.floor, y = 0): void {
     if (floor === 0 && y < 0.5) {
       resolveCircle(this.level.colliders, pos, radius);
+      this.darkroom.resolve(pos, radius);
     }
     this.galleries.resolve(pos, radius, floor, y);
     // Upstairs room walls (Panorama Bar) only block on floor 1.
@@ -205,6 +213,13 @@ export class World {
         const t = rayBox2D(from.x, from.z, dx, dz, c.minX - margin, c.maxX + margin, c.minZ - margin, c.maxZ + margin);
         if (t !== null && t < bestT) bestT = t;
       }
+      if (this.darkroom.contains(from.x, from.z, 8)) {
+        for (const c of this.darkroom.colliders) {
+          if (!c.enabled || c.height < minY) continue;
+          const t = rayBox2D(from.x, from.z, dx, dz, c.minX - margin, c.maxX + margin, c.minZ - margin, c.maxZ + margin);
+          if (t !== null && t < bestT) bestT = t;
+        }
+      }
     }
     if (bestT < 1) {
       const clamped = Math.max(0.05, bestT);
@@ -213,6 +228,7 @@ export class World {
     }
     const tall = this.level.colliders.filter((c) => c.enabled && c.height >= minY);
     resolveCircle(tall, to, margin);
+    if (minY < this.darkroom.wallHeight) this.darkroom.resolve(to, margin);
     const floorCap = Math.max(0.45, minFloorY + 0.45);
     if (to.y < floorCap) to.y = floorCap;
   }
@@ -221,6 +237,7 @@ export class World {
     this.t += dt;
     const p = this.player;
     this.announceNear();
+    this.darkroom.update(dt);
 
     // Zones. Upstairs in the Panorama room the zone is panorama_bar (warm mix), anywhere else on
     // floor 1 the hall zone below still applies.
@@ -240,12 +257,13 @@ export class World {
       }
     }
 
-    // Items (mate, hoof bags) are picked up by walking into them; no Space needed. Fragments still need Space.
+    // Club Mate is picked up by walking into it. Hoof bags are Space-only (grab), like fragments:
+    // they punish you, so they should never fire by accident on the crowded floor.
     if (state.floor === 0 && !state.ending && state.started && !state.inputLocked) {
       let nearest: Pickup | null = null;
       let nearestD = 1.15;
       for (const pu of this.pickups) {
-        if (pu.kind !== 'item') continue;
+        if (pu.kind !== 'item' || pu.item !== 'mate') continue;
         const d = dist(pu.object.position, p);
         if (d < nearestD) {
           nearest = pu;
@@ -370,6 +388,7 @@ export class World {
   private announceNear(): void {
     let near = false;
     if (state.floor === 0 && !state.ending) {
+      near = this.darkroom.near(this.player.x, this.player.z);
       for (const pu of this.pickups) {
         if (Math.hypot(pu.object.position.x - this.player.x, pu.object.position.z - this.player.z) < GRAB_RANGE) {
           near = true;
@@ -379,12 +398,13 @@ export class World {
     }
     if (near !== this.wasNear) {
       this.wasNear = near;
-      bus.emit('player:near', { by: 'world', near });
+      bus.emit('player:near', { by: 'world', near, kind: near ? 'grab' : undefined });
     }
   }
 
   private grab(x: number, z: number): void {
     if (state.ending || state.floor !== 0) return;
+    if (this.darkroom.grab(x, z)) return;
     const here = new THREE.Vector3(x, 0, z);
 
     // Ice cream counter.
