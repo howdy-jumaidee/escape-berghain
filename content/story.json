@@ -44,12 +44,7 @@
   },
   "title": "ESCAPE BERGHAIN",
   "goal": {
-    "lines": [
-      "You turned into a horse.",
-      "Find your 5 lost memories.",
-      "Sneak past security and escape before you forever fall into the horse hole.",
-      "Get out the back exit before you black out."
-    ]
+    "lines": ["You turned into a horse.", "Find your 5 lost memories.", "Sneak past security and escape before you forever fall into the horse hole."]
   },
   "title_ui": {
     "show_controls": "Controls",
@@ -69,6 +64,7 @@
     "hooved": "Hooved. The floor tilts sideways.",
     "bag_found": "Something small and square. Space to take it."
   },
+  "animals": { "lines": ["Neigh. The floor is just a rumor.", "I traded my shoes for a rumor yesterday.", "The unicorn says the exit is a myth. It is not.", "I snorted the strobe light. It was green.", "Four hooves, zero plans.", "Everyone in here is a horse. Even the DJ."] },
   "herd": {
     "hint": "Stand in their line. E on the beat. Four times.",
     "miss": "Off beat. They pretend not to notice.",

@@ -307,7 +307,7 @@ export class Crowd {
     for (let x = 16; x <= 56; x += 3.4) if (!deckBlocked(x, 28.2)) add(x, 28.2, false, GALLERY_Y);
 
     // Deterministic species distribution:
-    // ~12% horses, ~6% donkeys, and rare unicorns (strictly capped at 2..4 total across the club, ~0.7% of ~600 dancers).
+    // ~5% horses, ~2% donkeys, and very rare unicorns (capped at 1..2 total across the club).
     const order = Array.from({ length: this.n }, (_, i) => i);
     for (let i = order.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1));
@@ -315,9 +315,9 @@ export class Crowd {
       order[i] = order[j];
       order[j] = tmp;
     }
-    const uniTarget = this.n >= 2 ? Math.max(2, Math.min(4, Math.round(this.n * 0.013))) : 0;
-    const horseTarget = Math.round(this.n * 0.12);
-    const donkeyTarget = Math.round(this.n * 0.06);
+    const uniTarget = this.n >= 2 ? Math.max(1, Math.min(2, Math.round(this.n * 0.005))) : 0;
+    const horseTarget = Math.round(this.n * 0.05);
+    const donkeyTarget = Math.round(this.n * 0.02);
 
     // Spread the rare unicorns out on the dance floors (prefer floor 0, well spaced apart) so finding one feels magical.
     const uniPicked: number[] = [];
@@ -582,6 +582,22 @@ export class Crowd {
 
   cheerNow(seconds = 2): void {
     this.cheer = Math.max(this.cheer, seconds);
+  }
+
+  /** Nearest animal guest within maxD of (x, z) on the dance floor: 1 horse, 2 unicorn, 3 donkey, else 0. */
+  animalNear(x: number, z: number, maxD: number): number {
+    let best = 0;
+    let bestD = maxD;
+    for (let i = 0; i < this.n; i++) {
+      const sp = this.species[i];
+      if (sp === 0 || this.baseY[i] !== 0) continue;
+      const d = Math.hypot(this.origin[i * 2] - x, this.origin[i * 2 + 1] - z);
+      if (d < bestD) {
+        bestD = d;
+        best = sp;
+      }
+    }
+    return best;
   }
 
   update(dt: number, beatPulse: number, beatN = 0): void {
