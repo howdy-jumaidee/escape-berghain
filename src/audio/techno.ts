@@ -17,6 +17,9 @@ const BASS_NOTES = [F1, F1, F1, F1, F1, F1, F1 * 1.189, F1]; // mostly root, one
 const ACID = [F2, F2, F2 * 2, F2, AB2, F2, F2 * 2, EB3, F2, F2, C3, F2, F2 * 2, F2, AB2, F2 * 1.5];
 const ACID_ACCENT = [1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0];
 
+/** Each dancefloor has its own groove: the kick/hats/bass pattern changes per zone, not just the filter. */
+export type Groove = 'four' | 'warm' | 'half' | 'broken' | 'sparse';
+
 export interface Mix {
   /** Lowpass cutoff on the music, Hz. Low = through a wall. */
   cutoff: number;
@@ -25,6 +28,8 @@ export interface Mix {
   warm: number;
   /** Reverb send, 0 dry (back exit) to 1 (tiled toilet corridor). Default 0.35, the hall. */
   verb?: number;
+  /** Beat pattern for this floor. Default 'four'. */
+  groove?: Groove;
 }
 
 export class Techno {
@@ -50,6 +55,7 @@ export class Techno {
   private trip = 0;
   private sharp = false;
   private finale = false;
+  private groove: Groove = 'four';
   private choirGain: GainNode;
   private crowdGain: GainNode;
   /** Called for each quarter note with the audio time it lands on. */
@@ -313,6 +319,8 @@ export class Techno {
     this.padGain.gain.setTargetAtTime(mix.warm * 0.025, t, 0.8);
     this.verbOut.gain.setTargetAtTime(mix.verb ?? 0.35, t, 0.4);
     this.warm = mix.warm;
+    // Only zone mixes carry a groove; one-off mixes (focus muffle, endings) keep the floor's beat.
+    if (mix.groove) this.groove = mix.groove;
   }
 
   /** The sound effect bus (dry, past the wall filter) and the reverb send. For the ear cues in cues.ts. */
@@ -366,12 +374,23 @@ export class Techno {
     }
   }
 
+  /** Kick steps per 16th bar for each floor's groove. */
+  private static readonly KICKS: Record<Groove, readonly number[]> = {
+    four: [0, 4, 8, 12],
+    warm: [0, 4, 8, 12],
+    half: [0, 8],
+    broken: [0, 10],
+    sparse: [0],
+  };
+
   private playStep(step: number, t: number): void {
     const s = step % 16;
     const bar = Math.floor(step / 16) % BARS;
     const breakdown = bar >= 28 && bar < 30;
     const firstLoop = step < 16 * BARS;
+    const g = this.groove;
 
+    // The beat clock never changes: the herd, the DJ booth and the cues all sync to four on the floor.
     if (s % 4 === 0) this.onBeat(step / 4, t);
 
     // The kick comes back after the breakdown: the crowd goes off.
@@ -381,31 +400,57 @@ export class Techno {
     // Closing time: a siren riser every four bars.
     if (this.finale && s === 0 && bar % 4 === 2) this.riser(t);
 
-    // Kick: four on the floor.
-    if (s % 4 === 0 && !breakdown) this.kick(t);
+    // Kick pattern per dancefloor.
+    if (!breakdown && Techno.KICKS[g].includes(s)) this.kick(t);
 
-    // Hats: off beat open hat, quiet 16ths after the intro.
-    if (s % 4 === 2) this.hat(t, true);
-    if ((!firstLoop || bar >= 2) && s % 4 !== 2 && Math.random() < 0.8) this.hat(t, false, s % 2 === 1 ? 0.35 : 0.2);
-
-    // Rolling bass in the gaps between kicks.
-    if ((!firstLoop || bar >= 4) && !breakdown && s % 4 !== 0) {
-      this.bass(t, BASS_NOTES[Math.floor(step / 4) % BASS_NOTES.length] ?? F1, s % 4 === 2 ? 1 : 0.7);
+    // Hats per dancefloor.
+    if (g === 'four' || g === 'warm') {
+      if (s % 4 === 2) this.hat(t, true);
+      if ((!firstLoop || bar >= 2) && s % 4 !== 2 && Math.random() < 0.8) this.hat(t, false, s % 2 === 1 ? 0.35 : 0.2);
+      // Panorama Bar: a constant quiet 16th shaker and a ride on the off beats.
+      if (g === 'warm') {
+        if (Math.random() < 0.9) this.hat(t, false, 0.1, 6500);
+        if (s % 4 === 2) this.hat(t, true, 0.5, 5500);
+      }
+    } else if (g === 'half') {
+      if (s % 4 === 2) this.hat(t, true, 0.8);
+    } else if (g === 'broken') {
+      if (s % 4 === 2) this.hat(t, true);
+      else if (s === 7) this.hat(t, false, 0.5);
+    } else if (g === 'sparse') {
+      if (s % 8 === 4) this.hat(t, true, 0.5);
     }
 
-    // Clap on 2 and 4.
-    if ((!firstLoop || bar >= 8) && (s === 4 || s === 12)) this.clap(t);
+    // Bass pattern per dancefloor: rolling in the hall, on the "and"s at the bar, off-kilter in the toilets, none at the exit.
+    if (!breakdown && (!firstLoop || bar >= 4)) {
+      if (g === 'four' || g === 'warm') {
+        if (s % 4 !== 0) this.bass(t, BASS_NOTES[Math.floor(step / 4) % BASS_NOTES.length] ?? F1, s % 4 === 2 ? 1 : 0.7);
+      } else if (g === 'half') {
+        if (s % 4 === 2) this.bass(t, BASS_NOTES[Math.floor(step / 4) % BASS_NOTES.length] ?? F1, 0.8);
+      } else if (g === 'broken') {
+        if (s === 3 || s === 11) this.bass(t, F1, 0.7);
+      }
+    }
 
-    // Dub stab, two hits per two bars.
+    // Clap per dancefloor.
+    if (!breakdown && (!firstLoop || bar >= 8)) {
+      if (g === 'four' || g === 'warm') {
+        if (s === 4 || s === 12) this.clap(t);
+      } else if (g === 'broken' && s === 12) this.clap(t);
+    }
+
+    // Dub stab per dancefloor.
     const s32 = step % 32;
-    if ((!firstLoop || bar >= 12 || breakdown) && (s32 === 3 || s32 === 22)) this.stab(t);
+    if (!firstLoop || bar >= 12 || breakdown) {
+      if (g === 'four' || g === 'warm') {
+        if (s32 === 3 || s32 === 22) this.stab(t);
+      } else if (g === 'half' && bar % 2 === 0 && s32 === 3) this.stab(t);
+      else if (g === 'broken' && s32 === 22) this.stab(t);
+    }
 
-    // Ride on the off beats upstairs.
-    if (this.warm > 0.5 && s % 4 === 2) this.hat(t, true, 0.5, 5500);
-
-    // Acid creeps in as the trip rises.
+    // Acid creeps in as the trip rises. Every floor but the back exit (unless it's closing time).
     const acid = this.finale ? 1 : Math.max(0, (this.trip - 0.45) / 0.55);
-    if (acid > 0 && !this.sharp) this.acid(t, ACID[s] ?? F2, ACID_ACCENT[s] ?? 0, acid);
+    if (acid > 0 && !this.sharp && (g !== 'sparse' || this.finale)) this.acid(t, ACID[s] ?? F2, ACID_ACCENT[s] ?? 0, acid);
   }
 
   private wobble(): number {
