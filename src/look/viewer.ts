@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { loadModel } from './models';
+import { painterlyFromUrl } from './painterly';
 
 export function startViewer(name: string): void {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -11,6 +12,7 @@ export function startViewer(name: string): void {
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
+  const painterly = painterlyFromUrl();
   scene.background = new THREE.Color(0x111111);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x222222, 1.2));
   const key = new THREE.DirectionalLight(0xffffff, 2);
@@ -39,6 +41,7 @@ export function startViewer(name: string): void {
       return;
     }
     scene.add(model);
+    painterly?.apply(model);
     const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
     let tris = 0;
     model.traverse((o) => {

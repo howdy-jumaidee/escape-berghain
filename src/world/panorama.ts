@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 import { CELL, FLOOR_HEIGHT, cellCenter } from '../contracts';
 import { placeModel } from '../look/models';
+import { applyWorldUVs, boardConcreteTextures, CONCRETE_DARK_COLOR, CONCRETE_TILE_SIZE } from './architecture';
+import { buildBarCounter } from './props';
 import type { Collider } from './level';
 import floor1Json from '../../levels/level1_floor1.json';
 
@@ -16,14 +18,7 @@ const data = floor1Json as unknown as FloorGrid;
 const DECK_Y = FLOOR_HEIGHT; // 9 m
 const WALL_H = 3;
 
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x2c2e33, roughness: 0.9 });
 const barMat = new THREE.MeshStandardMaterial({ color: 0x2b1d14, roughness: 0.8 });
-
-/** Modules on floor 1. Walls sit on the cell's north edge so the rest of the deck cell stays walkable. */
-const MODULES: Record<string, { size: { x: number; y: number; z: number }; solid?: { x: number; z: number }; offset?: { x: number; z: number }; material: THREE.Material }> = {
-  pano_wall: { size: { x: CELL, y: WALL_H, z: 0.3 }, solid: { x: CELL, z: 0.3 }, offset: { x: 0, z: -CELL / 2 + 0.15 }, material: wallMat },
-  pano_bar: { size: { x: 4, y: 1.1, z: 1.2 }, solid: { x: 4, z: 1.2 }, offset: { x: 0, z: CELL / 2 - 0.8 }, material: barMat },
-};
 
 export interface Panorama {
   root: THREE.Group;
@@ -37,6 +32,20 @@ export function buildPanorama(): Panorama {
   const root = new THREE.Group();
   root.name = 'panorama';
   const colliders: Collider[] = [];
+  const concreteTex = boardConcreteTextures();
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: CONCRETE_DARK_COLOR,
+    map: concreteTex.map,
+    bumpMap: concreteTex.bumpMap,
+    bumpScale: 0.11,
+    roughnessMap: concreteTex.roughnessMap,
+    roughness: 0.92,
+    metalness: 0.04,
+  });
+  const MODULES: Record<string, { size: { x: number; y: number; z: number }; solid?: { x: number; z: number }; offset?: { x: number; z: number }; material: THREE.Material }> = {
+    pano_wall: { size: { x: CELL, y: WALL_H, z: 0.3 }, solid: { x: CELL, z: 0.3 }, offset: { x: 0, z: -CELL / 2 + 0.15 }, material: wallMat },
+    pano_bar: { size: { x: 4, y: 1.1, z: 1.2 }, solid: { x: 4, z: 1.2 }, offset: { x: 0, z: CELL / 2 - 0.8 }, material: barMat },
+  };
   let minX = Infinity;
   let maxX = -Infinity;
   let minZ = Infinity;
@@ -64,6 +73,15 @@ export function buildPanorama(): Panorama {
         const obj = placeModel(`f1_${name}`, spec.size, spec.material);
         const ox = spec.offset?.x ?? 0;
         const oz = spec.offset?.z ?? 0;
+        if (name === 'pano_bar') {
+          obj.clear();
+          obj.add(buildBarCounter(4.0, false));
+        } else if (name === 'pano_wall') {
+          const mesh = obj.children[0] as THREE.Mesh | undefined;
+          if (mesh?.isMesh && mesh.geometry) {
+            applyWorldUVs(mesh.geometry, CONCRETE_TILE_SIZE, c.x + ox, spec.size.y / 2, c.z + oz);
+          }
+        }
         obj.position.set(c.x + ox, DECK_Y, c.z + oz);
         root.add(obj);
         if (spec.solid) {

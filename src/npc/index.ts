@@ -8,7 +8,7 @@ import { Crowd, type Spot } from './crowd';
 import { Djs } from './djs';
 import { animateCharacter, bindRig, type DanceArchetype } from './motion';
 
-const TALK_RANGE = 3.4;
+const TALK_RANGE = 3.75;
 /** Room the crowd gives a conversation. The camera sits 2.25 m from the face, so this covers the whole line. */
 const CONVO_CLEAR_RADIUS = 2.7;
 /** Regulars are bigger than dancers, so they keep a little more room. */
@@ -138,9 +138,9 @@ const SIZES: Partial<Record<NpcId, { x: number; y: number; z: number }>> = {
   leather_daddy: { x: 0.65, y: 1.88, z: 0.42 },
 };
 /** How close you have to stumble before they grab you. */
-const BUMP_RANGE = 2.0;
+const BUMP_RANGE = 2.2;
 /** Range at which non-auto regulars call out a passing one-liner to invite you to press Space. */
-const GREET_RANGE = 4.0;
+const GREET_RANGE = 4.4;
 /** Walk this far away before they can grab you again. */
 const REARM_RANGE = 4.5;
 
@@ -246,6 +246,7 @@ export class Npcs {
   private heard = new Set<NpcId>();
 
   constructor() {
+    this.root.userData.painterlyRole = 'character';
     const startCell = level.spawns.main_hall;
     if (startCell) {
       const c = cellCenter(startCell[0], startCell[1]);
@@ -870,7 +871,7 @@ export class Npcs {
       const h = npc.holders[holderIndex];
       const d = h ? Math.hypot(h.position.x - this.player.x, h.position.z - this.player.z) : npc.pos.distanceTo(this.player);
       if (d > REARM_RANGE && npc.pos.distanceTo(this.player) > REARM_RANGE) this.disarmed.delete(npc);
-      const range = npc.id === 'leather_choir' ? 2.0 : BUMP_RANGE;
+      const range = npc.id === 'leather_choir' ? 2.2 : BUMP_RANGE;
       if (d < range && !this.disarmed.has(npc) && !this.convo && state.started && !state.ending && !state.inputLocked) {
         this.startConvo(npc, holderIndex);
         return;
@@ -882,12 +883,12 @@ export class Npcs {
   private ambientGreet(): void {
     if (state.floor !== 0 || !state.started || state.ending || this.convo || this.replyActive || state.inputLocked) return;
     const now = performance.now();
-    if (now - this.greetAt < 8000) return;
+    if (now - this.greetAt < 7200) return;
     for (const npc of this.npcs) {
       if (AUTO_TALK.has(npc.id) || npc.id === 'bouncer' || npc.id === 'tourists') continue;
       const lines = npcText[npc.id]?.lines ?? [];
       if (!lines.length) continue;
-      if (now - (this.greetedAt.get(npc.id) ?? -1e9) < 22000) continue;
+      if (now - (this.greetedAt.get(npc.id) ?? -1e9) < 19800) continue;
       const h = npc.holders[this.closestHolder(npc, this.player)];
       const d = h ? Math.hypot(h.position.x - this.player.x, h.position.z - this.player.z) : npc.pos.distanceTo(this.player);
       if (d < GREET_RANGE) {
@@ -1219,12 +1220,12 @@ export class Npcs {
     return !!herd && Math.abs(z - herd.pos.z) < 1.8 && Math.abs(x - herd.pos.x) < 6;
   }
 
-  /** An animal guest nearby says something crazy, at most every 5 s. */
+  /** An animal guest nearby says something crazy, at most every 4.5 s. */
   private animalBark(x: number, z: number): void {
     if (!state.started || state.ending || this.convo) return;
     const now = performance.now();
-    if (now - this.animalBarkAt < 5000) return;
-    if (this.crowd.animalNear(x, z, 3.8) === 0) return;
+    if (now - this.animalBarkAt < 4500) return;
+    if (this.crowd.animalNear(x, z, 4.2) === 0) return;
     this.animalBarkAt = now;
     bus.emit('ui:say', { key: `story:animals.lines.${Math.floor(Math.random() * 6)}`, seconds: 3 });
   }
