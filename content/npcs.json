@@ -70,7 +70,7 @@
       "I came in Friday. What day is it? Don't tell me."
     ],
     "talk": [
-      "You. Horse. I've been dancing since Friday. I see everything.",
+      "You. Pony. I've been dancing since Friday. My legs are purely ceremonial now.",
       "Your glasses? Something glinted under the left speaker. Left from the DJ. Or my left. One of the lefts.",
       "Exit? Left for about 128. Then up."
     ]
@@ -104,21 +104,21 @@
       ]
     },
     "talk": [
-      "Who are you, really?",
-      "Nobody in here knows their own face. No mirrors.",
+      "Who are you, really? A horse dreaming you're a graphic designer from Neukölln?",
+      "Nobody in here knows their own face. No mirrors, just concrete and bad decisions.",
       "But your wrist remembers. Look down at yourself."
     ]
   },
   "tourists": {
     "name": "Tourists",
     "lines": [
-      "Oh my god, the costume! Selfie!",
-      "Sorry. We put a sticker on it."
+      "Oh my god, is this Berlin pony-play?! Selfie!",
+      "Sorry. Security slapped a sticker on our lens."
     ],
     "talk": [
-      "Oh my god, the costume! Is it a horse? It's a horse.",
+      "Oh my god, the fetish costume! Is it a real horse? Babe, it's a horse.",
       "We saw a ticket taped to a pillar by the bar. Forty-something.",
-      "We'd show you the photo, but they put a sticker on our camera."
+      "We'd show you the photo, but they put a sticker over our camera."
     ]
   },
   "security": {
@@ -132,7 +132,7 @@
     "name": "Animal control",
     "lines": [
       "Come on, buddy. Into the van.",
-      "Hey, any chance you could get me in sometime?"
+      "Third horse this month. Drop a word with the door guy so I can get in next time?"
     ]
   },
   "bouncer": {
@@ -236,9 +236,9 @@
       "Found my earring yet?"
     ],
     "talk": [
-      "Oh. My. God. A horse! Okay, quest for you. Very important.",
-      "I lost my other earring. I think it's under the DJ booth. Or in Panorama. Or in my other jacket.",
-      "Bring it back and I'll tell you a secret. Kidding, I don't know any secrets. Love the mane though."
+      "Oh. My. God. The fetish horse! Okay, quest for you. Very important.",
+      "I lost my other earring. Probably under the DJ booth. Or in Panorama. Or in my harness.",
+      "Also if you spot one of the rare glowing unicorns on the floor, press Space. Instant clarity. Love the mane though."
     ]
   },
   "darkroom_keeper": {
