@@ -1,12 +1,14 @@
 # Roadmap
 
-**Tonight (Fri 27 into Sat 28, before the pitch).** Recap of what landed. Detail in `docs/recaps/phase-4.md`.
+**Status Saturday 28 Nov, 11:45 CET (pitch 14:00-16:00, submit 15:30).** `main` is at `38ac767`, promoted in #174, and production deployed at 11:45 (READY): https://escape-berghain.vercel.app and https://escapeberghain.dev serve it now. Earlier detail in `docs/recaps/phase-4.md`.
 
-- Title screen: three-line goal (horse, five memories, back exit before you black out), a Controls toggle (WASD, Space, Q, E, V, M), and a separate Play button. In play, one fading line says the next step. Still no HUD.
+- Title screen: three-line goal (horse, five memories, back exit before you black out), a Controls toggle (WASD, Space, Q, E, V, M), and a separate Play button. In play, one fading line says the next step. Still no HUD, plus a glass help box (H) with tips and a memory checklist (#160, #170).
 - NPC figures replace the cubes: low-poly club people, plus horses, unicorns and donkeys. The crowd stays instanced. The same guests stand on the 9 m galleries. Limbs swing on the beat (fake ragdoll, not physics).
 - Two camera views only. V cycles follow and the horse's eyes. Top down is gone.
 - Soft hazy light in both views. Strongest in first person. In follow, shafts and a rim wrap the horse, with haze in front of the lens. Contrast drops so it stays dreamy.
-- Go-live: `dev` was squash-merged to `main` in #91. GitHub build is green. Vercel did not deploy: "Deployment rate limited — retry in 24 hours." https://escape-berghain.vercel.app was still the previous bundle when checked.
+- Saturday morning fairness pass (handoff in `docs/handoff-gemini-2026-11-28.md`, report in `docs/recaps/handoff-gemini-report.md`): only 6 story/strange NPCs auto-grab you, the rest are Space-to-talk with a glass prompt (#158, #167); 40 s patrol grace and guards start far from spawn (#164); softer start with 45 s trip grace (#161); hoof bags are Space-only, milder (+12 trip, 6 s) and half as many (#165); auto-talk NPCs spaced at least 18 m apart (#166).
+- White spots in dark scenes fixed at the root: clamp after the hue wobble (#172). Game feel pass: next-goal mission line, memory sting, found reactions, early rumour, fairer catches (#173). Darkroom labyrinth behind the toilets (#169).
+- Open PRs awaiting review: #150 captions, #155 per-zone audio grooves, #157 horsey renaming.
 
 Deadline: Saturday 28 Nov, 16:00. Each phase ends with a gate.
 
@@ -16,7 +18,7 @@ Every gate ends with a recap: `docs/recaps/phase-<n>.md` (see `docs/recaps/TEMPL
 
 ## Where we are
 
-The whole game is playable start to finish in the browser. You wake up as a horse on the dance floor, find five memories, slip past security through a packed crowd, and stagger out the back exit. Four endings. Generated Berghain techno. What's left is polish, Emma's models and lighting, playtests and the pitch, plus nice-to-haves if there's time.
+The whole game is playable start to finish in the browser, live at `main` = `38ac767`. You wake up as a horse on the dance floor, find five memories, slip past security through a packed crowd, and stagger out the back exit. Four endings, a darkroom labyrinth, story flags that change NPC lines. Generated Berghain techno. What's left: review the three open PRs, Emma's models and lighting, Robin's cold playtests, and the pitch. Nice-to-haves are listed below if there's time.
 
 ## Direction (decided Friday night)
 
@@ -50,25 +52,25 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 - [x] Cut list items 1 to 3 cut: extra regulars, Konami rat, mirror
 - [x] Two views (V): follow cam and the horse's own eyes. Top down removed (#87)
 
-## Now: Phase 4, polish and fix (Saturday morning to 14:00)
+## Phase 4 status (Saturday 11:45): polish and fix is landed
 
-| Who | What | Issue |
+| Who | What | Status |
 |---|---|---|
-| Gemini Neon | Bug bash on the `dev` preview, then fixes | label `bug` |
-| Gemini Neon | Tune drunk steering and the blur curve: hard but fair. Steering now ramps (see below) | see issues |
-| SuperGrok | Balance patrols against crowd cover; guards push through dancers | see issues |
-| Mistral | Caption timing and sizes in Fragment Mono; audio mix pass per zone | see issues |
-| Emma | Models in the build (#7, #8), real lighting in `src/look/` (#5) | |
-| Robin | Rewrite the story drafts in `content/` (#22), 3 cold playtests, pitch (#23) | |
+| Gemini Neon | Bug bash on `dev`, steering and blur tuning | Out of tokens; Mistral took the handoff tasks A-D (#164-#167). Steering ramp and 45 s trip grace landed in #161 |
+| SuperGrok | Patrol balance vs crowd cover | #161 kinder guards (6.5 m sight, 2 s torch); #164 start grace + far spawn |
+| Mistral | Captions (#69), audio per zone (#70) | PRs open: #150, #155 |
+| Claude (Opus) | White spots root cause, game feel | Merged: #172, #173 (issue #162) |
+| Emma | Models in the build (#7, #8), lighting in `src/look/` (#5) | Still open |
+| Robin | Story drafts in `content/` (#22), 3 cold playtests, pitch (#23) | Still open |
 
 - [x] **Steering ramps up.** It started too aggressive. Now you start almost sober (stiff, steady, no lurching) and it gets looser over 90 seconds in the club, plus more with the trip: overshooting turns, slower to line up, sideways lurches. Tune `SOBER_UP_SECONDS` in `src/player/horse.ts`. Getting caught or passing out resets it to soft, so a respawn isn't a punishment
 - [x] **Rare special creatures & 11-bone techno dance.** Ring-tailed lemur (west 9 m gallery), chimpanzee, giant panda, and Fallout ghoul with Space interactions, plus 11-bone NPC techno dance rigs and GPU vertex-shader crowd animations
 - [x] **Horse ragdoll collapse & brutalist concrete.** Loss sequences (caught / blackout) collapse the horse onto brutalist procedural concrete floors
 - [x] **Overcrowded toilets, 4 live DJs & talk-back dialogue.** Packed toilet corridor + 4 live animated DJs at the booth, and interactive 1/2/3 talk-back dialogue choices on 5 key NPCs (`friday_guy`, `bartender_bear`, `philosopher`, `leather_daddy`, `drag_oracle`)
-- [ ] Only `fix/` branches after 12:00
+- [x] Only `fix/` branches after 12:00 (in force from 12:00 today)
 - [ ] 3 cold playtests by outsiders, run by Robin
 
-**Gate 4 (14:00):** production deploy from `main`, live URL played on a laptop that isn't ours. 60 second backup video recorded.
+**Gate 4 (14:00):** production deploy from `main` — done at 11:45, `main` `38ac767` is READY on Vercel. Still open: live URL played on a laptop that isn't ours, and the 60 second backup video recorded.
 
 ## Next: nice-to-haves
 
@@ -83,7 +85,7 @@ Only after Gate 4 is safe. Each one is an issue for one model, in its own folder
 - [x] **Interaction proximity pulse & beat-sync stomp feedback.** Subtle visual glow when within Space grab/talk range and a brighter shockwave ring when E lands cleanly on the beat (#124, #132)
 - [x] **Dynamic Toilet Queue Philosopher.** Scale his lines live with how many memories you hold (`0` to `5`) so backtracking rewards repeat talks (#125)
 - [x] **Softer start for cold playtests.** 45 s trip grace, trip about 4x slower, steering ramps over 5 minutes, gentler guards, plus a glass help box with tips and a memory checklist (#160, #161)
-- [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out. In progress: Claude agent, branch `labyrinth-darkroom`
+- [x] **Labyrinth mystery.** The darkroom maze behind the toilets: shifting walls, trip glow, clues, staff door out (#169)
 - [ ] Convert fonts to woff2 (smaller download)
 - [ ] Mobile touch controls
 - [ ] **Save and continue.** Persist the run to localStorage (memories found, trip, story flags, zone, position), autosaved on each memory and each zone change, with a Continue button on the title screen next to Play and a small reset-save line. So people can stop and come back to explore more.
