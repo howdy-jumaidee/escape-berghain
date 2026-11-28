@@ -51,11 +51,12 @@ export const css = /* css */ `
 /* Title and intro: pitch black. */
 .eb-cover { position: absolute; inset: 0; z-index: 10; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }
-.eb-title { font: 400 clamp(32px, 6vw, 64px)/1.1 var(--mono); letter-spacing: 0.04em; } // ESCAPE BERGHAIN stays BIG
-.eb-panel { min-height: 8.2em; margin-top: 24px; display: grid; place-items: center; }
-.eb-goal { max-width: 36em; }
-.eb-goal p { margin: 0 auto 8px; font: 400 clamp(13px, 1.5vw, 15px)/1.45 var(--mono); color: #e4e4e4; }
+.eb-title { font: 400 clamp(40px, 8vw, 110px)/1.05 var(--mono); letter-spacing: 0.05em; } // ESCAPE BERGHAIN: brutalist, huge
+.eb-panel { min-height: 7.5em; margin-top: 28px; display: grid; place-items: center; }
+.eb-goal { max-width: 52em; }
+.eb-goal p { margin: 0 auto 6px; font: 400 clamp(13px, 1.5vw, 15px)/1.5 var(--mono); color: #e4e4e4; }
 .eb-goal p:last-child { margin-bottom: 0; }
+.eb-title { margin-bottom: 6px; }
 .eb-controls { display: grid; grid-template-columns: auto auto; justify-content: center; column-gap: 18px; row-gap: 10px;
   text-align: left; align-items: center; }
 .eb-controls[hidden], .eb-goal[hidden] { display: none; }

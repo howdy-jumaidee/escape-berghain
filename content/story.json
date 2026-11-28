@@ -44,12 +44,7 @@
   },
   "title": "ESCAPE BERGHAIN",
   "goal": {
-    "lines": [
-      "You turned into a horse.",
-      "Find your 5 lost memories.",
-      "Sneak past security and escape before you forever fall into the horse hole.",
-      "Get out the back exit before you black out."
-    ]
+    "lines": ["You turned into a horse.", "Find your 5 lost memories.", "Sneak past security and escape before you forever fall into the horse hole."]
   },
   "title_ui": {
     "show_controls": "Controls",
