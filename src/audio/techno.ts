@@ -622,6 +622,41 @@ export class Techno {
     this.tone(t, 55, 40, 2, 0.4, 'sine', 0.5);
   }
 
+  /** The horse's neigh on stomp: a nasal descending blare with vibrato and a snort. */
+  sfxNeigh(): void {
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(640, t);
+    o.frequency.exponentialRampToValueAtTime(280, t + 0.32);
+    const vib = this.ctx.createOscillator();
+    vib.frequency.value = 22;
+    const vibG = gain(this.ctx, 18);
+    vib.connect(vibG).connect(o.detune);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1100;
+    bp.Q.value = 1.4;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+    o.connect(bp).connect(g).connect(this.sfx);
+    g.connect(gain(this.ctx, 0.3)).connect(this.reverb);
+    o.start(t);
+    o.stop(t + 0.4);
+    vib.start(t);
+    vib.stop(t + 0.4);
+    this.noiseHit(t + 0.05, 0.12, 'bandpass', 700, 0.1, this.sfx);
+  }
+
+  /** Short airy riser when you walk into a new zone, so the move is felt. */
+  sfxZone(): void {
+    const t = this.ctx.currentTime;
+    this.noiseHit(t, 0.45, 'bandpass', 1400, 0.1, this.sfx, 0.4);
+    this.tone(t, 220, 660, 0.4, 0.07, 'sine', 0.4);
+  }
+
   private tone(t: number, f0: number, f1: number, len: number, vol: number, type: OscillatorType, verb = 0): void {
     const ctx = this.ctx;
     const o = ctx.createOscillator();
