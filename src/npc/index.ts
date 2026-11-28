@@ -7,7 +7,6 @@ import { level, npcText } from '../data';
 import { Crowd, type Spot } from './crowd';
 import { Djs } from './djs';
 import { animateCharacter, bindRig, type DanceArchetype } from './motion';
-import { SpecialCreatures } from './specials';
 
 const TALK_RANGE = 2.4;
 /** How close a unicorn has to be before audio plays its shimmer. */
@@ -161,7 +160,6 @@ export class Npcs {
   readonly root = new THREE.Group();
   readonly crowd: Crowd;
   private djs = new Djs();
-  private specials = new SpecialCreatures();
   private npcs: Npc[] = [];
   private player = new THREE.Vector3();
   private nearCheck = 0;
@@ -229,7 +227,6 @@ export class Npcs {
     this.crowd = new Crowd(level, avoid);
     this.root.add(this.crowd.root);
     this.root.add(this.djs.root);
-    this.root.add(this.specials.root);
 
     bus.on('player:moved', ({ x, z }) => {
       this.player.set(x, 0, z);
@@ -381,7 +378,6 @@ export class Npcs {
     this.cheerLeft = Math.max(0, this.cheerLeft - dt);
     this.crowd.update(dt, this.beatPulse, this.beatN);
     this.djs.update(dt, this.beatPulse, this.beatN);
-    this.specials.update(dt, this.beatPulse, this.beatN, this.player);
     const bounce = this.beatPulse * this.beatPulse;
     const cheering = this.cheerLeft > 0 || !!this.crowdLooksAt;
 
@@ -655,7 +651,6 @@ export class Npcs {
   private talk(at: THREE.Vector3): void {
     if (state.ending || this.convo || this.replyActive || performance.now() < this.talkCooldownUntil) return;
     // Check rare creatures first across ALL floors (the rare Lemur lives on floor 1 / y = 9!).
-    if (this.specials.interact(at, state.floor)) return;
     if (state.floor !== 0) return;
     let best: Npc | null = null;
     let bestHolder = 0;
