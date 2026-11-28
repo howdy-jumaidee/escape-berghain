@@ -60,14 +60,17 @@ export const css = /* css */ `
   -webkit-font-smoothing: antialiased; }
 .eb-ui * { box-sizing: border-box; }
 
-/* Captions: what you find, what the spirit guide says. A soft scrim so they read over bright lights. */
-.eb-say { position: absolute; left: 50%; bottom: 20%; z-index: 4; transform: translateX(-50%);
+/* Captions: what you find, what the spirit guide says. Low and compact so the middle of the room stays clear. */
+.eb-say { position: absolute; left: 50%; bottom: 11%; z-index: 4; transform: translateX(-50%);
   max-width: min(var(--measure), calc(100vw - 2 * var(--s-4))); padding: var(--s-2) var(--s-4);
   background: var(--scrim); border-radius: 2px; text-align: center; text-wrap: balance;
-  font: 400 var(--t-md)/var(--lh-body) var(--mono); color: var(--text-1); text-shadow: var(--legible);
+  font: 400 var(--t-sm)/var(--lh-body) var(--mono); color: var(--text-1); text-shadow: var(--legible);
   opacity: 0; transition: opacity 0.4s; }
 .eb-say.on { opacity: 1; }
 .eb-say:empty { display: none; }
+.eb-ui.touch .eb-say { top: max(var(--s-2), env(safe-area-inset-top)); bottom: auto;
+  max-width: min(44ch, calc(100vw - 260px)); padding: var(--s-1) var(--s-3);
+  font-size: var(--t-xs); line-height: 1.35; }
 
 /* View toggle reminder: quiet, bottom right, still readable. */
 .eb-view-hint { position: absolute; right: var(--s-5); bottom: var(--s-5); font: 400 var(--t-xs)/var(--lh-tight) var(--mono);
@@ -87,20 +90,24 @@ export const css = /* css */ `
 /* Help box: one small, quiet frosted-glass panel, top left. Wide enough for "MEMORIES  1 / 5 recovered"
    on one line and for the glasses hint to break after "under the". All text stays at the 12 px minimum.
    Dim when idle, full when it has news. Off on the title (until intro:land), hidden in face to face talks and endings. */
-.eb-help { position: absolute; left: var(--s-4); top: var(--s-4); width: 260px;
+.eb-help { position: absolute; left: var(--s-4); top: var(--s-4); width: 280px;
   max-width: calc(100vw - 2 * var(--s-4)); z-index: 3; }
 .eb-help.off { display: none; }
-.eb-ui.talking .eb-help { display: none; }
+.eb-ui.talking .eb-help, .eb-ui.zen .eb-help { display: none; }
 .eb-help-panel { background: rgba(20, 20, 24, 0.38); border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 4px; padding: var(--s-2) var(--s-3); opacity: 0.45; transition: opacity 0.6s;
   -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
 .eb-help.live .eb-help-panel { opacity: 1; }
 .eb-help.closed .eb-help-panel { display: none; }
-.eb-help-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin-bottom: var(--s-2); }
+.eb-help-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
 .eb-help-label { font: 400 var(--t-xs)/var(--lh-tight) var(--mono);
   letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-3); text-shadow: var(--legible); }
-.eb-help-count { font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-3);
+.eb-help-count { margin-left: auto; font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-3);
   text-shadow: var(--legible); white-space: nowrap; }
+.eb-help-hide { all: unset; box-sizing: border-box; pointer-events: auto; cursor: pointer; flex: none;
+  padding: 2px var(--s-2); border: 1px solid var(--line); border-radius: 3px;
+  font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-2); text-shadow: var(--legible); }
+.eb-help-hide:hover, .eb-help-hide:active { border-color: var(--text-1); color: #fff; background: rgba(255, 255, 255, 0.12); }
 .eb-help-kicker { margin: 0 0 var(--s-1); font: 400 var(--t-xs)/var(--lh-tight) var(--mono);
   letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-3); text-shadow: var(--legible); }
 .eb-help-tip, .eb-help-mission { margin: 0; font: 400 var(--t-xs)/1.4 var(--mono);
@@ -113,11 +120,12 @@ export const css = /* css */ `
 .eb-help-item.done { color: var(--text-1); }
 .eb-help.tips .eb-help-kicker, .eb-help.tips .eb-help-mission, .eb-help.tips .eb-help-list, .eb-help.tips .eb-help-count { display: none; }
 .eb-help:not(.tips) .eb-help-tip { display: none; }
-/* Closed: only a tiny tab in the same corner. */
-.eb-help-tab { display: none; padding: var(--s-1) var(--s-2); background: rgba(20, 20, 24, 0.38);
-  border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 6px;
-  font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-3); text-shadow: var(--legible);
-  opacity: 0.55; transition: opacity 0.6s;
+/* Closed: only a tiny clickable tab in the same corner. */
+.eb-help-tab { all: unset; box-sizing: border-box; display: none; pointer-events: auto; cursor: pointer;
+  padding: var(--s-1) var(--s-2); background: rgba(20, 20, 24, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 6px;
+  font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-2); text-shadow: var(--legible);
+  opacity: 0.7; transition: opacity 0.6s;
   -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
 .eb-help.closed .eb-help-tab { display: inline-block; }
 .eb-help.live .eb-help-tab { opacity: 1; }
@@ -270,7 +278,7 @@ export const css = /* css */ `
   font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-2); text-shadow: var(--legible); }
 .eb-tpill.active, .eb-tpill.down { border-color: var(--text-1); color: #fff; background: rgba(236, 236, 236, 0.18); }
 
-/* Short landscape viewports (phones turned sideways): keep title, memories, dialogue and endings inside 375-430 px height. */
+/* Short landscape viewports (phones turned sideways): keep the middle of the screen completely clear for the 3D club. */
 @media (max-height: 500px) {
   .eb-cover { padding: var(--s-3) max(var(--s-4), env(safe-area-inset-right)) var(--s-3) max(var(--s-4), env(safe-area-inset-left)); }
   .eb-title { font-size: clamp(28px, 6vw, 48px); }
@@ -283,8 +291,19 @@ export const css = /* css */ `
   .eb-actions button { padding: var(--s-3) var(--s-5); }
   .eb-play { padding: var(--s-3) var(--s-6); }
   .eb-sub { margin-top: var(--s-3); }
-  .eb-help { left: max(var(--s-3), env(safe-area-inset-left)); top: max(var(--s-3), env(safe-area-inset-top)); width: 236px; }
-  .eb-say { bottom: 26%; font-size: var(--t-sm); }
+  .eb-intro { font-size: var(--t-sm); max-width: 48ch; }
+  .eb-help { left: max(var(--s-3), env(safe-area-inset-left)); top: max(var(--s-3), env(safe-area-inset-top)); width: 248px; }
+  .eb-help-panel { padding: var(--s-2); }
+  /* Captions sit tucked at the top centre instead of the middle of the screen. */
+  .eb-say { top: max(var(--s-2), env(safe-area-inset-top)); bottom: auto;
+    max-width: min(44ch, calc(100vw - 260px)); padding: var(--s-1) var(--s-3);
+    font-size: var(--t-xs); line-height: 1.35; }
+  /* Passing NPC one-liners sit neatly at bottom-centre between stick and buttons, never blocking the horse. */
+  .eb-talk:not(.focus) { left: 50%; right: auto; bottom: max(var(--s-3), env(safe-area-inset-bottom));
+    transform: translateX(-50%); max-width: min(42ch, calc(100vw - 290px));
+    padding: var(--s-1) var(--s-3); background: var(--scrim); border-radius: 4px; text-align: center; }
+  .eb-talk:not(.focus) b { margin-bottom: var(--s-1); }
+  .eb-talk:not(.focus) p { font-size: var(--t-xs); line-height: 1.35; }
   .eb-bar-top, .eb-bar-bottom { height: 6vh; }
   .eb-talk.focus { padding: var(--s-5) max(var(--s-4), env(safe-area-inset-right)) var(--s-3) max(var(--s-4), env(safe-area-inset-left)); }
   .eb-talk.focus p { font-size: var(--t-md); }
