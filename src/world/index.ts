@@ -240,6 +240,21 @@ export class World {
       }
     }
 
+    // Items (mate, hoof bags) are picked up by walking into them; no Space needed. Fragments still need Space.
+    if (state.floor === 0 && !state.ending && state.started && !state.inputLocked) {
+      let nearest: Pickup | null = null;
+      let nearestD = 1.15;
+      for (const pu of this.pickups) {
+        if (pu.kind !== 'item') continue;
+        const d = dist(pu.object.position, p);
+        if (d < nearestD) {
+          nearest = pu;
+          nearestD = d;
+        }
+      }
+      if (nearest) this.consume(nearest);
+    }
+
     // Gate hint.
     const gate = this.level.gates.get('gate_shortcut');
     if (state.floor === 0 && gate && !this.gateOpen && dist(gate.object.position, p) < 2.6 && this.t - this.gateHintAt > 10) {
@@ -412,6 +427,11 @@ export class World {
       return;
     }
 
+    this.consume(best);
+  }
+
+  /** Remove a pickup from the world and fire its effect. Items auto-fire on touch; fragments wait for Space. */
+  private consume(best: Pickup): void {
     this.root.remove(best.object);
     this.pickups.splice(this.pickups.indexOf(best), 1);
     if (best.kind === 'item' && best.item) {

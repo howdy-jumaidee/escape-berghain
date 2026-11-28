@@ -2,7 +2,7 @@
 // Separate parts so code can wobble them. Emma's horse_*.glb parts replace the boxes when present:
 // horse_body, horse_neck, horse_head, horse_leg (used four times). Origin at the base, facing +Z.
 import * as THREE from 'three';
-import { bus, state, TRIP_MAX, FLOOR_HEIGHT, BEAT_SECONDS } from '../contracts';
+import { bus, state, TRIP_MAX, FLOOR_HEIGHT, BEAT_SECONDS, lock, unlock } from '../contracts';
 import { placeModel } from '../look/models';
 
 const keys = new Set<string>();
@@ -112,6 +112,8 @@ export class Horse {
   private stompOnBeat = 0;
   /** performance.now() of the last beat from the clock, 0 before the music starts. */
   private lastBeatAt = 0;
+  /** >= 0 while the start ritual plays: lie down, then stand up. -1 = done. */
+  private wakeT = -1;
   /** Looking down at your own front leg. */
   private look = 0;
   private lastStepPhase = 0;
@@ -218,6 +220,10 @@ export class Horse {
     bus.on('player:floor', ({ floor }) => (this.root.position.y = floor * FLOOR_HEIGHT));
     bus.on('beat', ({ time }) => (this.lastBeatAt = time));
     bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
+    bus.on('intro:land', () => {
+      this.wakeT = 0;
+      lock('wake');
+    });
   }
 
   /** Collapse into a multi-body constrained ragdoll ('caught' = lasso yank, 'passout' = trip blackout). */
@@ -794,6 +800,26 @@ export class Horse {
     this.pitch += this.pitchVel * dt;
 
     this.stomp = Math.max(0, this.stomp - dt * 5);
+    // Start ritual: lie down for ~1.1 s, then stand back up over ~1.5 s.
+    let wakePitch = 0;
+    let wakeDrop = 0;
+    if (this.wakeT >= 0) {
+      this.wakeT += dt;
+      const t = this.wakeT;
+      if (t < 1.1) {
+        const k = t / 1.1;
+        wakePitch = -1.25 * k * k;
+        wakeDrop = -0.55 * k * k;
+      } else if (t < 2.6) {
+        const k = Math.min(1, (t - 1.1) / 1.5);
+        const e = 1 - (1 - k) * (1 - k);
+        wakePitch = -1.25 * (1 - e);
+        wakeDrop = -0.55 * (1 - e);
+      } else {
+        this.wakeT = -1;
+        unlock('wake');
+      }
+    }
     if (this.stompPulse > 0) {
       this.stompPulse = Math.max(0, this.stompPulse - dt * 2.8);
       const p = 1 - this.stompPulse;
@@ -808,8 +834,8 @@ export class Horse {
     this.rig.scale.set(1 + this.stomp * 0.07, 1 - this.stomp * 0.14, 1 + this.stomp * 0.07);
     this.look = Math.max(0, this.look - dt * 0.8);
     this.rig.rotation.z = this.sway;
-    this.rig.rotation.x = this.pitch * 0.2 - this.stomp * 0.15;
-    this.rig.position.y = -this.stomp * 0.08;
+    this.rig.rotation.x = this.pitch * 0.2 - this.stomp * 0.15 + wakePitch;
+    this.rig.position.y = -this.stomp * 0.08 + wakeDrop;
     this.neck.rotation.z = this.sway * 1.2;
     this.neck.rotation.x = 0.5 + Math.sin(this.t * 2) * 0.08 * (v + k) + this.pitch * 0.4 + Math.sin(this.look * Math.PI) * 1.1;
     this.legs[0].userData.lift = Math.sin(this.look * Math.PI);
