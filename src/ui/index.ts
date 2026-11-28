@@ -195,40 +195,84 @@ export function startUi(): void {
     if (state.ending && e.code === 'KeyR') location.reload();
   });
 
-  // Title: pitch black, the name, the controls, click.
+  // Title: pitch black. The goal is the first thing under the name. Controls are one toggle away.
+  // Play is its own button. Enter or Space still starts, so the toggle can never trap you.
   const cover = el('div', 'eb-cover', root);
   const box = el('div', '', cover);
   el('div', 'eb-title', box).textContent = t('story:title');
-  el('div', 'eb-tagline', box).textContent = t('story:start.tagline');
-  // Controls as a key / action list, easy to scan.
-  const controls = el('div', 'eb-controls', box);
+  const panel = el('div', 'eb-panel', box);
+  const goal = el('div', 'eb-goal', panel);
+  for (const line of list('story:goal.lines')) el('p', '', goal).textContent = line;
+  const controls = el('div', 'eb-controls', panel);
+  controls.hidden = true;
   for (const pair of (lookup('story:controls') as [string, string][] | undefined) ?? []) {
     el('kbd', '', controls).textContent = pair[0];
     el('span', '', controls).textContent = pair[1];
   }
+  const actions = el('div', 'eb-actions', box);
+  const toggleBtn = el('button', 'eb-toggle', actions);
+  toggleBtn.type = 'button';
+  const playBtn = el('button', 'eb-play', actions);
+  playBtn.type = 'button';
+  playBtn.textContent = t('story:start.button');
   el('div', 'eb-sub', box).textContent = t('story:start.sub');
-  el('div', 'eb-go', box).textContent = t('story:start.button');
+
+  let controlsOn = false;
+  const paintToggle = () => {
+    goal.hidden = controlsOn;
+    controls.hidden = !controlsOn;
+    toggleBtn.textContent = t(controlsOn ? 'story:title_ui.show_goal' : 'story:title_ui.show_controls');
+  };
+  paintToggle();
+  const onToggle = (e?: Event) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    controlsOn = !controlsOn;
+    paintToggle();
+  };
 
   const land = () => {
     cover.classList.add('off');
     state.started = true;
     bus.emit('intro:land', {});
   };
+  let leaving = false;
   const go = () => {
+    if (leaving) return;
+    leaving = true;
     removeEventListener('keydown', onKey);
-    cover.removeEventListener('click', go);
+    toggleBtn.removeEventListener('click', onToggle);
+    playBtn.removeEventListener('click', onPlay);
     bus.emit('game:start', {});
     playIntro(cover, land);
   };
+  const onPlay = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    go();
+  };
   const onKey = (e: KeyboardEvent) => {
-    if (e.code === 'Enter' || e.code === 'Space') go();
+    if (e.repeat) return;
+    // C swaps goal and controls. It never starts the game.
+    if (e.code === 'KeyC') {
+      e.preventDefault();
+      onToggle();
+      return;
+    }
+    if (e.code !== 'Enter' && e.code !== 'Space') return;
+    // Space/Enter on the toggle presses that button. Don't also start.
+    if (document.activeElement === toggleBtn) return;
+    e.preventDefault();
+    go();
   };
   if (debug.skip) {
     bus.emit('game:start', {});
     land();
   } else {
-    cover.addEventListener('click', go);
+    toggleBtn.addEventListener('click', onToggle);
+    playBtn.addEventListener('click', onPlay);
     addEventListener('keydown', onKey);
+    playBtn.focus();
   }
 }
 

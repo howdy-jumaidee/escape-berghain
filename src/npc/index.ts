@@ -108,6 +108,36 @@ interface Convo {
 }
 const STOP_FOR_PLAYER = 3.5;
 
+interface LimbRig {
+  legL?: THREE.Object3D;
+  legR?: THREE.Object3D;
+  armL?: THREE.Object3D;
+  armR?: THREE.Object3D;
+  head?: THREE.Object3D;
+  swing: number;
+  vel: number;
+}
+
+/** Find the limb pivots once the glTF has replaced the grey box. Missing parts are skipped. */
+function limbRig(root: THREE.Object3D): LimbRig | null {
+  const cached = root.userData.rig as LimbRig | undefined;
+  if (cached) return cached;
+  if (root.userData.rigMiss) return null;
+  const rig: LimbRig = { swing: 0, vel: 0 };
+  root.traverse((c) => {
+    if (c.name === 'legL' || c.name === 'legR' || c.name === 'armL' || c.name === 'armR' || c.name === 'head') {
+      rig[c.name] = c;
+    }
+  });
+  if (!rig.legL && !rig.armL && !rig.head) {
+    root.userData.rigTries = ((root.userData.rigTries as number) ?? 0) + 1;
+    if ((root.userData.rigTries as number) > 180) root.userData.rigMiss = true;
+    return null;
+  }
+  root.userData.rig = rig;
+  return rig;
+}
+
 export class Npcs {
   readonly root = new THREE.Group();
   readonly crowd: Crowd;
@@ -139,7 +169,6 @@ export class Npcs {
   private disarmed = new Set<Npc>();
   /** Has this NPC done their full conversation once? After that, they just say one line. */
   private heard = new Set<NpcId>();
-  private eyes: THREE.Object3D[] = [];
 
   constructor() {
     for (const { id, cell } of level.npcs) this.spawn(id, cell[0], cell[1]);
@@ -224,22 +253,24 @@ export class Npcs {
   }
 
   /** Push the horse out of the crowd. Wired into the horse's collision by game-boot. Mutates pos. */
-  pushPlayer(pos: THREE.Vector3, radius: number): void {
-    // Special NPCs are solid: you bump into them, you don't walk through them.
-    for (const npc of this.npcs) {
-      if (!FOCUS.has(npc.id)) continue;
-      for (const h of npc.holders) {
-        const dx = pos.x - h.position.x;
-        const dz = pos.z - h.position.z;
-        const d = Math.hypot(dx, dz);
-        const min = radius + 0.38;
-        if (d < min && d > 1e-4) {
-          pos.x = h.position.x + (dx / d) * min;
-          pos.z = h.position.z + (dz / d) * min;
+  pushPlayer(pos: THREE.Vector3, radius: number, y = 0): void {
+    // Named regulars stand on the ground floor. Gallery guests are handled by the crowd.
+    if (y < 3) {
+      for (const npc of this.npcs) {
+        if (!FOCUS.has(npc.id)) continue;
+        for (const h of npc.holders) {
+          const dx = pos.x - h.position.x;
+          const dz = pos.z - h.position.z;
+          const d = Math.hypot(dx, dz);
+          const min = radius + 0.38;
+          if (d < min && d > 1e-4) {
+            pos.x = h.position.x + (dx / d) * min;
+            pos.z = h.position.z + (dz / d) * min;
+          }
         }
       }
     }
-    if (!this.crowd.push(pos, radius)) return;
+    if (!this.crowd.push(pos, radius, y)) return;
     const now = performance.now();
     if (now - this.barkAt < BARK_EVERY_MS || !state.started || state.ending) return;
     this.barkAt = now;
@@ -256,7 +287,6 @@ export class Npcs {
     this.updateGuide(dt);
     this.checkSelfie();
     this.mop(dt);
-    this.blink(dt);
     this.beatPulse = Math.max(0, this.beatPulse - dt * 4);
     this.crowd.update(dt, this.beatPulse, this.beatN);
     const bounce = this.beatPulse * this.beatPulse;
@@ -321,6 +351,23 @@ export class Npcs {
     o.position.x = Math.cos(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
     o.position.z = -Math.sin(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
     o.rotation.y = yaw + (attentive ? 0 : Math.sin(this.beatN * Math.PI * 0.5 + i) * style.twist);
+    // Fake ragdoll: limbs are separate pivots in the glTF. A spring lets the swing overshoot the beat.
+    const rig = limbRig(o);
+    if (rig) {
+      const amp = (attentive ? 0.22 : 0.62) * (style.hop < 0.05 ? 0.35 : 1);
+      const target = Math.sin(this.t * 6.4 + i * 1.7) * amp;
+      rig.vel += (target - rig.swing) * 28 * dt;
+      rig.vel *= Math.exp(-5.5 * dt);
+      rig.swing += rig.vel * dt;
+      if (rig.legL) rig.legL.rotation.x = rig.swing;
+      if (rig.legR) rig.legR.rotation.x = -rig.swing;
+      if (rig.armL) rig.armL.rotation.x = -rig.swing * 0.9;
+      if (rig.armR) rig.armR.rotation.x = rig.swing * 0.9;
+      if (rig.head) {
+        rig.head.rotation.x = Math.sin(this.t * 2.1 + i) * 0.07;
+        rig.head.rotation.z = Math.sin(this.t * 1.3 + i) * 0.05;
+      }
+    }
   }
 
   private spawn(id: NpcId, col: number, row: number): void {
@@ -334,8 +381,9 @@ export class Npcs {
     const holders: THREE.Object3D[] = [];
     for (let i = 0; i < count; i++) {
       const o = new THREE.Group();
-      o.add(placeModel(`npc_${id}`, size, mat));
-      if (FOCUS.has(id)) o.add(this.makeEyes(size));
+      // Herd and the tourist pair use a second and third figure. Missing files stay grey boxes.
+      const variant = id === 'tourists' ? ['npc_tourists', 'npc_tourists_1'] : id === 'herd' ? ['npc_herd', 'npc_herd_1', 'npc_herd_2'] : null;
+      o.add(placeModel(variant?.[i] ?? `npc_${id}`, size, mat));
       const holder = new THREE.Group();
       if (id === 'leather_choir') {
         // A tight circle.
@@ -554,32 +602,6 @@ export class Npcs {
     bus.emit('npc:unfocus', {});
     bus.emit('npc:silent', {});
     if (finished) c.after?.();
-  }
-
-  /** Two eyes that blink. When you're face to face, they're looking right at you. */
-  private makeEyes(size: { x: number; y: number; z: number }): THREE.Object3D {
-    const eyes = new THREE.Group();
-    eyes.position.set(0, size.y - 0.32, size.z / 2 + 0.01);
-    const white = new THREE.MeshBasicMaterial({ color: 0xf2f2f2 });
-    const black = new THREE.MeshBasicMaterial({ color: 0x050505 });
-    for (const x of [-0.09, 0.09]) {
-      const eye = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.01), white);
-      eye.position.x = x;
-      const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.045, 0.01), black);
-      pupil.position.set(x, -0.005, 0.008);
-      eyes.add(eye, pupil);
-    }
-    eyes.userData.blinkIn = 1 + Math.random() * 4;
-    this.eyes.push(eyes);
-    return eyes;
-  }
-
-  private blink(dt: number): void {
-    for (const e of this.eyes) {
-      e.userData.blinkIn -= dt;
-      if (e.userData.blinkIn < 0) e.userData.blinkIn = 2 + Math.random() * 4;
-      e.scale.y = e.userData.blinkIn < 0.12 ? 0.1 : 1;
-    }
   }
 
   private riddleAnswered(correct: boolean): void {

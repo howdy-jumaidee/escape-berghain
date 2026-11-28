@@ -169,7 +169,7 @@ export class World {
     if (to.y < floorCap) to.y = floorCap;
   }
 
-  update(dt: number, cameraPos: THREE.Vector3, useCutaway = true): void {
+  update(dt: number, cameraPos: THREE.Vector3, useCutaway = false): void {
     this.t += dt;
     const p = this.player;
 
@@ -376,7 +376,7 @@ export class World {
     this.beam = null;
   }
 
-  /** Fade walls and pillars that stand between the camera and the horse (top view only). */
+  /** Fade walls between the camera and the horse. Follow and first person leave them solid. */
   private cutaway(dt: number, cam: THREE.Vector3, active: boolean): void {
     const p = this.player;
     for (const o of this.level.tall) {
