@@ -32,3 +32,26 @@ Every PR: `npm run build` green locally and in CI before merging.
 - #150/#155/#157 need Opus review + human approval before merge.
 - Production (escapeberghain.dev / escape-berghain.vercel.app) was last deployed 09:45 at main @ 93a3681; it does not include anything from today's dev work yet. Nothing was promoted to `main` in this session (no "go live").
 - The stale `wip-before-origin-dev-sync` stash in the shared checkout is pre-#87 work, safe to drop.
+
+## Follow-up WebGL bug bash (Gemini 4, ~12:35 CET)
+
+Mistral (#164 to #168) and Claude (#172, #173) landed Tasks A to F while this session was paused, and #174 promoted them to `main`. Running a real Metal WebGL Chrome pass over `dev` caught three live bugs that headless non-WebGL checks missed, all fixed and merged into `dev` (CI green):
+
+- **#176** (`src/npc/index.ts`): removed `crownAroundPlayer()`, which on `intro:land` teleported the 8 closest NPCs into a 2.6 m ring around spawn (yanking `ice_cream_horse` out of Panorama Bar and placing it 2 m from `leather_choir`, pulling `bouncer` off the front door, firing the `tourists` selfie flash on frame 1, and in `?skip` banishing 8 NPCs outside the walls to `(0, 0)`). Initialised `this.player` from `level.spawns.main_hall`, guarded `announceNear()` with `state.started`, and added `kind: 'talk'` for rare unicorns.
+- **#177** (`src/world/index.ts`): initialised `this.player` from `level.start`, guarded `announceNear()` with `state.started`, excluded auto-pickup Club Mate from the `Space Grab` prompt, and added the Panorama ice cream counter to `announceNear()`.
+- **#178** (`src/ui/index.ts`, `src/ui/style.ts`): hid `.eb-prompt` before start and cleared it on `player:caught`, `trip:max`, and `ending:show`; set `z-index: 3` on `.eb-fade` so blackout covers the help box while keeping wake-up captions (`z-index: 4`) readable.
+
+### Verified in real Metal WebGL Chrome on merged `dev` (`acef9ef`)
+
+- Normal Play -> intro skip: 0 NPCs within 12 m of spawn, `selfieAtSpawn: false`, minimum `AUTO_TALK` pair distance 19.3 m (nearest to spawn 24.7 m), guard grace ~39 s, nearest guard 27.4 m away.
+- Hoof bags: 5 bags in hall, walking over one leaves count at 5, Space consumes it (+12 trip, ~6 s hooved).
+- Space prompt: hidden on title, `Space Talk` at Friday guy, `Space Grab` at hoof bags, glasses, and ice cream counter, hidden near auto-pickup Mate, clears on caught and endings.
+- Darkroom at trip 85: 0 white pixels out of 160,563.
+- Memory 1 pickup: reaction caption and next-goal mission line update cleanly. 0 console errors.
+
+### Still open
+
+- `main` is still at `38ac767` (#174) and does not yet have #176, #177, #178. Ready to promote whenever you say "go live".
+- Open PRs untouched: #175 (ROADMAP update, CI green), #150, #155, #157.
+- Did not touch Emma's folders (`src/look/`, `public/models/`, `public/textures/`, `levels/`).
+
