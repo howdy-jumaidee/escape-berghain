@@ -205,7 +205,8 @@ export const css = /* css */ `
 
 .eb-selfie { position: absolute; inset: 0; background: #fff; opacity: 0; }
 .eb-selfie.on { opacity: 0.95; }
-.eb-fade { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity 0.6s; }
+/* Sits above the help box (z 3, earlier in DOM) while keeping blackout wake-up captions (z 4) readable. */
+.eb-fade { position: absolute; inset: 0; z-index: 3; background: #000; opacity: 0; transition: opacity 0.6s; }
 .eb-fade.on { opacity: 1; }
 
 /* Endings. Rhythm: title, 24, text, 48, credits, 32, retry. */
