@@ -242,6 +242,11 @@ export class Npcs {
   private heard = new Set<NpcId>();
 
   constructor() {
+    const startCell = level.spawns.main_hall;
+    if (startCell) {
+      const c = cellCenter(startCell[0], startCell[1]);
+      this.player.set(c.x, 0, c.z);
+    }
     for (const { id, cell } of level.npcs) this.spawn(id, cell[0], cell[1]);
 
     // The crowd fills everything else. Keep clear of NPCs, pickups, doors and the start.
@@ -365,7 +370,6 @@ export class Npcs {
       this.guideVisible = true;
       this.guide.visible = true;
       this.guide.position.copy(this.player).add(new THREE.Vector3(-1.2, 0, -0.8));
-      this.crownAroundPlayer();
     });
     bus.on('ui:say', ({ key }) => {
       if (key.startsWith('story:spirit_guide') || key.startsWith('story:intro') || key.startsWith('story:finale')) this.guidePulse = 1;
@@ -762,25 +766,6 @@ export class Npcs {
     }
   }
 
-  /** Start ritual: the eight nearest regulars form a crown around the horse and stay there. */
-  private crownAroundPlayer(): void {
-    const ring = [...this.npcs]
-      .sort((a, b) => a.pos.distanceTo(this.player) - b.pos.distanceTo(this.player))
-      .slice(0, 8);
-    ring.forEach((npc, k) => {
-      const a = (k / ring.length) * Math.PI * 2 + 0.4;
-      const hx = this.player.x + Math.cos(a) * 2.6;
-      const hz = this.player.z + Math.sin(a) * 2.6;
-      npc.holders.forEach((h, i) => {
-        const off = (i - (npc.holders.length - 1) / 2) * 1.2;
-        h.position.set(hx + off, 0, hz);
-        npc.homes[i].set(hx + off, 0, hz);
-        npc.targets[i].copy(npc.homes[i]);
-        npc.retarget[i] = 8 + k;
-      });
-    });
-  }
-
   /** The leather choir: stand with them and the music opens up. */
   private choir(): void {
     const c = this.npcs.find((n) => n.id === 'leather_choir');
@@ -1098,7 +1083,7 @@ export class Npcs {
     const p = this.player;
     let near = false;
     let talk = false;
-    if (state.floor === 0 && !state.ending && !this.convo) {
+    if (state.started && state.floor === 0 && !state.ending && !this.convo) {
       for (const npc of this.npcs) {
         const h = npc.holders[this.closestHolder(npc, p)];
         const dHolder = h ? Math.hypot(h.position.x - p.x, h.position.z - p.z) : npc.pos.distanceTo(p);
@@ -1108,14 +1093,17 @@ export class Npcs {
           if (!AUTO_TALK.has(npc.id)) talk = true;
         }
       }
-      if (!near) near = this.crowd.nearUnicorn(p.x, p.z, 0, TALK_RANGE);
+      if (!talk && this.crowd.nearUnicorn(p.x, p.z, 0, TALK_RANGE)) {
+        near = true;
+        talk = true;
+      }
     }
     if (near !== this.wasNear || talk !== this.wasTalk) {
       this.wasNear = near;
       this.wasTalk = talk;
       bus.emit('player:near', { by: 'npc', near, kind: talk ? 'talk' : undefined });
     }
-    const uni = state.floor === 0 && this.crowd.nearUnicorn(p.x, p.z, 0, UNICORN_HEAR_RANGE);
+    const uni = state.started && state.floor === 0 && this.crowd.nearUnicorn(p.x, p.z, 0, UNICORN_HEAR_RANGE);
     if (uni !== this.wasNearUnicorn) {
       this.wasNearUnicorn = uni;
       bus.emit('unicorn:near', { near: uni });
