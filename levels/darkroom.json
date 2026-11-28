@@ -1,0 +1,44 @@
+{
+  "_owner": "Dee. The darkroom maze east of the toilets, entered through the door cell [16, 6] in level1.json. Each character is a 3 m tile: half a 6 m CELL, so 2 x 2 tiles make one cell. Tile [col, row] covers x = originX + col*3 .. +3, z = originZ + row*3 .. +3. Shifter walls 'a' stand up in phase A, 'b' in phase B; the phase flips every 4 beats.",
+  "originX": 102,
+  "originZ": 16.5,
+  "tile": 3,
+  "wallHeight": 4,
+  "_exitTo": "Where the staff door lets you out, in metres: the back exit, cell [12, 10] in level1.json, clear of the hoof bag on the back_exit spawn.",
+  "exitTo": [75, 63],
+  "legend": {
+    "#": "dark_wall",
+    ".": "dark_floor",
+    "<": "dark_entrance",
+    "a": "shift_a",
+    "b": "shift_b",
+    "1": "clue_1",
+    "2": "clue_2",
+    "3": "clue_3",
+    "4": "clue_4",
+    "X": "dark_exit"
+  },
+  "clues": {
+    "clue_1": { "kind": "flyer", "key": "story:darkroom.clue_1" },
+    "clue_2": { "kind": "stamp", "key": "story:darkroom.clue_2" },
+    "clue_3": { "kind": "flyer", "key": "story:darkroom.clue_3" },
+    "clue_4": { "kind": "flyer", "key": "story:darkroom.clue_4" }
+  },
+  "grid": [
+    "#################",
+    "#.......b.....#.X",
+    "#.#############.#",
+    "#......2......#.#",
+    "#.#.###.###.###.#",
+    "#.#.#.#.#...#...#",
+    "###.#.#.#.###a#b#",
+    "<1..#.#.#...#...#",
+    "###.#.#.###.###.#",
+    "#.#.#.#.#...#...#",
+    "#.#.#.#.#######.#",
+    "#.#...#3...4a...#",
+    "#.#.#######.#.###",
+    "#....a....#.b...#",
+    "#################"
+  ]
+}
