@@ -31,25 +31,35 @@ export const css = /* css */ `
 .eb-talk.on { opacity: 1; }
 .eb-talk b { display: block; font: 400 11px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
 .eb-talk p { margin: 0; font: 400 16px/1.5 var(--mono); }
-.eb-answers { margin-top: 16px; padding-top: 12px; border-top: 1px solid #2e2e2e; display: grid; gap: 4px; pointer-events: auto; }
-.eb-answers button { all: unset; cursor: pointer; font: 400 15px/1.6 var(--mono); color: var(--paper); }
-.eb-answers button:hover, .eb-answers button:focus-visible { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
-.eb-answers kbd { font: 400 13px var(--mono); color: var(--dim); margin-right: 14px; }
+.eb-answers { margin-top: 14px; display: grid; gap: 2px; pointer-events: auto; }
+.eb-answers:empty { display: none; }
+.eb-answers button { all: unset; cursor: pointer; display: flex; gap: 14px; align-items: baseline; padding: 7px 14px;
+  border-left: 2px solid transparent; font: 400 15px/1.45 var(--mono); color: #b9b9b9; transition: background 0.12s, color 0.12s; }
+.eb-answers button.sel { color: #fff; background: rgba(255,255,255,0.09); border-left-color: var(--paper); }
+.eb-answers button.used { color: #6f6f6f; }
+.eb-answers button.used.sel { color: #a8a8a8; }
+.eb-answers kbd { font: 400 12px var(--mono); color: var(--dim); min-width: 1ch; }
+.eb-choose-hint { display: none; margin-top: 12px; font: 400 11px var(--mono); color: #6a6a6a; }
 
 /* Face to face conversations: letterbox, centred dialogue, the NPC fills the frame. */
 .eb-bar-top, .eb-bar-bottom { position: absolute; left: 0; right: 0; height: 11vh; background: #000; transition: transform 0.45s ease-out; }
 .eb-bar-top { top: 0; transform: translateY(-100%); }
 .eb-bar-bottom { bottom: 0; transform: translateY(100%); }
 .eb-bar-top.focus, .eb-bar-bottom.focus { transform: none; }
-.eb-talk.focus { left: 50%; bottom: 4vh; transform: translateX(-50%); width: min(720px, 90vw); text-align: center; z-index: 1;
-  background: rgba(0, 0, 0, 0.72); border: 1px solid #2e2e2e; padding: 18px 22px 14px; }
+.eb-talk.focus { left: 0; right: 0; bottom: 0; transform: none; width: auto; max-width: none; z-index: 1; text-align: center;
+  padding: 72px max(16px, calc(50vw - 360px)) 3vh; text-shadow: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.86) 55%, rgba(0,0,0,0) 100%); }
 /* While talking, ambient captions move to the top so they never sit on the dialogue or the answers. */
 .eb-ui.talking .eb-say { bottom: auto; top: 10vh; }
 .eb-talk.focus p { font-size: 19px; }
 .eb-talk.focus b { font-size: 12px; }
 .eb-talk-hint { display: none; margin-top: 12px; font: 400 11px var(--mono); color: #6a6a6a; }
 .eb-talk.focus .eb-talk-hint { display: block; }
-.eb-talk.focus .eb-answers { justify-content: center; text-align: left; }
+.eb-talk.focus.choosing .eb-talk-hint { display: none; }
+.eb-talk.focus.choosing .eb-choose-hint { display: block; }
+/* Skyrim/Oblivion style: the NPC's line on top, your answers in their own list under a rule. Never on top of each other. */
+.eb-talk.focus .eb-answers { width: min(600px, 100%); margin: 18px auto 0; padding-top: 12px; text-align: left;
+  border-top: 1px solid rgba(255,255,255,0.14); }
 
 /* Title and intro: pitch black. */
 .eb-cover { position: absolute; inset: 0; z-index: 10; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
