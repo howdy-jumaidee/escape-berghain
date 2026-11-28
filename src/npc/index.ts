@@ -467,7 +467,482 @@ export class Npcs {
           this.holdForConvo(npc, i, o, dt, archetype);
           prev.copy(h.position);
         } else if (this.crowdLooksAt) {
-          o.lookAt(this.crowdLooksAt.x, o.posit…4969 tokens truncated…   // Optional `by_flag` in content: lines keyed by story flags the player holds. First matching flag wins.
+          o.lookAt(this.crowdLooksAt.x, o.position.y, this.crowdLooksAt.z);
+          o.position.y = bounce * 0.2;
+          const rig = bindRig(o);
+          if (rig) {
+            animateCharacter(rig, {
+              dt,
+              t: this.t,
+              beatN: this.beatN,
+              beatPulse: this.beatPulse,
+              archetype,
+              moveSpeed: 0,
+              attentive: false,
+              talking: false,
+              cheer: true,
+              finale: state.finale,
+              seed: npc.seeds[i],
+            });
+          }
+          prev.copy(h.position);
+        } else if (npc.id === 'herd') {
+          // Perfect sync: hop and twist on every beat, all three the same.
+          o.position.x = 0;
+          o.position.z = 0;
+          o.position.y = bounce * 0.25;
+          o.rotation.y = Math.PI + Math.sin(this.beatN * Math.PI * 0.5) * 0.6;
+          o.rotation.z = 0;
+          const rig = bindRig(o);
+          if (rig) {
+            animateCharacter(rig, {
+              dt,
+              t: this.t,
+              beatN: this.beatN,
+              beatPulse: this.beatPulse,
+              archetype: 'herd_sync',
+              moveSpeed: 0,
+              attentive: false,
+              talking: false,
+              cheer: cheering,
+              finale: state.finale,
+              seed: 0,
+            });
+          }
+          prev.copy(h.position);
+        } else if (npc.id === 'leather_choir') {
+          // Heads together, swaying as one, humming the bassline.
+          o.position.set(0, 0, 0);
+          o.rotation.y = Math.atan2(npc.pos.x - h.position.x, npc.pos.z - h.position.z);
+          o.rotation.z = Math.sin(this.t * 1.1) * 0.08;
+          const rig = bindRig(o);
+          if (rig) {
+            animateCharacter(rig, {
+              dt,
+              t: this.t,
+              beatN: this.beatN,
+              beatPulse: this.beatPulse,
+              archetype: 'choir_trance',
+              moveSpeed: 0,
+              attentive: false,
+              talking: false,
+              cheer: false,
+              finale: state.finale,
+              seed: 0,
+            });
+          }
+          prev.copy(h.position);
+        } else {
+          moveSpeed = this.danceAndWander(npc, i, o, bounce, dt, archetype, cheering, !!activeFocus);
+        }
+        // Keep prevPos synced even if moveSpeed was measured inside danceAndWander.
+        void moveSpeed;
+      });
+      // Keep the talk spot on the figures as they move.
+      if (npc.id !== 'cleaner' && npc.holders.length) {
+        npc.pos.set(0, 0, 0);
+        npc.holders.forEach((h) => npc.pos.add(h.position));
+        npc.pos.multiplyScalar(1 / npc.holders.length);
+      }
+    }
+  }
+
+  /** Point the focused NPC toward the actual camera spot (used when focus cam dodges a wall). */
+  setFocusFacing(x: number, z: number): void {
+    this.focusLookTarget = { x, z };
+    const f = this.focused;
+    if (!f) return;
+    const h = f.npc.holders[f.holderIndex] ?? f.npc.holders[0];
+    const o = f.npc.objects[f.holderIndex] ?? f.npc.objects[0];
+    if (h && o) o.rotation.y = Math.atan2(x - h.position.x, z - h.position.z);
+  }
+
+  /** Keep the focused NPC centred, facing the camera (or player), and expressively alive while talking. */
+  private holdForConvo(npc: Npc, i: number, o: THREE.Object3D, dt: number, archetype: DanceArchetype): void {
+    const h = npc.holders[i];
+    const k = 1 - Math.exp(-14 * dt);
+    o.position.multiplyScalar(1 - k);
+    o.rotation.z *= 1 - k;
+    const lookX = this.focusLookTarget?.x ?? this.player.x;
+    const lookZ = this.focusLookTarget?.z ?? this.player.z;
+    const targetYaw = Math.atan2(lookX - h.position.x, lookZ - h.position.z);
+    const diff = Math.atan2(Math.sin(targetYaw - o.rotation.y), Math.cos(targetYaw - o.rotation.y));
+    o.rotation.y += diff * (1 - Math.exp(-12 * dt));
+    const rig = bindRig(o);
+    if (rig) {
+      animateCharacter(rig, {
+        dt,
+        t: this.t,
+        beatN: this.beatN,
+        beatPulse: this.beatPulse,
+        archetype,
+        moveSpeed: 0,
+        attentive: true,
+        talking: true,
+        cheer: false,
+        finale: false,
+        seed: npc.seeds[i],
+      });
+    }
+  }
+
+  /** Regulars dance on the beat and drift around their spot. Walk up to one and they stop and look at you. */
+  private danceAndWander(
+    npc: Npc,
+    i: number,
+    o: THREE.Object3D,
+    bounce: number,
+    dt: number,
+    archetype: DanceArchetype,
+    cheering: boolean,
+    freezeWander = false,
+  ): number {
+    const style = STYLES[npc.id] ?? DEFAULT_STYLE;
+    const h = npc.holders[i];
+    const prev = npc.prevPos[i];
+    const toPlayer = state.floor === 0 ? Math.hypot(this.player.x - h.position.x, this.player.z - h.position.z) : Infinity;
+    const attentive = toPlayer < STOP_FOR_PLAYER;
+    let yaw = o.rotation.y;
+
+    if (style.wander > 0 && !attentive && !freezeWander && state.started) {
+      npc.retarget[i] -= dt;
+      const tgt = npc.targets[i];
+      const dx = tgt.x - h.position.x;
+      const dz = tgt.z - h.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.1 || npc.retarget[i] <= 0) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * style.wander;
+        tgt.set(npc.homes[i].x + Math.cos(a) * r, 0, npc.homes[i].z + Math.sin(a) * r);
+        npc.retarget[i] = 3 + Math.random() * 5;
+      } else {
+        const step = Math.min(d, WANDER_SPEED * dt);
+        h.position.x += (dx / d) * step;
+        h.position.z += (dz / d) * step;
+        yaw = Math.atan2(dx, dz);
+      }
+    }
+
+    // Measure actual horizontal movement speed (covers wandering regulars AND the mopping cleaner!).
+    const movedX = h.position.x - prev.x;
+    const movedZ = h.position.z - prev.z;
+    const moveSpeed = dt > 1e-4 ? Math.hypot(movedX, movedZ) / dt : 0;
+    prev.copy(h.position);
+
+    // Let the mopping cleaner face its direction of travel when not looking at the player.
+    if (npc.id === 'cleaner' && moveSpeed > 0.08 && !attentive) {
+      const moveYaw = Math.atan2(movedX, movedZ);
+      const diff = Math.atan2(Math.sin(moveYaw - yaw), Math.cos(moveYaw - yaw));
+      yaw += diff * (1 - Math.exp(-8 * dt));
+    }
+
+    if (attentive) yaw = Math.atan2(this.player.x - h.position.x, this.player.z - h.position.z);
+
+    // Dance translation: damped when walking so locomotion stride stays grounded.
+    const danceWeight = Math.max(0, 1 - moveSpeed * 1.4);
+    const side = this.beatN % 2 === 0 ? 1 : -1;
+    o.position.y = bounce * style.hop * (attentive ? 0.4 : 1) * danceWeight;
+    o.position.x = Math.cos(yaw) * side * style.step * (1 - this.beatPulse * 0.5) * danceWeight;
+    o.position.z = -Math.sin(yaw) * side * style.step * (1 - this.beatPulse * 0.5) * danceWeight;
+    o.rotation.y = yaw + (attentive ? 0 : Math.sin(this.beatN * Math.PI * 0.5 + i) * style.twist * danceWeight);
+    o.rotation.z = 0;
+
+    const rig = bindRig(o);
+    if (rig) {
+      animateCharacter(rig, {
+        dt,
+        t: this.t,
+        beatN: this.beatN,
+        beatPulse: this.beatPulse,
+        archetype,
+        moveSpeed,
+        attentive,
+        talking: false,
+        cheer: cheering,
+        finale: state.finale,
+        seed: npc.seeds[i],
+      });
+    }
+    return moveSpeed;
+  }
+
+  private spawn(id: NpcId, col: number, row: number): void {
+    const c = cellCenter(col, row);
+    const pos = new THREE.Vector3(c.x, 0, c.z);
+    const horse = HORSES.has(id);
+    const size = SIZES[id] ?? (horse ? { x: 0.6, y: 2.2, z: 0.45 } : { x: 0.55, y: 1.8, z: 0.35 });
+    const mat = new THREE.MeshStandardMaterial({ color: COLOURS[id] ?? 0x555555, roughness: id === 'leather_choir' ? 0.35 : 0.85 });
+    const count = GROUP[id] ?? 1;
+    const objects: THREE.Object3D[] = [];
+    const holders: THREE.Object3D[] = [];
+    for (let i = 0; i < count; i++) {
+      const o = new THREE.Group();
+      // Herd and the tourist pair use a second and third figure. Missing files stay grey boxes.
+      const variant = id === 'tourists' ? ['npc_tourists', 'npc_tourists_1'] : id === 'herd' ? ['npc_herd', 'npc_herd_1', 'npc_herd_2'] : null;
+      o.add(placeModel(variant?.[i] ?? `npc_${id}`, size, mat));
+      const holder = new THREE.Group();
+      if (id === 'leather_choir') {
+        // A tight circle.
+        const a = (i / count) * Math.PI * 2;
+        holder.position.set(pos.x + Math.cos(a) * 0.9, 0, pos.z + Math.sin(a) * 0.9);
+      } else {
+        holder.position.set(pos.x + (i - (count - 1) / 2) * 1.4, 0, pos.z);
+      }
+      holder.add(o);
+      this.root.add(holder);
+      objects.push(o);
+      holders.push(holder);
+    }
+    this.npcs.push({
+      id,
+      objects,
+      holders,
+      homes: holders.map((h) => h.position.clone()),
+      targets: holders.map((h) => h.position.clone()),
+      prevPos: holders.map((h) => h.position.clone()),
+      retarget: holders.map(() => Math.random() * 4),
+      seeds: holders.map((_, i) => i * 1.73 + col * 0.37 + row * 0.91),
+      pos,
+      line: 0,
+    });
+  }
+
+  private closestHolder(npc: Npc, at: THREE.Vector3): number {
+    let bestIdx = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < npc.holders.length; i++) {
+      const h = npc.holders[i];
+      const d = Math.hypot(h.position.x - at.x, h.position.z - at.z);
+      if (d < bestD) {
+        bestD = d;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  private talk(at: THREE.Vector3): void {
+    if (state.ending || this.convo || this.replyActive || performance.now() < this.talkCooldownUntil) return;
+    // Check rare creatures first across ALL floors (the rare Lemur lives on floor 1 / y = 9!).
+    if (state.floor !== 0) return;
+    let best: Npc | null = null;
+    let bestHolder = 0;
+    let bestD = TALK_RANGE;
+    for (const npc of this.npcs) {
+      const idx = this.closestHolder(npc, at);
+      const h = npc.holders[idx];
+      const dHolder = h ? Math.hypot(h.position.x - at.x, h.position.z - at.z) : npc.pos.distanceTo(at);
+      const d = Math.min(dHolder, npc.pos.distanceTo(at) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
+      if (d < bestD) {
+        best = npc;
+        bestHolder = idx;
+        bestD = d;
+      }
+    }
+    if (!best) {
+      // Rare Unicorn Easter Egg: press Space right next to one of the rare unicorns for a moment of crisp clarity.
+      const now = performance.now();
+      if (now - this.unicornAt > 25000 && this.crowd.nearUnicorn(at.x, at.z, 0, 2.4)) {
+        this.unicornAt = now;
+        bus.emit('item:consumed', { item: 'ice_cream' });
+        bus.emit('crowd:cheer', {});
+        bus.emit('ui:say', { key: 'story:unicorn.blessing', seconds: 4.5 });
+      }
+      return;
+    }
+    this.talking = best;
+    const npc = best;
+    if (FOCUS.has(npc.id)) return this.startConvo(npc, bestHolder);
+    const say = (key: string) => bus.emit('npc:talk', { npc: npc.id, lineId: `npcs:${npc.id}.${key}` });
+
+    switch (npc.id) {
+      case 'herd':
+        say(state.passOuts > 0 ? 'warning' : `lines.${npc.line++ % 2}`);
+        return bus.emit('ui:say', { key: 'story:herd.hint', seconds: 4 });
+      default: {
+        const lines = npcText[npc.id]?.lines ?? [];
+        if (!lines.length) return;
+        say(`lines.${npc.line++ % lines.length}`);
+      }
+    }
+  }
+
+  /** The leather choir: stand with them and the music opens up. */
+  private choir(): void {
+    const c = this.npcs.find((n) => n.id === 'leather_choir');
+    if (!c) return;
+    const near = state.floor === 0 && c.pos.distanceTo(this.player) < CHOIR_RANGE;
+    if (near === this.choirNear) return;
+    this.choirNear = near;
+    bus.emit('music:choir', { near });
+    if (near) bus.emit('npc:talk', { npc: 'leather_choir', lineId: 'npcs:leather_choir.lines.0' });
+  }
+
+  /** The 6 am cleaner wanders and mops. Wet floor: the horse slides. */
+  private mop(dt: number): void {
+    const cleaner = this.npcs.find((n) => n.id === 'cleaner');
+    for (const p of this.puddles) {
+      p.left -= dt;
+      const mat = p.mesh.material as THREE.MeshStandardMaterial;
+      mat.opacity = Math.min(0.55, p.left * 0.1);
+      if (p.left <= 0) {
+        this.root.remove(p.mesh);
+        mat.dispose();
+      }
+    }
+    this.puddles = this.puddles.filter((p) => p.left > 0);
+    if (!cleaner || !state.started) return;
+    // Pause patrol translation and mopping while talking so the cleaner stays in frame.
+    if (this.convo?.npc === cleaner || this.focused?.npc === cleaner) return;
+    // Shuffle back and forth along the bar.
+    this.cleanerPhase += dt * 0.15;
+    const h = cleaner.holders[0];
+    const homeX = cellCenter(level.npcs.find((n) => n.id === 'cleaner')!.cell[0], 0).x;
+    h.position.x = homeX + Math.sin(this.cleanerPhase) * 4;
+    cleaner.pos.x = h.position.x;
+    this.mopTimer -= dt;
+    if (this.mopTimer > 0) return;
+    this.mopTimer = MOP_EVERY;
+    const seconds = 14;
+    const radius = PUDDLE_RADIUS;
+    const mesh = new THREE.Mesh(
+      this.puddleGeo,
+      new THREE.MeshStandardMaterial({ color: 0x8fb4d0, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }),
+    );
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(h.position.x, 0.02, h.position.z + 1);
+    this.root.add(mesh);
+    this.puddles.push({ mesh, left: seconds });
+    bus.emit('floor:wet', { x: mesh.position.x, z: mesh.position.z, radius, seconds });
+  }
+
+  private updateGuide(dt: number): void {
+    if (!this.guideVisible) return;
+    this.guidePulse = Math.max(0, this.guidePulse - dt * 0.8);
+    const want = this.player.clone().add(new THREE.Vector3(-1.2, 0, -0.8));
+    this.guide.position.lerp(want, 1 - Math.exp(-2.5 * dt));
+    this.guide.position.y = 0.4 + Math.sin(performance.now() / 600) * 0.12;
+    this.guide.lookAt(this.player.x, this.guide.position.y, this.player.z);
+    const solid = 0.12 + state.fragments.length * 0.13;
+    // Forgetting: past trip 85 the guide fades away.
+    const forget = Math.max(0, Math.min(1, (state.trip - 85) / 15));
+    const opacity = Math.min(0.85, solid + this.guidePulse * 0.25) * (1 - forget * 0.9);
+    const emissiveIntensity = 0.4 + this.guidePulse;
+    this.guide.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (!m) continue;
+        if (!m.transparent) {
+          m.transparent = true;
+          m.depthWrite = false;
+          m.needsUpdate = true;
+        }
+        m.opacity = opacity;
+        if ('emissiveIntensity' in m) (m as THREE.MeshStandardMaterial).emissiveIntensity = emissiveIntensity;
+      }
+    });
+  }
+
+  private checkSelfie(): void {
+    if (this.selfieTaken || !state.started || state.ending || state.floor !== 0) return;
+    const t = this.npcs.find((n) => n.id === 'tourists');
+    if (!t || t.pos.distanceTo(this.player) > SELFIE_RANGE) return;
+    this.selfieTaken = true;
+    this.talking = t;
+    bus.emit('npc:talk', { npc: 'tourists', lineId: 'npcs:tourists.lines.0' });
+    bus.emit('selfie:flash', { x: t.pos.x, z: t.pos.z });
+    setTimeout(() => bus.emit('ui:say', { key: 'story:selfie_after', seconds: 3 }), 3500);
+  }
+
+  // ---------- Conversations: forced, face to face, like an old RPG ----------
+
+  /** Stumble into an auto-talk NPC and they pull you into a conversation. Everyone else waits for Space. */
+  private bumpInto(): void {
+    if (state.floor !== 0) return;
+    for (const npc of this.npcs) {
+      if (!AUTO_TALK.has(npc.id)) continue;
+      const holderIndex = this.closestHolder(npc, this.player);
+      const h = npc.holders[holderIndex];
+      const d = h ? Math.hypot(h.position.x - this.player.x, h.position.z - this.player.z) : npc.pos.distanceTo(this.player);
+      if (d > REARM_RANGE && npc.pos.distanceTo(this.player) > REARM_RANGE) this.disarmed.delete(npc);
+      const range = npc.id === 'leather_choir' ? 1.5 : BUMP_RANGE;
+      if (d < range && !this.disarmed.has(npc) && !this.convo && state.started && !state.ending && !state.inputLocked) {
+        this.startConvo(npc, holderIndex);
+        return;
+      }
+    }
+  }
+
+  private startConvo(npc: Npc, holderIndex = this.closestHolder(npc, this.player)): void {
+    if (this.convo || this.replyActive || state.ending) return;
+    clearTimeout(this.riddleTimer);
+    this.riddleTimer = 0;
+    clearTimeout(this.replyTimer);
+    this.replyTimer = 0;
+    const { keys, after, keepFocus, immediateChoices } = this.script(npc);
+    if (!keys.length) return;
+    this.convo = { npc, holderIndex, keys, i: 0, after, keepFocus, immediateChoices };
+    this.focused = { npc, holderIndex };
+    this.disarmed.add(npc);
+    this.talking = npc;
+    lock('talk');
+    const h = npc.holders[holderIndex] ?? npc.holders[0];
+    const o = npc.objects[holderIndex] ?? npc.objects[0];
+    // Zero dance offset and turn the figure to face the player immediately so the camera frames them cleanly.
+    if (o && h) {
+      o.position.set(0, 0, 0);
+      o.rotation.z = 0;
+      o.rotation.y = Math.atan2(this.player.x - h.position.x, this.player.z - h.position.z);
+    }
+    // Eye height, so their eyes sit right in the middle of the frame.
+    const face = (SIZES[npc.id]?.y ?? (HORSES.has(npc.id) ? 2.2 : 1.8)) - 0.32;
+    bus.emit('npc:focus', { npc: npc.id, x: h.position.x, y: face, z: h.position.z });
+    this.sayLine();
+    if (immediateChoices) this.endConvo(true);
+  }
+
+  /** What an NPC says, given where you are in the story. Some of it is true. Some of it isn't. */
+  private script(npc: Npc): { keys: string[]; after?: () => void; keepFocus?: boolean; immediateChoices?: boolean } {
+    const talk = (npcText[npc.id]?.talk as string[] | undefined) ?? [];
+    const full = talk.map((_, i) => `talk.${i}`);
+    const once = (keys: string[]) => {
+      const first = !this.heard.has(npc.id);
+      this.heard.add(npc.id);
+      return first ? keys : keys.slice(-1);
+    };
+    if (TALK_BACK_NPCS.has(npc.id)) {
+      const choices = (npcText[npc.id]?.choices as TalkChoiceEntry[] | undefined) ?? [];
+      if (choices.length) {
+        const first = !this.heard.has(npc.id);
+        this.heard.add(npc.id);
+        // Story flags beat fragment tiers: if the player holds a flag this NPC has `by_flag` lines for, those win.
+        const flagged = this.flagLines(npc.id);
+        const tier = flagged.length ? flagged : this.fragmentTier(npc.id);
+        const base = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        // Repeat visits swap the last intro line for the fragment-tier lines, if the NPC has them.
+        const keys = tier.length ? (first ? [...base, ...tier] : tier) : base;
+        return {
+          keys,
+          keepFocus: true,
+          immediateChoices: !first,
+          after: () => this.openChoices(npc),
+        };
+      }
+    }
+    switch (npc.id) {
+      case 'riddle_horse':
+        if (this.riddleSolved) return { keys: ['riddle.right'] };
+        // The bike riddle needs your keys first.
+        if (!state.fragments.includes(4)) return { keys: ['talk.0', 'not_yet'] };
+        return { keys: once(full), after: () => bus.emit('riddle:show', {}), keepFocus: true };
+      case 'coat_check':
+        if (!state.fragments.includes(3)) return { keys: ['lines.0'] };
+        if (state.fragments.includes(4)) return { keys: ['empty'] };
+        // Ticket in, jacket out, keys in the pocket.
+        return { keys: ['jacket'], after: () => bus.emit('fragment:claim', { id: 4 }) };
+      default: {
+        // Optional `by_flag` in content: lines keyed by story flags the player holds. First matching flag wins.
         // Optional `by_fragments` in content: lines keyed by the fewest fragments needed. Repeat visits get only these.
         const flagged = this.flagLines(npc.id);
         const tier = flagged.length ? flagged : this.fragmentTier(npc.id);
