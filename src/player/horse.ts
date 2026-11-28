@@ -341,7 +341,8 @@ export class Horse {
 
   private stepRagdoll(dt: number): void {
     const r = this.ragdoll;
-    if (!r) return;
+    // THREE.Timer can hand back dt = 0 after a tab refocus; the velocity divides below would NaN the rig.
+    if (!r || dt <= 1e-5) return;
     pressed.clear();
 
     if (this.stompPulse > 0) {

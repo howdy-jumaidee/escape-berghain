@@ -118,6 +118,7 @@ export class SpecialCreatures {
   readonly root = new THREE.Group();
   private creatures: CreatureInstance[] = [];
   private t = 0;
+  private pandaGaveFreeze = false;
 
   constructor() {
     this.root.name = 'special_creatures';
@@ -270,7 +271,9 @@ export class SpecialCreatures {
     if (best.id === 'panda' || best.id === 'chimp' || best.id === 'lemur') {
       bus.emit('crowd:cheer', {});
     }
-    if (best.id === 'panda') {
+    if (best.id === 'panda' && !this.pandaGaveFreeze) {
+      // Brain freeze is a one-off gift, like the other free grants. Later visits are just a cheer.
+      this.pandaGaveFreeze = true;
       bus.emit('item:consumed', { item: 'ice_cream' });
     }
 
