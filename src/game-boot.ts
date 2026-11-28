@@ -181,7 +181,7 @@ renderer.setAnimationLoop(() => {
   eyeAnchor.set(px, py + (view === 'eyes' ? 1.75 : 2.1), pz);
 
   if (view === 'follow') {
-    follow.set(px - fwdX * 6, py + 3.6, pz - fwdZ * 6);
+    follow.set(px - fwdX * 4.2, py + 2.9, pz - fwdZ * 4.2); // zoomed in: closer, lower follow cam
     world.clipCamera(eyeAnchor, follow, 0.45, py);
     lookAt.set(px + fwdX * 4, py + 1.35, pz + fwdZ * 4);
   } else {
