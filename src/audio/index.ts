@@ -90,6 +90,7 @@ export function startAudio(): void {
   bus.on('item:consumed', ({ item }) => {
     if (!music) return;
     if (item === 'mate') music.sfxMate();
+    else if (item === 'bag') music.sfxHoof();
     else {
       music.sfxIce();
       music.setTrip(state.trip / TRIP_MAX, true);
