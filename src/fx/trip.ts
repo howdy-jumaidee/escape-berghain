@@ -87,6 +87,22 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `;
 
+/**
+ * Clamp negative colour channels to 0. HueSaturationEffect rotates hue with a matrix that has negative
+ * entries and only clamps the top (min(color, 1.0)). On near-black pixels a channel can go below zero,
+ * and the final sRGB encode (a pow) turns that into NaN, which the GPU draws as solid white. That was
+ * the "big white spots when it's really dark" bug: dark scene + higher trip + the hue wobble at the wrong moment.
+ */
+class NoNegativeColourEffect extends Effect {
+  constructor() {
+    super('NoNegativeColourEffect', /* glsl */ `
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  outputColor = vec4(max(inputColor.rgb, vec3(0.0)), inputColor.a);
+}
+`);
+  }
+}
+
 class TripBlurEffect extends Effect {
   constructor() {
     super('TripBlurEffect', blurShader, {
@@ -121,6 +137,8 @@ export class TripFx {
   private chroma: ChromaticAberrationEffect;
   private blur: TripBlurEffect;
   private hue: HueSaturationEffect;
+  /** Keeps the hue wobble from pushing dark pixels below zero (which renders as white). See the class above. */
+  private noNegative: NoNegativeColourEffect;
   private glow: ProximityGlowEffect;
   private camera: THREE.Camera;
   private baseCamPos = new THREE.Vector3();
@@ -178,7 +196,8 @@ export class TripFx {
     this.vignette = new VignetteEffect({ darkness: 0.62, offset: 0.32 });
     // Interaction cue rides after the vignette so its warm edge lift reads in the dark.
     this.glow = new ProximityGlowEffect();
-    this.composer.addPass(new EffectPass(camera, this.grade, this.hue, noise, this.vignette, this.glow));
+    this.noNegative = new NoNegativeColourEffect();
+    this.composer.addPass(new EffectPass(camera, this.grade, this.hue, this.noNegative, noise, this.vignette, this.glow));
     bus.on('shutters:open', () => {
       this.morning = Math.max(this.morning, 0.01);
     });
