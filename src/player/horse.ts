@@ -687,7 +687,8 @@ export class Horse {
     // Drunk steering. It starts soft so you can learn it, then gets worse the longer
     // you're in the club and the higher your trip: `drunk` goes from 0 to 1.
     if (state.started && !state.ending) this.playTime += dt;
-    const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.7 + k * 0.7);
+    const hooved = performance.now() < state.hoovedUntil ? 0.3 : 0;
+    const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.7 + k * 0.7 + hooved);
 
     // Follow and first person: W/S move, A/D steer. Drunk drift stays bounded.
     const forward = free
