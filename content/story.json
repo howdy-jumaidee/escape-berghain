@@ -254,5 +254,9 @@
   },
   "surprise": {
     "unicorn_rumour": "Someone behind you whispers: a real unicorn is up in Panorama Bar. Don't make eye contact. It takes that as a yes."
+  },
+  "mobile": {
+    "alt": "Escape Berghain vertical poster",
+    "notice": "Desktop only at the moment. Open on a computer to play."
   }
 }
