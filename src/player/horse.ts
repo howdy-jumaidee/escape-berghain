@@ -46,6 +46,9 @@ export class Horse {
   private pitchVel = 0;
   private t = 0;
   private stomp = 0;
+  private stompRing: THREE.Mesh;
+  private stompRingMat: THREE.MeshBasicMaterial;
+  private stompPulse = 0;
   /** Looking down at your own front leg. */
   private look = 0;
   private lastStepPhase = 0;
@@ -94,6 +97,21 @@ export class Horse {
       this.legs.push(hip);
       this.rig.add(hip);
     }
+
+    // Subtle ground shockwave ring when stomping on the beat.
+    this.stompRingMat = new THREE.MeshBasicMaterial({
+      color: 0xdbe9ff,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    this.stompRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.56, 24), this.stompRingMat);
+    this.stompRing.rotation.x = -Math.PI / 2;
+    this.stompRing.position.y = 0.04;
+    this.stompRing.visible = false;
+    this.root.add(this.stompRing);
 
     bus.on('player:teleport', ({ x, z }) => {
       this.root.position.set(x, state.floor * FLOOR_HEIGHT, z);
@@ -237,6 +255,7 @@ export class Horse {
       bus.emit('player:stomp', { x: this.root.position.x, z: this.root.position.z, time: performance.now() });
       bus.emit('player:step', {});
       this.stomp = 1;
+      this.stompPulse = 1;
     }
     if (free && pressed.has('KeyQ')) {
       bus.emit('player:look', {});
@@ -262,6 +281,15 @@ export class Horse {
     this.pitch += this.pitchVel * dt;
 
     this.stomp = Math.max(0, this.stomp - dt * 5);
+    if (this.stompPulse > 0) {
+      this.stompPulse = Math.max(0, this.stompPulse - dt * 2.8);
+      const p = 1 - this.stompPulse;
+      this.stompRing.visible = this.stompPulse > 0.01;
+      this.stompRing.scale.setScalar(1 + p * 2.8);
+      this.stompRingMat.opacity = this.stompPulse * 0.45;
+    } else if (this.stompRing.visible) {
+      this.stompRing.visible = false;
+    }
     this.look = Math.max(0, this.look - dt * 0.8);
     this.rig.rotation.z = this.sway;
     this.rig.rotation.x = this.pitch * 0.2 - this.stomp * 0.15;

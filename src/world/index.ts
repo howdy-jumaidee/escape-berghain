@@ -184,7 +184,7 @@ export class World {
     for (const pu of this.pickups) {
       pu.object.rotation.y += dt * 1.5;
       pu.object.position.y = pu.baseY + Math.sin(this.t * 3) * 0.08;
-      if (pu.kind === 'item' && !pu.hinted && dist(pu.object.position, p) < 2.5) {
+      if (state.floor === 0 && pu.kind === 'item' && !pu.hinted && dist(pu.object.position, p) < 2.5) {
         pu.hinted = true;
         bus.emit('ui:say', { key: 'story:items.mate_found', seconds: 3 });
       }
@@ -192,7 +192,7 @@ export class World {
 
     // Gate hint.
     const gate = this.level.gates.get('gate_shortcut');
-    if (gate && !this.gateOpen && dist(gate.object.position, p) < 2.6 && this.t - this.gateHintAt > 10) {
+    if (state.floor === 0 && gate && !this.gateOpen && dist(gate.object.position, p) < 2.6 && this.t - this.gateHintAt > 10) {
       this.gateHintAt = this.t;
       bus.emit('ui:say', { key: 'story:gate.locked', seconds: 4 });
     }
@@ -201,7 +201,7 @@ export class World {
     }
 
     // Exit.
-    if (this.exitPos && !this.exitDone && !state.ending) {
+    if (state.floor === 0 && this.exitPos && !this.exitDone && !state.ending) {
       const dx = p.x - this.exitPos.x;
       const dz = p.z - this.exitPos.z;
       if (dx * dx + dz * dz < EXIT_RANGE * EXIT_RANGE) {
@@ -213,7 +213,7 @@ export class World {
     if (this.beam) (this.beam.material as THREE.MeshBasicMaterial).opacity = 0.12 + Math.sin(this.t * 4) * 0.05;
 
     // Front door.
-    if (this.doorPos && !state.ending && Math.hypot(p.x - this.doorPos.x, p.z - this.doorPos.z) < DOOR_RANGE && this.t - this.doorAt > 1.5) {
+    if (state.floor === 0 && this.doorPos && !state.ending && Math.hypot(p.x - this.doorPos.x, p.z - this.doorPos.z) < DOOR_RANGE && this.t - this.doorAt > 1.5) {
       this.doorAt = this.t;
       bus.emit('door:refused', {});
       bus.emit('player:teleport', { x: this.doorPos.x + 3, z: this.doorPos.z });
@@ -290,7 +290,7 @@ export class World {
   }
 
   private grab(x: number, z: number): void {
-    if (state.ending) return;
+    if (state.ending || state.floor !== 0) return;
     const here = new THREE.Vector3(x, 0, z);
 
     // Ice cream counter.

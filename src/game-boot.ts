@@ -101,17 +101,44 @@ bus.on('player:teleport', () => {
   snapCam = true;
 });
 
-// Face to face: walk into a special NPC and the camera is pulled into your eyes, staring at their face.
-// A dolly zoom (closer while the lens widens) makes the room stretch behind them. Like an old RPG, but wrong.
+// Face to face: walk into a special NPC and the camera frames their face without clipping into walls.
+const FOCUS_OFFSETS = [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35];
+const focusTest = new THREE.Vector3();
 let focus: { face: THREE.Vector3; dir: THREE.Vector2; t: number } | null = null;
 bus.on('npc:focus', ({ x, y, z }) => {
-  // Fix the angle once, from the NPC towards where the camera is now, so it can't flip if the horse slides.
-  const dir = new THREE.Vector2(camBase.x - x, camBase.z - z);
-  const toHorse = new THREE.Vector2(horse.root.position.x - x, horse.root.position.z - z);
-  if (toHorse.length() > 0.4) dir.copy(toHorse);
+  const face = new THREE.Vector3(x, y, z);
+  const dir = new THREE.Vector2(horse.root.position.x - x, horse.root.position.z - z);
+  if (dir.length() < 0.15) dir.set(camBase.x - x, camBase.z - z);
   if (dir.length() < 0.01) dir.set(0, 1);
   dir.normalize();
-  focus = { face: new THREE.Vector3(x, horse.root.position.y + y, z), dir, t: 0 };
+
+  // Pick the angle closest to dir that keeps clear line of sight (preferring >= 1.5 m clearance).
+  const bestDir = dir.clone();
+  let bestClear = -1;
+  for (const off of FOCUS_OFFSETS) {
+    const cos = Math.cos(off);
+    const sin = Math.sin(off);
+    const cx = dir.x * cos - dir.y * sin;
+    const cz = dir.x * sin + dir.y * cos;
+    focusTest.set(face.x + cx * 2.25, face.y - 0.04, face.z + cz * 2.25);
+    world.clipCamera(face, focusTest, 0.35, 0);
+    const clear = Math.hypot(focusTest.x - face.x, focusTest.z - face.z);
+    if (clear >= 2.0) {
+      bestDir.set(cx, cz);
+      bestClear = clear;
+      break;
+    }
+    const beatsBest =
+      (clear >= 1.5 && bestClear < 1.5) ||
+      (clear >= 1.5 && clear > bestClear + 0.15) ||
+      (bestClear < 1.5 && clear > bestClear);
+    if (beatsBest) {
+      bestDir.set(cx, cz);
+      bestClear = clear;
+    }
+  }
+  focus = { face, dir: bestDir, t: 0 };
+  npcs.setFocusFacing(face.x + bestDir.x, face.z + bestDir.y);
   horse.root.visible = false;
 });
 bus.on('npc:unfocus', () => {
@@ -167,12 +194,13 @@ renderer.setAnimationLoop(() => {
   if (focus) {
     focus.t += dt;
     const e = 1 - Math.pow(1 - Math.min(1, focus.t / 1.1), 3);
-    const dist = 2.6 - e * 1.35;
-    follow.set(focus.face.x + focus.dir.x * dist, focus.face.y - 0.05, focus.face.z + focus.dir.y * dist);
+    const dist = 2.35 - e * 0.4;
+    follow.set(focus.face.x + focus.dir.x * dist, focus.face.y - 0.04, focus.face.z + focus.dir.y * dist);
+    world.clipCamera(focus.face, follow, 0.35, 0);
     lookAt.copy(focus.face);
-    // Dolly zoom: the face grows a little while everything behind it stretches away.
-    focusFov = 2 * Math.atan((0.75 - e * 0.25) / dist) * (180 / Math.PI);
-    roll = Math.sin(focus.t * 0.9) * 0.05;
+    // Clean portrait framing: gentle push-in with subtle lens tightening.
+    focusFov = 44 - e * 5;
+    roll = Math.sin(focus.t * 0.9) * 0.012;
   }
 
   if (snapCam) {
@@ -180,7 +208,11 @@ renderer.setAnimationLoop(() => {
     snapCam = false;
   } else {
     camBase.lerp(follow, 1 - Math.exp(-(focus ? 7 : view === 'eyes' ? 14 : 6) * dt));
-    if (!focus) world.clipCamera(eyeAnchor, camBase, 0.35, py);
+    if (focus) {
+      world.clipCamera(focus.face, camBase, 0.3, 0);
+    } else {
+      world.clipCamera(eyeAnchor, camBase, 0.35, py);
+    }
   }
 
   world.update(dt, camBase, false);
@@ -207,9 +239,13 @@ renderer.setAnimationLoop(() => {
 
   fx.setCameraBase(camBase, focus ? 0.12 : view === 'follow' ? 0.45 : 0.2);
   // Same soft spill in both views. Follow is flagged so the shafts wrap the horse instead of filling the eyes.
-  fx.setSpill(focus ? 0.75 : view === 'eyes' ? 1 : 0.9, !focus && view === 'follow' ? 1 : 0);
+  fx.setSpill(focus ? 0.35 : view === 'eyes' ? 0.55 : 0.45, !focus && view === 'follow' ? 1 : 0);
   fx.update(dt);
-  if (!focus) world.clipCamera(eyeAnchor, camera.position, 0.25, py);
+  if (focus) {
+    world.clipCamera(focus.face, camera.position, 0.3, 0);
+  } else {
+    world.clipCamera(eyeAnchor, camera.position, 0.25, py);
+  }
   camera.lookAt(lookAt);
   if (roll) camera.rotateZ(roll);
   // Where the horse sits in the frame, so follow-cam light can rim the body.
