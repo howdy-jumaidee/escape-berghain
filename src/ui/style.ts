@@ -74,6 +74,16 @@ export const css = /* css */ `
   color: var(--text-3); text-shadow: var(--legible); opacity: 0; transition: opacity 2.2s ease; }
 .eb-view-hint.on { opacity: 1; }
 
+/* Interact prompt: a small frosted-glass keycap row, bottom centre. Fade in fast, out slow. */
+.eb-prompt { position: absolute; left: 50%; bottom: var(--s-6); transform: translateX(-50%); display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3); border-radius: 6px; background: rgba(20, 20, 24, 0.38); border: 1px solid rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2);
+  opacity: 0; transition: opacity 0.25s ease-out; z-index: 4; }
+.eb-prompt.on { opacity: 1; transition-duration: 0.15s; }
+.eb-ui.talking .eb-prompt { display: none; }
+.eb-prompt kbd { border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; font: 400 var(--t-xs)/1.4 var(--mono); color: var(--text-1); }
+.eb-prompt span { font: 400 var(--t-sm)/var(--lh-tight) var(--mono); color: var(--text-2); }
+
 /* Help box: one small frosted-glass panel, top left. Dim when idle, full when it has news.
    Off on the title (until intro:land), hidden in face to face talks and endings. */
 .eb-help { position: absolute; left: var(--s-5); top: var(--s-5); width: 280px;
