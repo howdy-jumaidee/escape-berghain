@@ -183,13 +183,17 @@ export function startUi(): void {
     fillAnswers(activeChoices.map((c) => ({ text: t(c.textKey), used: c.used })), pickChoice);
     talk.classList.add('on');
   });
-  /** Up/down (or W/S) move the highlight. Returns true for keys the answer list handled, incl. Enter/Space. */
+  /** Up/down (or W/S) move the highlight. Returns true for keys the answer list handled, incl. Enter. */
   const navigate = (e: KeyboardEvent): boolean => {
     if (e.code === 'ArrowUp' || e.code === 'KeyW') highlight(selected - 1);
     else if (e.code === 'ArrowDown' || e.code === 'KeyS') highlight(selected + 1);
-    else if (e.code !== 'Enter' && e.code !== 'Space') return false;
+    else if (e.code === 'Space') {
+      // Space skips NPC lines. Players mash it, so it must never pick an answer: swallow it here.
+      e.preventDefault();
+      return false;
+    } else if (e.code !== 'Enter') return false;
     e.preventDefault();
-    if ((e.code === 'Enter' || e.code === 'Space') && performance.now() - listOpenedAt < 300) return false;
+    if (e.code === 'Enter' && performance.now() - listOpenedAt < 300) return false;
     return true;
   };
   addEventListener('keydown', (e) => {
@@ -202,7 +206,7 @@ export function startUi(): void {
         e.preventDefault();
         answer(Number(e.code.slice(5)) - 1);
       } else if (navigate(e)) {
-        if (e.code === 'Enter' || e.code === 'Space') answer(selected);
+        if (e.code === 'Enter') answer(selected);
       }
       return;
     }
@@ -214,7 +218,7 @@ export function startUi(): void {
         e.preventDefault();
         pickChoice(Number(e.code.slice(5)) - 1);
       } else if (navigate(e)) {
-        if (e.code === 'Enter' || e.code === 'Space') pickChoice(selected);
+        if (e.code === 'Enter') pickChoice(selected);
       }
     }
   });
