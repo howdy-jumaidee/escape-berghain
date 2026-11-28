@@ -49,6 +49,7 @@ function cloneModel(model: THREE.Object3D, disableCulling = false): THREE.Object
 export function placeModel(name: string, size: THREE.Vector3Like, material: THREE.Material = grey): THREE.Group {
   const group = new THREE.Group();
   group.name = name;
+  if (isCharacterModel(name)) group.userData.painterlyRole = 'character';
   const box = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), material);
   box.position.y = size.y / 2;
   group.add(box);
@@ -62,6 +63,15 @@ export function placeModel(name: string, size: THREE.Vector3Like, material: THRE
   return group;
 }
 
+export function isCharacterModel(name: string): boolean {
+  return /^(npc_|crowd_|horse_)/.test(name);
+}
+
 export function loadModel(name: string): Promise<THREE.Object3D | null> {
-  return fetchModel(name).then((m) => (m ? cloneModel(m) : null));
+  return fetchModel(name).then((m) => {
+    if (!m) return null;
+    const model = cloneModel(m);
+    if (isCharacterModel(name)) model.userData.painterlyRole = 'character';
+    return model;
+  });
 }

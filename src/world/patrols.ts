@@ -65,6 +65,7 @@ export class Patrols {
   private beams: THREE.MeshBasicMaterial;
 
   constructor(level: BuiltLevel, routes: [number, number][][]) {
+    this.root.userData.painterlyRole = 'character';
     this.level = level;
     const mat = new THREE.MeshStandardMaterial({ color: 0x15192a, roughness: 0.8 });
     const cone = new THREE.MeshBasicMaterial({

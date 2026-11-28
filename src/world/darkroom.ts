@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { bus, state, TRIP_MAX, type TextKey } from '../contracts';
 import { resolveCircle, type Collider } from './level';
+import { makeClubSign } from './props';
 import darkroomJson from '../../levels/darkroom.json';
 
 export interface DarkroomData {
@@ -485,13 +486,31 @@ export class Darkroom {
   private addExit(col: number, row: number, center: (c: number, r: number) => { x: number; z: number }): void {
     const T = this.data.tile;
     const c = center(col, row);
-    // The door sits on whichever face of the exit tile is open floor.
+    // The door sits on whichever face of the exit tile is open floor, with handle + STAFF EXIT sign.
     for (const [dc, dr] of [[-1, 0], [0, 1], [0, -1], [1, 0]]) {
       if (tileSolid(this.data, col + dc, row + dr, 0)) continue;
-      const door = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.8, 0.16), this.exitMat);
-      door.position.set(c.x + dc * (T / 2 + 0.08), 1.4, c.z + dr * (T / 2 + 0.08));
-      door.rotation.y = Math.atan2(dc, dr);
-      this.root.add(door);
+      const doorGroup = new THREE.Group();
+      doorGroup.position.set(c.x + dc * (T / 2 + 0.08), 0, c.z + dr * (T / 2 + 0.08));
+      doorGroup.rotation.y = Math.atan2(dc, dr);
+      const leaf = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.8, 0.16), this.exitMat);
+      leaf.position.y = 1.4;
+      const handle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.32, 0.06, 0.14),
+        new THREE.MeshStandardMaterial({ color: 0xc8d0da, roughness: 0.25, metalness: 0.9 }),
+      );
+      handle.position.set(0.72, 1.15, 0.12);
+      const staffSign = makeClubSign({
+        text: 'STAFF EXIT',
+        bg: '#083a1b',
+        fg: '#4eff8a',
+        border: '#35e874',
+        width: 1.9,
+        height: 0.44,
+        icon: 'exit_right',
+      });
+      staffSign.position.set(0, 3.05, 0.08);
+      doorGroup.add(leaf, handle, staffSign);
+      this.root.add(doorGroup);
       this.exit = { x: c.x + dc * T, z: c.z + dr * T };
       return;
     }
