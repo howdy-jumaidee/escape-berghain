@@ -28,7 +28,7 @@ const LEG_LENGTH = 0.8;
 /** Time in the club until the steering is fully drunk (trip makes it worse on top). */
 const SOBER_UP_SECONDS = 90;
 
-export type CameraMode = 'top' | 'follow' | 'eyes';
+export type CameraMode = 'follow' | 'eyes';
 export type Resolver = (pos: THREE.Vector3, radius: number) => void;
 
 export class Horse {
@@ -50,7 +50,6 @@ export class Horse {
   private look = 0;
   private lastStepPhase = 0;
   private resolve: Resolver;
-  private input = new THREE.Vector3();
   private prevPos = new THREE.Vector3();
   private probe = new THREE.Vector3();
   /** Facing, and how fast it's swinging. */
@@ -59,8 +58,6 @@ export class Horse {
   private lurchIn = 2;
   /** Seconds played. Steering gets harder with it. */
   private playTime = 0;
-  /** Which way the camera looks (yaw). Used for world-relative steering in top view. */
-  cameraYaw = Math.PI;
   private cameraMode: CameraMode = 'follow';
   private target = new THREE.Vector3();
   /** Wet floor from the cleaner: x, z, radius, seconds left. */
@@ -172,64 +169,26 @@ export class Horse {
     if (state.started && !state.ending) this.playTime += dt;
     const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.6 + k * 0.5);
 
-    let wants = false;
-    if (this.cameraMode === 'top') {
-      const input = this.input.set(0, 0, 0);
-      if (free) {
-        input.set(
-          (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0),
-          0,
-          (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0),
-        );
-      }
-      if (input.lengthSq() > 0) input.normalize();
-      // Turn the keys into world directions for the current camera.
-      if (input.lengthSq() > 0) {
-        const r = this.cameraYaw - Math.PI;
-        const c = Math.cos(r);
-        const sn = Math.sin(r);
-        input.set(input.x * c + input.z * sn, 0, -input.x * sn + input.z * c);
-      }
+    // Follow and first person: W/S move, A/D steer. Drunk drift stays bounded.
+    const forward = free
+      ? (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0)
+      : 0;
+    const steer = free
+      ? (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0)
+      : 0;
+    const wants = forward !== 0;
 
-      wants = input.lengthSq() > 0;
-      if (wants) {
-        const want = Math.atan2(input.x, input.z) + Math.sin(this.t * 0.9) * drunk * 0.5;
-        // Sober: stiff and well damped, it just turns. Drunk: loose, it swings past and back.
-        const stiffness = 40 - drunk * 24;
-        const damping = 9 - drunk * 6.5;
-        this.turnVel += (angleDiff(want, this.heading) * stiffness - this.turnVel * damping) * dt;
-      } else {
-        this.turnVel *= Math.exp(-3 * dt);
-      }
-      if (free && state.clubMateActive) this.turnVel += (Math.random() - 0.5) * 30 * dt;
-      this.heading += this.turnVel * dt;
+    const drift = free && (forward !== 0 || steer !== 0) ? Math.sin(this.t * 0.9) * drunk * 0.65 : 0;
+    const wantTurn = steer * TURN_SPEED + drift;
+    const response = 12 - drunk * 6;
+    this.turnVel += (wantTurn - this.turnVel) * (1 - Math.exp(-response * dt));
+    if (free && state.clubMateActive) this.turnVel += (Math.random() - 0.5) * 14 * dt;
+    const maxTurn = TURN_SPEED * 1.45;
+    this.turnVel = Math.max(-maxTurn, Math.min(maxTurn, this.turnVel));
+    this.heading += this.turnVel * dt;
 
-      // How well you're lined up with where you want to go: badly lined up means slow.
-      const aligned = wants ? Math.max(0, Math.cos(angleDiff(Math.atan2(input.x, input.z), this.heading))) : 0;
-      const speed = SPEED * (0.7 - drunk * 0.35 + (0.3 + drunk * 0.35) * aligned);
-      this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(wants ? speed : 0);
-    } else {
-      // Follow / eyes view: W/S for smooth forward & reverse, A/D for left/right steering with bounded drunk drift.
-      const forward = free
-        ? (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0)
-        : 0;
-      const steer = free
-        ? (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0)
-        : 0;
-      wants = forward !== 0;
-
-      const drift = free && (forward !== 0 || steer !== 0) ? Math.sin(this.t * 0.9) * drunk * 0.65 : 0;
-      const wantTurn = steer * TURN_SPEED + drift;
-      const response = 12 - drunk * 6;
-      this.turnVel += (wantTurn - this.turnVel) * (1 - Math.exp(-response * dt));
-      if (free && state.clubMateActive) this.turnVel += (Math.random() - 0.5) * 14 * dt;
-      const maxTurn = TURN_SPEED * 1.45;
-      this.turnVel = Math.max(-maxTurn, Math.min(maxTurn, this.turnVel));
-      this.heading += this.turnVel * dt;
-
-      const moveSpeed = forward > 0 ? SPEED : forward < 0 ? -BACK_SPEED : 0;
-      this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(moveSpeed);
-    }
+    const moveSpeed = forward > 0 ? SPEED : forward < 0 ? -BACK_SPEED : 0;
+    this.target.set(Math.sin(this.heading), 0, Math.cos(this.heading)).multiplyScalar(moveSpeed);
 
     // Lurch: a sideways stumble now and then. None at first; more often and harder as you get drunker.
     if (free) {

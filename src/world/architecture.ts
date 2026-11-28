@@ -616,7 +616,7 @@ export function buildArchitecture(data: LevelData): THREE.Group {
     const slabD = clubD + 4;
     const ceilingGeo = new THREE.PlaneGeometry(slabW, slabD);
     // Rotate +PI/2 around X so normal points straight down (-Y): solid looking up,
-    // naturally backface-culled if a top-down camera sits above 19 m.
+    // backface-culled from above the ceiling.
     ceilingGeo.rotateX(Math.PI / 2);
     const uv = ceilingGeo.getAttribute('uv');
     for (let i = 0; i < uv.count; i++) {

@@ -39,7 +39,7 @@ const tile = new THREE.MeshStandardMaterial({ color: 0x4a4f4a, roughness: 0.6 })
 const grate = new THREE.MeshStandardMaterial({ color: 0x202022, roughness: 0.7, metalness: 0.5 });
 const door = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 0.6, metalness: 0.6 });
 
-/** Outer walls go most of the way up; the cutaway hides the top in the top-down view. */
+/** Outer walls go most of the way up. Follow and first person see them. */
 const WALL_HEIGHT = 16;
 
 const MODULES: Record<string, ModuleSpec> = {
