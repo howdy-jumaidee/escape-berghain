@@ -19,9 +19,19 @@ const DJ_RANGE = 2.8;
 const PASS_OUT_TRIP = 45;
 const CAUGHT_RAGDOLL_MS = 1350;
 const PASSOUT_RAGDOLL_MS = 1300;
+/** A memory lands: a quick reaction first, then the spirit guide's next step. */
+const REACTION_S = 2.4;
+/** The opening surprise: one odd rumour, reliably inside the first two minutes. */
+const SURPRISE_MS = 55000;
+const FIRST_LINE_MS = 4300;
+const CAUGHT_LINES = 3;
+const PASSED_OUT_LINES = 2;
 let endingPending = false;
 let collapsing = false;
 let collapseTimer = 0;
+let catches = 0;
+let lastFoundAt = -Infinity;
+let metUnicorn = false;
 
 export function startGame(): void {
   // Fragments: one owner.
@@ -65,7 +75,7 @@ export function startGame(): void {
         state.trip = PASS_OUT_TRIP;
         bus.emit('trip:changed', { trip: state.trip });
         bus.emit('player:respawn', { zone: 'toilet_corridor' });
-        bus.emit('ui:say', { key: 'story:losses.passed_out', seconds: 4 });
+        bus.emit('ui:say', { key: `story:losses.passed_out_lines.${(state.passOuts - 1) % PASSED_OUT_LINES}`, seconds: 4 });
         const warning = `story:spirit_guide.herd_warning_${state.passOuts}`;
         setTimeout(() => {
           if (!state.ending && !endingPending) bus.emit('ui:say', { key: warning, seconds: 5 });
@@ -85,23 +95,33 @@ export function startGame(): void {
       collapseTimer = 0;
       collapsing = false;
       if (!state.ending && !endingPending) {
-        bus.emit('player:respawn', { zone: state.checkpoint });
-        bus.emit('ui:say', { key: 'story:losses.caught', seconds: 5 });
+        // Back where you were, not the far start. The back exit is the one exception: the van
+        // doesn't park you next to the way out, it takes you to your last memory instead.
+        const zone = state.zone === 'back_exit' ? state.checkpoint : state.zone;
+        bus.emit('player:respawn', { zone });
+        bus.emit('ui:say', { key: `story:losses.caught_lines.${catches++ % CAUGHT_LINES}`, seconds: 5 });
       }
       unlock('ragdoll');
     }, CAUGHT_RAGDOLL_MS);
   });
 
   // Spirit guide speaks after each fragment. With all five: closing time.
+  // Goal gradient: the reaction is keyed by how many you have, so it warms up to "almost there".
+  let guideTimer = 0;
   bus.on('fragment:found', ({ id }) => {
-    bus.emit('ui:say', { key: `story:spirit_guide.fragment_${id}`, seconds: 4 });
+    lastFoundAt = performance.now();
+    bus.emit('ui:say', { key: `story:found.${state.fragments.length}`, seconds: REACTION_S });
+    clearTimeout(guideTimer);
+    guideTimer = window.setTimeout(() => {
+      if (!state.ending && !endingPending) bus.emit('ui:say', { key: `story:spirit_guide.fragment_${id}`, seconds: 4 });
+    }, REACTION_S * 1000);
     if (state.fragments.length === 5 && !state.finale) {
       setTimeout(() => {
         if (state.ending || endingPending) return;
         state.finale = true;
         bus.emit('game:finale', {});
         bus.emit('ui:say', { key: 'story:finale.start', seconds: 5 });
-      }, 4500);
+      }, REACTION_S * 1000 + 4500);
     }
   });
 
@@ -119,7 +139,23 @@ export function startGame(): void {
   bus.on('intro:land', () => {
     debug.fragments.forEach((id) => found(id));
     // No HUD. One line, then it goes. The title already said the goal; this is step one.
-    if (state.fragments.length === 0) bus.emit('ui:say', { key: 'story:spirit_guide.first', seconds: 6 });
+    // The spawn sits in the herd's line, so the herd hint lands first. Wait it out so step one isn't covered.
+    window.setTimeout(() => {
+      if (state.fragments.length === 0 && !state.ending) bus.emit('ui:say', { key: 'story:spirit_guide.first', seconds: 7 });
+    }, FIRST_LINE_MS);
+    // Curiosity: one strange rumour early on. Waits out a talk or a fresh find, but always lands.
+    const surprise = () => {
+      if (state.ending || endingPending || metUnicorn) return;
+      if (state.inputLocked || collapsing || performance.now() - lastFoundAt < 7000) {
+        window.setTimeout(surprise, 3000);
+        return;
+      }
+      bus.emit('ui:say', { key: 'story:surprise.unicorn_rumour', seconds: 6 });
+    };
+    window.setTimeout(surprise, SURPRISE_MS);
+  });
+  bus.on('unicorn:near', ({ near }) => {
+    if (near) metUnicorn = true;
   });
 
   if (level.markers.dj_booth) startDjBooth(level.markers.dj_booth);

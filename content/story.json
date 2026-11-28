@@ -9,7 +9,7 @@
     "Somewhere out there is a stable. Ours. Let's trot home."
   ],
   "spirit_guide": {
-    "first": "First memory: your glasses, under a speaker. Try not to step on anyone's leather.",
+    "first": "First memory: your glasses, under the left speaker by the DJ booth. Straight ahead, then left. Try not to step on anyone's leather.",
     "fragment_1": "Glasses. Wait, why do we have horse eyelashes? Press Q, check our front leg.",
     "fragment_2": "47. We paid 25 euros to become livestock. Find ticket 47 by the bar.",
     "fragment_3": "Ticket 47. Next: hand it to coat check. Act natural.",
@@ -34,7 +34,16 @@
   },
   "losses": {
     "passed_out": "You wake up in the toilet queue. Someone is still talking about their ex.",
-    "caught": "Animal control drops you back where you were. He asks if you can get him in next time."
+    "caught": "Animal control drops you back where you were. He asks if you can get him in next time.",
+    "caught_lines": [
+      "Animal control drops you back where you were. He asks if you can get him in next time.",
+      "Back where you were. The van driver gave you a five star rating.",
+      "Released on good behaviour. Your memories stayed in your pocket. You don't have pockets."
+    ],
+    "passed_out_lines": [
+      "You wake up in the toilet queue. Someone is still talking about their ex.",
+      "Toilet queue again. Your memories are still here. So is the guy talking about his ex."
+    ]
   },
   "endings": {
     "full_memory": "You wake up in your own bed. Human. There's a hoofprint on the pillow.",
@@ -215,6 +224,13 @@
       "Ticket 47: taped to a pillar by the bar.",
       "Keys: give ticket 47 to coat check.",
       "The bike riddle: the riddle horse waits in the toilet corridor."
+    ],
+    "next": [
+      "Next: glasses, under the left speaker by the DJ booth.",
+      "Next: press Q and look at your own front leg.",
+      "Next: ticket 47, taped to a pillar by the bar.",
+      "Almost there. Next: give ticket 47 to coat check.",
+      "Almost there. Next: the riddle horse in the toilet corridor."
     ]
   },
   "darkroom": {
@@ -228,5 +244,15 @@
     "exit_shut_2": "Still shut. The door says it has seen you before. You don't remember. That's the problem.",
     "exit_shut_3": "The door does not negotiate. Three memories. It's the policy. Nobody wrote the policy.",
     "exit_open": "Three memories. The STAFF door sighs and lets you through. Cold air, a mop bucket, the back exit."
+  },
+  "found": {
+    "1": "One memory back. Four to go. Unclear if that's good news.",
+    "2": "Two. We're basically a detective now. A horse detective.",
+    "3": "Three. Over halfway. The bass is starting to sound like home.",
+    "4": "Four. Almost there. One more and we can leave like a person.",
+    "5": "Five. Everything is back. Including Friday. Sorry about Friday."
+  },
+  "surprise": {
+    "unicorn_rumour": "Someone behind you whispers: a real unicorn is up in Panorama Bar. Don't make eye contact. It takes that as a yes."
   }
 }

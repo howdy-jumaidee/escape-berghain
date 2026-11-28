@@ -569,9 +569,18 @@ export class Techno {
     this.tone(t, 380 * pitch, 220 * pitch, 0.06, 0.18, 'triangle');
   }
 
-  sfxPickup(): void {
+  /** A memory comes back. `count` is how many you have now: each one climbs a whole tone higher,
+   * from three on a bright top note joins, and the fifth lands on a held chord. */
+  sfxPickup(count = 1): void {
     const t = this.ctx.currentTime;
-    [698.5, 880, 1046.5, 1396.9].forEach((f, i) => this.tone(t + i * 0.07, f, f, 0.5, 0.12, 'sine', 0.5));
+    const n = Math.max(1, Math.min(5, count));
+    const lift = Math.pow(2, ((n - 1) * 2) / 12);
+    const notes = [698.5, 880, 1046.5, 1396.9].map((f) => f * lift);
+    if (n >= 3) notes.push(1760 * lift);
+    const len = n === 5 ? 1.4 : 0.5;
+    notes.forEach((f, i) => this.tone(t + i * 0.07, f, f, len, 0.12, 'sine', 0.5));
+    // A soft low root under it, so it reads as a sting and not a ringtone.
+    this.tone(t, 174.6 * lift, 174.6 * lift, len * 0.8, 0.1, 'triangle', 0.3);
   }
 
   sfxSlip(): void {
