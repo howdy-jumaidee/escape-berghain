@@ -62,11 +62,11 @@ export const css = /* css */ `
 .eb-controls kbd { justify-self: end; min-width: 2.4em; padding: 3px 8px; border: 1px solid #5a5a5a; border-radius: 3px;
   font: 400 13px/1.2 var(--mono); color: var(--paper); text-align: center; }
 .eb-controls span { font: 400 15px/1.2 var(--mono); color: #d0d0d0; }
-.eb-actions { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 32px; }
-.eb-actions button { all: unset; cursor: pointer; font: 400 14px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--paper); border: 1px solid #6a6a6a; padding: 14px 22px; }
+.eb-actions { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 24px; }
+.eb-actions button { all: unset; cursor: pointer; font: 400 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--paper); border: 1px solid #6a6a6a; padding: 9px 16px; }
 .eb-actions button:hover, .eb-actions button:focus-visible { background: var(--paper); color: #000; outline: none; }
-.eb-play { border-color: var(--paper); padding: 14px 42px; }
+.eb-play { border-color: var(--paper); padding: 9px 30px; }
 .eb-sub { margin-top: 28px; font: 400 13px/1.6 var(--mono); color: #9a9a9a; }
 .eb-intro { font: 400 clamp(16px, 2.2vw, 24px)/1.4 var(--mono); color: #d8d8d8; max-width: 80vw; transition: opacity 0.25s; position: relative; }
 .eb-swirl { position: absolute; inset: 0; width: 100%; height: 100%; }
