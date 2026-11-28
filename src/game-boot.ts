@@ -1,7 +1,7 @@
 // Game boot. Owned by Dee (Opus only). Creates each system and runs the frame loop.
 // Systems never import each other. They talk through the bus; this file only wires and ticks them.
 import * as THREE from 'three';
-import { bus, state, BEAT_SECONDS, FLOOR_HEIGHT } from './contracts';
+import { bus, state, BEAT_SECONDS } from './contracts';
 import { debug } from './data';
 import { buildScene } from './look/scene';
 import { World } from './world';
@@ -14,21 +14,15 @@ import { startAudio } from './audio';
 
 /** Render at a fraction of the screen resolution and scale up with hard pixels: grit, and speed. */
 const PIXEL_SCALE = 0.42;
-const FOV = 32;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(PIXEL_SCALE);
 renderer.setSize(innerWidth, innerHeight);
 renderer.domElement.style.imageRendering = 'pixelated';
 document.body.appendChild(renderer.domElement);
-// Cutaway: nothing above 9 m is drawn, like a dollhouse with the roof off.
-// In the top-down view nothing above 12 m is drawn (a dollhouse with the roof off). The low views see all the way up.
-const CUTAWAY = 12;
-const cutaway = new THREE.Plane(new THREE.Vector3(0, -1, 0), CUTAWAY);
-renderer.clippingPlanes = [cutaway];
 
 const { scene, strobes, flicker, lasers, house, update: updateLook } = buildScene();
-const camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 0.1, 300);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 300);
 
 const world = new World();
 scene.add(world.root);
@@ -76,9 +70,9 @@ bus.on('beat', ({ n }) => {
 let houseLights = 0;
 bus.on('game:finale', () => (houseLights = 1));
 
-// Three views, V cycles them: low follow cam behind the horse (the default), the horse's own eyes, and top down.
-type View = 'top' | 'follow' | 'eyes';
-const VIEWS: View[] = ['top', 'follow', 'eyes'];
+// Two views, V cycles them: follow cam behind the horse (the default), then the horse's own eyes.
+type View = 'follow' | 'eyes';
+const VIEWS: View[] = ['follow', 'eyes'];
 let view: View = 'follow';
 let baseFov = 62;
 camera.fov = baseFov;
@@ -89,14 +83,13 @@ const setView = (next: View) => {
   view = next;
   horse.root.visible = !focus && view !== 'eyes';
   horse.setCameraMode(view);
-  baseFov = view === 'top' ? FOV : 62;
+  baseFov = 62;
 };
 addEventListener('keydown', (e) => {
   if (e.code !== 'KeyV' || e.repeat || !state.started || state.ending) return;
   setView(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]);
 });
 
-const camOffset = new THREE.Vector3(0, 28, 16);
 const lookAt = new THREE.Vector3();
 const camBase = new THREE.Vector3();
 const follow = new THREE.Vector3();
@@ -159,22 +152,15 @@ renderer.setAnimationLoop(() => {
   const pz = horse.root.position.z;
   eyeAnchor.set(px, py + (view === 'eyes' ? 1.75 : 2.1), pz);
 
-  if (view === 'top') {
-    follow.set(px, py, pz).add(camOffset);
-    lookAt.set(px, py, pz);
-    horse.cameraYaw = Math.PI;
-  } else if (view === 'follow') {
+  if (view === 'follow') {
     follow.set(px - fwdX * 6, py + 3.6, pz - fwdZ * 6);
     world.clipCamera(eyeAnchor, follow, 0.45, py);
     lookAt.set(px + fwdX * 4, py + 1.35, pz + fwdZ * 4);
-    horse.cameraYaw = followYaw;
   } else {
     follow.set(px + fwdX * 0.65, py + 1.75, pz + fwdZ * 0.65);
     world.clipCamera(eyeAnchor, follow, 0.3, py);
     lookAt.set(px + fwdX * 10, py + 1.5, pz + fwdZ * 10);
-    horse.cameraYaw = horse.facing;
   }
-  cutaway.constant = state.floor * FLOOR_HEIGHT + (view === 'top' && !focus ? CUTAWAY : 1000);
   let focusFov = 0;
   let roll = 0;
   if (focus) {
@@ -193,10 +179,10 @@ renderer.setAnimationLoop(() => {
     snapCam = false;
   } else {
     camBase.lerp(follow, 1 - Math.exp(-(focus ? 7 : view === 'eyes' ? 14 : 6) * dt));
-    if (view !== 'top' && !focus) world.clipCamera(eyeAnchor, camBase, 0.35, py);
+    if (!focus) world.clipCamera(eyeAnchor, camBase, 0.35, py);
   }
 
-  world.update(dt, camBase, view === 'top' && !focus);
+  world.update(dt, camBase, false);
   npcs.update(dt);
   updateLook(dt);
 
@@ -218,9 +204,9 @@ renderer.setAnimationLoop(() => {
   // Closing time: the house lights flicker on.
   if (houseLights) house.intensity = (Math.random() < 0.08 ? 0.2 : 1.6) * Math.min(1, (houseLights += dt * 0.5) - 1 + 0.3);
 
-  fx.setCameraBase(camBase, focus ? 0.12 : view === 'top' ? 1 : view === 'follow' ? 0.45 : 0.2);
+  fx.setCameraBase(camBase, focus ? 0.12 : view === 'follow' ? 0.45 : 0.2);
   fx.update(dt);
-  if (view !== 'top' && !focus) world.clipCamera(eyeAnchor, camera.position, 0.25, py);
+  if (!focus) world.clipCamera(eyeAnchor, camera.position, 0.25, py);
   camera.lookAt(lookAt);
   if (roll) camera.rotateZ(roll);
   fx.render(dt);
