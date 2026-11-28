@@ -40,6 +40,7 @@ export function startHelp(root: HTMLElement): void {
 
   const tips = list('story:help.tips');
   const hints = list('story:help.hints');
+  const nexts = list('story:help.next');
   // Checklist rows in order; row i is fragment i + 1.
   const rows = list('story:help.memories').map((name) => {
     const row = el('div', 'eb-help-item', listEl);
@@ -59,8 +60,14 @@ export function startHelp(root: HTMLElement): void {
   const allFound = () =>
     state.finale || state.fragments.length >= 5 || (rows.length > 0 && rows.every((r) => r.classList.contains('done')));
 
+  /** The mission line is always the one next step: the first memory not ticked yet. */
   const paintMission = () => {
-    mission.textContent = t(allFound() ? 'story:help.mission_done' : 'story:help.mission');
+    if (allFound()) {
+      mission.textContent = t('story:help.mission_done');
+      return;
+    }
+    const next = rows.findIndex((r) => !r.classList.contains('done'));
+    mission.textContent = nexts[next] ?? t('story:help.mission');
   };
 
   const setOpen = (v: boolean) => {

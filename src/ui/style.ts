@@ -99,7 +99,7 @@ export const css = /* css */ `
   letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-3); text-shadow: var(--legible); }
 .eb-help-tip, .eb-help-mission { margin: 0; font: 400 var(--t-xs)/1.4 var(--mono);
   color: var(--text-2); text-shadow: var(--legible); }
-.eb-help-mission { margin-bottom: var(--s-1); color: var(--text-3); }
+.eb-help-mission { margin-bottom: var(--s-1); color: var(--text-2); }
 .eb-help-list { display: grid; gap: 0; }
 .eb-help-item { display: flex; gap: var(--s-1); font: 400 var(--t-xs)/1.45 var(--mono);
   color: var(--text-2); text-shadow: var(--legible); }

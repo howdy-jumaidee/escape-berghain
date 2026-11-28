@@ -96,7 +96,7 @@ export function startAudio(): void {
 
   bus.on('player:step', () => music?.sfxStep());
   bus.on('player:stomp', () => music?.sfxNeigh());
-  bus.on('fragment:found', () => music?.sfxPickup());
+  bus.on('fragment:found', () => music?.sfxPickup(state.fragments.length));
   bus.on('item:slipped', () => music?.sfxSlip());
   bus.on('item:consumed', ({ item }) => {
     if (!music) return;
