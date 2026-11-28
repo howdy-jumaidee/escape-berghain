@@ -7,7 +7,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Color } from 'three';
+import { Color, Vector3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'models');
@@ -28,17 +28,30 @@ function faceTarget(size) {
 
 class Figure {
   constructor() {
-    /** @type {{ hex: number, metal: number, rough: number, positions: number[], indices: number[] }[]} */
+    /** @type {{ part: string, hex: number, metal: number, rough: number, positions: number[], indices: number[] }[]} */
     this.prims = [];
     this.cur = null;
+    this.part = 'body';
+    this.pivot = [0, 0, 0];
+    /** @type {Record<string, number[]>} */
+    this.pivots = { body: this.pivot };
+  }
+
+  /** Pivot a limb so the game can swing it. Later boxes are stored relative to this point. */
+  limb(name, x, y, z) {
+    this.part = name;
+    this.pivot = [x, y, z];
+    this.pivots[name] = this.pivot;
+    this.cur = null;
+    return this;
   }
 
   /** @param {number} hex @param {number} metal @param {number} rough */
   use(hex, metal = 0.05, rough = 0.78) {
-    const key = `${hex}|${metal}|${rough}`;
+    const key = `${this.part}|${hex}|${metal}|${rough}`;
     let p = this.prims.find((x) => x.key === key);
     if (!p) {
-      p = { key, hex, metal, rough, positions: [], indices: [] };
+      p = { key, part: this.part, hex, metal, rough, positions: [], indices: [] };
       this.prims.push(p);
     }
     this.cur = p;
@@ -65,8 +78,9 @@ class Figure {
 
   #quad(a, b, c, d) {
     const p = this.cur;
+    const [px, py, pz] = this.pivot;
     const base = p.positions.length / 3;
-    for (const v of [a, b, c, d]) p.positions.push(v[0], v[1], v[2]);
+    for (const v of [a, b, c, d]) p.positions.push(v[0] - px, v[1] - py, v[2] - pz);
     p.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
 
@@ -156,13 +170,29 @@ class Figure {
       });
     }
 
+    const byPart = new Map();
+    primitives.forEach((prim, i) => {
+      const part = this.prims.filter((p) => p.indices.length)[i]?.part ?? 'body';
+      if (!byPart.has(part)) byPart.set(part, []);
+      byPart.get(part).push(prim);
+    });
+    const meshes = [];
+    const nodes = [{ name: 'rig', children: [] }];
+    for (const [part, prims] of byPart) {
+      const meshIndex = meshes.length;
+      meshes.push({ primitives: prims });
+      const nodeIndex = nodes.length;
+      const pivot = this.pivots[part] ?? [0, 0, 0];
+      nodes.push({ name: part, mesh: meshIndex, translation: pivot });
+      nodes[0].children.push(nodeIndex);
+    }
     const bin = Buffer.concat(bins);
     const json = {
       asset: { version: '2.0', generator: 'escape-berghain-npc' },
       scene: 0,
       scenes: [{ nodes: [0] }],
-      nodes: [{ name: 'npc', mesh: 0 }],
-      meshes: [{ primitives }],
+      nodes,
+      meshes,
       materials,
       accessors,
       bufferViews,
@@ -244,18 +274,26 @@ function buildPerson(opt) {
   const metal = opt.metal ?? 0.08;
   const rough = opt.rough ?? 0.72;
 
-  f.use(shoes, 0.1, 0.55);
-  f.box(-hipW * 0.38, 0.035, 0.03, 0.12, 0.07, 0.22);
-  f.box(hipW * 0.38, 0.035, 0.03, 0.12, 0.07, 0.22);
-
   const legTop = opt.outfit === 'dress' ? hipY + 0.02 : hipY;
-  f.use(opt.outfit === 'dress' ? top : bottom, metal, rough);
   if (opt.outfit === 'dress') {
+    f.limb('body', 0, 0, 0);
+    f.use(top, metal, rough);
     f.box(0, legTop * 0.45, 0, hipW * 1.15, legTop * 0.9, depth * 1.15);
     f.box(0, legTop * 0.15, 0, hipW * 1.7, legTop * 0.28, depth * 1.5);
   } else {
-    f.box(-hipW * 0.36, legTop * 0.5, 0, 0.12 * Math.min(bulk, 1.3), legTop, 0.13);
-    f.box(hipW * 0.36, legTop * 0.5, 0, 0.12 * Math.min(bulk, 1.3), legTop, 0.13);
+    const legW = 0.12 * Math.min(bulk, 1.3);
+    f.limb('legL', -hipW * 0.36, hipY, 0);
+    f.use(shoes, 0.1, 0.55);
+    f.box(-hipW * 0.38, 0.035, 0.03, 0.12, 0.07, 0.22);
+    f.use(bottom, metal, rough);
+    f.box(-hipW * 0.36, legTop * 0.5, 0, legW, legTop, 0.13);
+    f.limb('legR', hipW * 0.36, hipY, 0);
+    f.use(shoes, 0.1, 0.55);
+    f.box(hipW * 0.38, 0.035, 0.03, 0.12, 0.07, 0.22);
+    f.use(bottom, metal, rough);
+    f.box(hipW * 0.36, legTop * 0.5, 0, legW, legTop, 0.13);
+    f.limb('body', 0, 0, 0);
+    f.use(bottom, metal, rough);
     f.box(0, hipY, 0, hipW, 0.14, depth);
   }
 
@@ -293,13 +331,20 @@ function buildPerson(opt) {
 
   const armH = torsoH * 0.95;
   const armMat = opt.outfit === 'rubber' ? top : skin;
-  f.use(armMat, opt.outfit === 'rubber' ? 0.65 : 0.02, opt.outfit === 'rubber' ? 0.28 : 0.82);
+  const armMetal = opt.outfit === 'rubber' ? 0.65 : 0.02;
+  const armRough = opt.outfit === 'rubber' ? 0.28 : 0.82;
+  f.limb('armL', -shoulderW * 0.56, shoulderY, 0);
+  f.use(armMat, armMetal, armRough);
   f.box(-shoulderW * 0.56, shoulderY - armH * 0.45, 0, 0.09, armH, 0.09);
+  f.limb('armR', shoulderW * 0.56, shoulderY, 0);
+  f.use(armMat, armMetal, armRough);
   f.box(shoulderW * 0.56, shoulderY - armH * 0.45, 0, 0.09, armH, 0.09);
 
+  f.limb('head', 0, shoulderY + 0.02, 0);
   if (opt.head === 'human' || !opt.head) humanHead(f, opt, eyeY, faceZ, skin, hair);
   else equineHead(f, opt.head, eyeY, faceZ, opt.coat, opt.mane);
 
+  f.limb('body', 0, 0, 0);
   for (const extra of opt.extras ?? []) extra(f, { eyeY, faceZ, shoulderW, depth, chestY, shoulderY });
   return f;
 }
@@ -790,15 +835,18 @@ for (const spec of cast) {
       ab,
       '',
       (gltf) => {
-        gltf.scene.updateWorldMatrix(true, true);
+        gltf.scene.updateMatrixWorld(true);
         const box = { minY: Infinity, maxY: -Infinity, maxX: 0 };
+        const v = new Vector3();
         gltf.scene.traverse((o) => {
           const pos = o.geometry?.attributes?.position;
           if (!pos) return;
           for (let i = 0; i < pos.count; i++) {
-            box.minY = Math.min(box.minY, pos.getY(i));
-            box.maxY = Math.max(box.maxY, pos.getY(i));
-            box.maxX = Math.max(box.maxX, Math.abs(pos.getX(i)));
+            v.fromBufferAttribute(pos, i);
+            o.localToWorld(v);
+            box.minY = Math.min(box.minY, v.y);
+            box.maxY = Math.max(box.maxY, v.y);
+            box.maxX = Math.max(box.maxX, Math.abs(v.x));
           }
         });
         const h = box.maxY - box.minY;
