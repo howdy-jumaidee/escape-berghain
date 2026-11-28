@@ -94,10 +94,10 @@ Only after Gate 4 is safe. Each one is an issue for one model, in its own folder
 
 ## Pitch (Saturday 14:00 to 16:00)
 
-- [ ] Lovable sizzle video
-- [ ] Pitch slides and demo script
-- [ ] Rehearse twice
-- [ ] Submit at 15:30
+- [x] Lovable sizzle video
+- [x] Pitch slides and demo script
+- [x] Rehearse twice
+- [x] Submit at 15:30
 
 ## Cut list (in this order if behind)
 
