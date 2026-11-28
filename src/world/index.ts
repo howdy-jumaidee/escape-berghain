@@ -102,6 +102,7 @@ export class World {
     for (const [col, row] of this.level.cells.get('hoof_bag') ?? []) {
       this.addPickup({ kind: 'item', item: 'bag', slips: 0 }, 'prop_bag', { x: 0.12, y: 0.05, z: 0.12 }, 0xffb300, col, row);
     }
+    this.scatterExtraItems();
     const exit = this.level.cells.get('exit_door')?.[0];
     if (exit) {
       const c = cellCenter(exit[0], exit[1]);
@@ -243,7 +244,7 @@ export class World {
     // Items (mate, hoof bags) are picked up by walking into them; no Space needed. Fragments still need Space.
     if (state.floor === 0 && !state.ending && state.started && !state.inputLocked) {
       let nearest: Pickup | null = null;
-      let nearestD = 1.15;
+      let nearestD = GRAB_RANGE;
       for (const pu of this.pickups) {
         if (pu.kind !== 'item') continue;
         const d = dist(pu.object.position, p);
@@ -359,6 +360,44 @@ export class World {
     object.add(halo);
     this.root.add(object);
     this.pickups.push({ ...base, object, baseY, hinted: false });
+  }
+
+  /** Extra mate and hoof bags scattered on free floor cells, so the club feels littered.
+   * The level grid places the designed ones; this adds clutter on top, different every run. */
+  private scatterExtraItems(): void {
+    const taken = new Set<string>();
+    for (const name of ['player_start', 'exit_door', 'front_door', 'gate_shortcut', 'staircase_up', 'panorama_ice_cream']) {
+      for (const [c, r] of this.level.cells.get(name) ?? []) taken.add(`${c},${r}`);
+    }
+    const start = this.level.cells.get('player_start')?.[0];
+    // hall_floor cells are walkable by definition; keep clear of the start and the interactables above.
+    const free = (this.level.cells.get('hall_floor') ?? []).filter(([c, r]) => {
+      if (taken.has(`${c},${r}`)) return false;
+      if (start && Math.abs(c - start[0]) + Math.abs(r - start[1]) < 2) return false;
+      return true;
+    });
+    for (let i = free.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [free[i], free[j]] = [free[j], free[i]];
+    }
+    const EXTRA_MATE = 4;
+    const EXTRA_BAGS = 16;
+    let n = 0;
+    const place = (item: 'mate' | 'bag') => {
+      if (n >= free.length) return;
+      const [c, r] = free[n++];
+      const cc = cellCenter(c, r);
+      this.addPickupAt(
+        { kind: 'item', item, slips: 0 },
+        item === 'mate' ? 'prop_mate' : 'prop_bag',
+        item === 'mate' ? { x: 0.14, y: 0.45, z: 0.14 } : { x: 0.12, y: 0.05, z: 0.12 },
+        0xffb300,
+        cc.x + (Math.random() - 0.5) * CELL * 0.5,
+        cc.z + (Math.random() - 0.5) * CELL * 0.5,
+      );
+    };
+    for (let i = 0; i < EXTRA_MATE; i++) place('mate');
+    for (let i = 0; i < EXTRA_BAGS; i++) place('bag');
   }
 
   private announceSpot(pu: Pickup): void {
