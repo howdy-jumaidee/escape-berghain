@@ -33,7 +33,7 @@ export type NpcId =
   | 'calm_horse';
 
 /** Things you can pick up or consume that aren't fragments. */
-export type ItemId = 'mate' | 'ice_cream';
+export type ItemId = 'mate' | 'ice_cream' | 'bag';
 
 /** Model file names in public/models/, without .glb. Missing models fall back to a grey box. */
 export type ModelName = string;
@@ -65,6 +65,8 @@ export interface GameState {
   passOuts: number;
   /** Closing time: all five memories found, the run for the exit. */
   finale: boolean;
+  /** performance.now() timestamp until which the horse is "hooved" (harder to navigate). */
+  hoovedUntil: number;
   ending: EndingId | null;
 }
 
@@ -101,6 +103,7 @@ export function createInitialState(): GameState {
     passOuts: 0,
     finale: false,
     ending: null,
+    hoovedUntil: 0,
   };
 }
 

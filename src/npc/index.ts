@@ -838,7 +838,10 @@ export class Npcs {
       if (choices.length) {
         const first = !this.heard.has(npc.id);
         this.heard.add(npc.id);
-        const keys = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        const tier = this.fragmentTier(npc.id);
+        const base = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        // Repeat visits swap the last intro line for the fragment-tier lines, if the NPC has them.
+        const keys = tier.length ? (first ? [...base, ...tier] : tier) : base;
         return {
           keys,
           keepFocus: true,
@@ -858,8 +861,16 @@ export class Npcs {
         if (state.fragments.includes(4)) return { keys: ['empty'] };
         // Ticket in, jacket out, keys in the pocket.
         return { keys: ['jacket'], after: () => bus.emit('fragment:claim', { id: 4 }) };
-      default:
+      default: {
+        // Optional `by_fragments` in content: lines keyed by the fewest fragments needed. Repeat visits get only these.
+        const tier = this.fragmentTier(npc.id);
+        if (tier.length) {
+          const first = !this.heard.has(npc.id);
+          this.heard.add(npc.id);
+          return { keys: first ? [...full, ...tier] : tier };
+        }
         return { keys: once(full.length ? full : ['lines.0']) };
+      }
     }
   }
 
@@ -976,6 +987,16 @@ export class Npcs {
       this.wasNearUnicorn = uni;
       bus.emit('unicorn:near', { near: uni });
     }
+  }
+
+  /** Keys for the highest `by_fragments` tier the player has reached, or none. */
+  private fragmentTier(id: NpcId): string[] {
+    const tiers = npcText[id]?.by_fragments as Record<string, string[]> | undefined;
+    if (!tiers) return [];
+    const have = state.fragments.length;
+    const min = Object.keys(tiers).map(Number).filter((n) => n <= have).sort((a, b) => b - a)[0];
+    if (min === undefined) return [];
+    return tiers[String(min)].map((_, i) => `by_fragments.${min}.${i}`);
   }
 
   private sayLine(): void {

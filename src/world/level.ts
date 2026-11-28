@@ -70,7 +70,7 @@ const MODULES: Record<string, ModuleSpec> = {
 };
 
 /** Grid characters that are just markers on an ordinary floor cell. */
-const FLOOR_MARKERS = new Set(['hall_floor', 'player_start', 'fragment_1', 'fragment_3', 'mate']);
+const FLOOR_MARKERS = new Set(['hall_floor', 'player_start', 'fragment_1', 'fragment_3', 'mate', 'hoof_bag']);
 
 export interface BuiltLevel {
   root: THREE.Group;
