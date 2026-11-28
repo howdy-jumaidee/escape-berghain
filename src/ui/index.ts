@@ -7,6 +7,7 @@ import { css } from './style';
 import { t, list, lookup } from './text';
 import { playIntro } from './intro';
 import { startHelp } from './help';
+import { startTouch } from './touch';
 
 export function startUi(): void {
   const style = document.createElement('style');
@@ -232,6 +233,14 @@ export function startUi(): void {
 
   // Glass help box: tips after landing, then the mission and the five memories.
   startHelp(root);
+  startTouch(root);
+
+  // Tap to advance face-to-face dialogue on phones (answers have their own click handlers).
+  talk.addEventListener('click', (e) => {
+    if (!focused || riddleOpen || choiceOpen) return;
+    if ((e.target as HTMLElement | null)?.closest('.eb-answers')) return;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true }));
+  });
 
   // View toggle hint: slowly fades in 2.8 s after landing, holds 9 s, then fades out (or immediately on V).
   const viewHint = el('div', 'eb-view-hint', root);
@@ -469,7 +478,9 @@ function showEnd(end: HTMLElement, ending: EndingId): void {
   el('p', '', box).textContent = t(`story:endings.${ending}`);
   const credits = el('div', 'eb-credits', box);
   for (const line of list('story:credits.lines')) el('div', '', credits).textContent = line;
-  el('div', 'eb-retry', box).textContent = t('story:retry');
+  const retry = el('div', 'eb-retry', box);
+  retry.textContent = t('story:retry');
+  retry.addEventListener('click', () => location.reload());
   end.classList.add('on');
 }
 

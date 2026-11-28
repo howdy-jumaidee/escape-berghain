@@ -1,36 +1,41 @@
 // Entry point. Owned by Dee (Opus only). Wires systems together.
 // /?viewer=<model> opens the model viewer instead of the game.
-// Phones and small screens (<= 768 px) see the vertical poster and a desktop-only note without loading Three.js.
+// Phones in portrait and narrow desktop windows see the vertical poster. Rotating a phone horizontally boots and plays the game.
 const params = new URLSearchParams(location.search);
 const viewer = params.get('viewer');
 const SMALL_SCREEN_PX = 768;
 
-function isSmallOrPhone(): boolean {
+const isTouchDevice =
+  /iPhone|iPod|Android.*Mobile|Windows Phone|webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent) ||
+  window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+function shouldShowPoster(): boolean {
   if (params.has('desktop')) return false;
   if (params.has('mobile')) return true;
-  if (window.innerWidth <= SMALL_SCREEN_PX) return true;
-  const mobileUa = /iPhone|iPod|Android.*Mobile|Windows Phone|webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent);
-  const touchOnly = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  return mobileUa || touchOnly;
+  if (isTouchDevice) return window.innerHeight >= window.innerWidth;
+  return window.innerWidth <= SMALL_SCREEN_PX;
 }
 
 if (viewer) {
   import('./look/viewer').then((m) => m.startViewer(viewer));
-} else if (isSmallOrPhone()) {
-  import('./ui/mobile').then((m) => m.showMobilePoster());
 } else {
-  import('./game-boot');
-  if (!params.has('desktop')) {
-    const mq = window.matchMedia(`(max-width: ${SMALL_SCREEN_PX}px)`);
-    let mod: Promise<typeof import('./ui/mobile')> | null = null;
-    const sync = () => {
-      if (mq.matches) {
-        mod ??= import('./ui/mobile');
-        mod.then((m) => m.toggleMobileOverlay(true));
-      } else if (mod) {
-        mod.then((m) => m.toggleMobileOverlay(false));
+  let booted = false;
+  let mobileMod: Promise<typeof import('./ui/mobile')> | null = null;
+
+  const sync = () => {
+    if (shouldShowPoster()) {
+      mobileMod ??= import('./ui/mobile');
+      mobileMod.then((m) => (booted ? m.toggleMobileOverlay(true) : m.showMobilePoster()));
+    } else {
+      if (mobileMod) mobileMod.then((m) => m.toggleMobileOverlay(false));
+      if (!booted) {
+        booted = true;
+        import('./game-boot');
       }
-    };
-    mq.addEventListener('change', sync);
-  }
+    }
+  };
+
+  sync();
+  window.addEventListener('resize', sync);
+  window.addEventListener('orientationchange', () => window.setTimeout(sync, 120));
 }
