@@ -112,14 +112,14 @@ function startDjBooth(cell: [number, number]): void {
   let done = false;
   bus.on('beat', ({ n, time }) => counter.beat(n, time));
   bus.on('player:moved', ({ x, z }) => {
-    if (done || Math.hypot(x - booth.x, z - booth.z) > DJ_RANGE + 0.5) return;
+    if (done || state.floor !== 0 || Math.hypot(x - booth.x, z - booth.z) > DJ_RANGE + 0.5) return;
     const now = performance.now();
     if (now - hintAt < 25000) return;
     hintAt = now;
     bus.emit('ui:say', { key: 'story:dj.hint', seconds: 4 });
   });
   bus.on('player:stomp', ({ x, z, time }) => {
-    if (done || state.ending || endingPending || Math.hypot(x - booth.x, z - booth.z) > DJ_RANGE) return;
+    if (done || state.floor !== 0 || state.ending || endingPending || Math.hypot(x - booth.x, z - booth.z) > DJ_RANGE) return;
     if (counter.stomp(time) < DJ_STOMPS) return;
     done = true;
     bus.emit('secret:dj', {});

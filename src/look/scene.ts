@@ -39,6 +39,39 @@ function makeRng(seed: number): () => number {
   };
 }
 
+/** Soft cloudy smoke puff texture for Berghain fog-machine haze plumes. */
+function makeSmokeTexture(): THREE.CanvasTexture {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, size, size);
+    // Layer offset soft radial blobs so each cloud reads as organic club smoke, not a uniform circle.
+    const puffs: [number, number, number, number][] = [
+      [64, 64, 58, 0.42],
+      [48, 54, 42, 0.28],
+      [82, 60, 44, 0.26],
+      [58, 78, 40, 0.24],
+      [74, 46, 36, 0.2],
+    ];
+    for (const [cx, cy, r, a] of puffs) {
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0.0, `rgba(185, 200, 224, ${a})`);
+      grad.addColorStop(0.5, `rgba(140, 156, 185, ${a * 0.45})`);
+      grad.addColorStop(1.0, 'rgba(90, 105, 130, 0.0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 /** Soft radial dot texture for floating industrial dust motes. */
 function makeDustTexture(): THREE.CanvasTexture {
   const size = 64;
@@ -127,73 +160,73 @@ function createLightShaft(
 
 export function buildScene(): Look {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x06070a);
-  // Cold industrial Kraftwerk haze: deep enough for monumental scale, clear enough to read 19 m hoppers.
-  scene.fog = new THREE.FogExp2(0x0c0f15, 0.0108);
+  scene.background = new THREE.Color(0x020305);
+  // Thick, dark Berghain smoke haze: distant concrete and pillars dissolve into heavy gloom.
+  scene.fog = new THREE.FogExp2(0x07090f, 0.0215);
 
-  // Tight brutalist base fill so recessed concrete stays stark while upper structure remains readable.
-  scene.add(new THREE.AmbientLight(0x242a34, 0.9));
-  scene.add(new THREE.HemisphereLight(0x556880, 0x0e0f12, 1.15));
+  // Very low brutalist base fill so shadows stay deep while close silhouettes and textures still read.
+  scene.add(new THREE.AmbientLight(0x131722, 0.25));
+  scene.add(new THREE.HemisphereLight(0x2a364c, 0x050608, 0.36));
 
-  // Angled cool overcast daylight pouring from high north-west glass-block windows across the hall.
-  const nwDaylight = new THREE.DirectionalLight(0xc8daf0, 1.35);
+  // Faint 06:12 Berlin pre-dawn seepage from the high north-west glass blocks.
+  const nwDaylight = new THREE.DirectionalLight(0x7c98be, 0.32);
   nwDaylight.position.set(-24, 32, -20);
   nwDaylight.target.position.set(36, 4, 30);
   scene.add(nwDaylight, nwDaylight.target);
 
-  // Soft upward cool bounce so 19 m concrete ceiling slab, coal hoppers, and flared capitals read in haze.
-  const ceilingBounce = new THREE.DirectionalLight(0x6e86a6, 0.55);
+  // Dim upward cool bounce so 19 m coal hoppers and flared concrete capitals loom out of the smoke.
+  const ceilingBounce = new THREE.DirectionalLight(0x30425c, 0.2);
   ceilingBounce.position.set(36, -6, 36);
   ceilingBounce.target.position.set(36, CEILING, 26);
   scene.add(ceilingBounce, ceilingBounce.target);
 
-  // Two cold daylight spotlights raking diagonally from the west and north window banks across galleries and floor.
-  const westWindowSpot = new THREE.SpotLight(0xdce8ff, 3400, 95, Math.PI / 5.2, 0.65, 1.6);
+  // Subtle cold spotlights raking down from the high window bays through the dark haze.
+  const westWindowSpot = new THREE.SpotLight(0xa8c4e8, 720, 95, Math.PI / 5.4, 0.72, 1.6);
   westWindowSpot.position.set(7.2, 15.5, 32);
   westWindowSpot.target.position.set(30, 0, 34);
   scene.add(westWindowSpot, westWindowSpot.target);
 
-  const northWindowSpot = new THREE.SpotLight(0xd4e2f8, 3000, 90, Math.PI / 5.2, 0.65, 1.6);
+  const northWindowSpot = new THREE.SpotLight(0x9cb8df, 650, 90, Math.PI / 5.4, 0.72, 1.6);
   northWindowSpot.position.set(28, 15.5, 7.2);
   northWindowSpot.target.position.set(34, 0, 30);
   scene.add(northWindowSpot, northWindowSpot.target);
 
-  // Architectural uplights grazing the flared pillar capitals, 9 m steel catwalk underside, and 19 m coal hoppers.
-  const uplightWest = new THREE.SpotLight(0x8aa8ce, 1650, 56, Math.PI / 2.5, 0.85, 1.5);
+  // Dim architectural uplights grazing the 9 m catwalk underside and 19 m coal hoppers.
+  const uplightWest = new THREE.SpotLight(0x6480aa, 480, 56, Math.PI / 2.5, 0.88, 1.5);
   uplightWest.position.set(21, 5.2, 27);
   uplightWest.target.position.set(24, CEILING, 24);
   scene.add(uplightWest, uplightWest.target);
 
-  const uplightEast = new THREE.SpotLight(0x7c98be, 1650, 56, Math.PI / 2.5, 0.85, 1.5);
+  const uplightEast = new THREE.SpotLight(0x5a749e, 480, 56, Math.PI / 2.5, 0.88, 1.5);
   uplightEast.position.set(45, 5.2, 33);
   uplightEast.target.position.set(42, CEILING, 30);
   scene.add(uplightEast, uplightEast.target);
 
-  // Red and purple strobes near the DJ booth (intensities pulsed on beat by game-boot).
-  const strobes = [0xff1744, 0x9c27ff].map((c, i) => {
-    const l = new THREE.PointLight(c, 700, 74, 1.6);
+  // Red and deep-violet strobes near the DJ booth (pulsed hard on the beat by game-boot).
+  const strobes = [0xff1744, 0x8e24ff].map((c, i) => {
+    const l = new THREE.PointLight(c, 820, 78, 1.55);
     l.position.set((i === 0 ? 15 : 31) * S, 10.5, 11.5 * S);
     scene.add(l);
     return l;
   });
 
-  // Bar: dirty amber.
-  const bar = new THREE.PointLight(0xff8a3c, 520, 38, 1.65);
+  // Bar: smoky dirty amber.
+  const bar = new THREE.PointLight(0xff7e2e, 560, 40, 1.6);
   bar.position.set(54 * S, 4.5, 9 * S);
   scene.add(bar);
 
   // Toilet corridor: sick green fluorescent flicker (intensity driven by game-boot).
-  const flicker = new THREE.PointLight(0xaaffc8, 340, 34, 1.5);
+  const flicker = new THREE.PointLight(0x9affbe, 360, 34, 1.5);
   flicker.position.set(54 * S, 3.6, 28 * S);
   scene.add(flicker);
 
-  // Panorama Bar: warmer, pinker.
-  const pano = new THREE.PointLight(0xff4fa0, 820, 56, 1.6);
+  // Panorama Bar: hazy rose-magenta.
+  const pano = new THREE.PointLight(0xff3e92, 740, 54, 1.6);
   pano.position.set(22 * S, 5.5, 43 * S);
   scene.add(pano);
 
   // Back exit: green exit sign, morning light leaking under the door.
-  const exit = new THREE.PointLight(0x22ff66, 360, 30, 1.6);
+  const exit = new THREE.PointLight(0x22ff66, 420, 32, 1.55);
   exit.position.set(62 * S, 3.4, 46 * S);
   scene.add(exit);
   const sign = new THREE.Mesh(
@@ -223,7 +256,7 @@ export function buildScene(): Look {
     map: shaftTex,
     color: 0xcfe0f8,
     transparent: true,
-    opacity: 0.13,
+    opacity: 0.08,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
@@ -232,7 +265,7 @@ export function buildScene(): Look {
     map: shaftTex,
     color: 0xd4e4fc,
     transparent: true,
-    opacity: 0.14,
+    opacity: 0.085,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
@@ -273,6 +306,81 @@ export function buildScene(): Look {
         westShaftMat,
       ),
     );
+  }
+
+  // Club haze cones from the DJ booth rig slicing through the smoke (red and deep violet).
+  const clubBeamRed = new THREE.MeshBasicMaterial({
+    map: shaftTex,
+    color: 0xff224e,
+    transparent: true,
+    opacity: 0.075,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const clubBeamViolet = new THREE.MeshBasicMaterial({
+    map: shaftTex,
+    color: 0x8e38ff,
+    transparent: true,
+    opacity: 0.07,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  scene.add(
+    createLightShaft(new THREE.Vector3(24, 13.5, 11), new THREE.Vector3(18, 0, 30), 0.7, 5.2, clubBeamRed),
+    createLightShaft(new THREE.Vector3(42, 13.5, 11), new THREE.Vector3(48, 0, 32), 0.7, 5.4, clubBeamViolet),
+    createLightShaft(new THREE.Vector3(33, 14.5, 10), new THREE.Vector3(33, 0, 38), 0.85, 6.2, clubBeamRed),
+  );
+
+  // Berghain fog-machine smoke clouds rolling lazily across the dance floor and upper galleries.
+  const smokeTex = makeSmokeTexture();
+  const smokeRng = makeRng(47013);
+  interface SmokePlume {
+    sprite: THREE.Sprite;
+    mat: THREE.SpriteMaterial;
+    baseX: number;
+    baseY: number;
+    baseZ: number;
+    driftX: number;
+    driftZ: number;
+    phase: number;
+    baseOpacity: number;
+  }
+  const smokePlumes: SmokePlume[] = [];
+  const smokeTints = [0x1c2230, 0x261a2c, 0x2a1822, 0x1a202c];
+  for (let i = 0; i < 38; i++) {
+    const isMain = i < 28;
+    const bx = isMain ? 10 + smokeRng() * 52 : 12 + smokeRng() * 76;
+    const bz = isMain ? 10 + smokeRng() * 40 : 12 + smokeRng() * 58;
+    const by = i % 5 === 0 ? 9.5 + smokeRng() * 3.5 : 1.5 + smokeRng() * 4.2;
+    const baseOpacity = 0.08 + smokeRng() * 0.085;
+    const mat = new THREE.SpriteMaterial({
+      map: smokeTex,
+      color: smokeTints[i % smokeTints.length],
+      transparent: true,
+      opacity: baseOpacity,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
+      fog: true,
+    });
+    const sprite = new THREE.Sprite(mat);
+    const scale = 11 + smokeRng() * 11;
+    sprite.scale.set(scale * 1.45, scale * 0.75, 1);
+    sprite.position.set(bx, by, bz);
+    sprite.renderOrder = 1;
+    scene.add(sprite);
+    smokePlumes.push({
+      sprite,
+      mat,
+      baseX: bx,
+      baseY: by,
+      baseZ: bz,
+      driftX: 0.45 + smokeRng() * 0.9,
+      driftZ: 0.35 + smokeRng() * 0.75,
+      phase: smokeRng() * Math.PI * 2,
+      baseOpacity,
+    });
   }
 
   // Floating industrial dust motes drifting through the main hall haze and daylight beams.
@@ -318,7 +426,7 @@ export function buildScene(): Look {
     size: 0.24,
     sizeAttenuation: true,
     transparent: true,
-    opacity: 0.56,
+    opacity: 0.42,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     vertexColors: true,
@@ -358,9 +466,19 @@ export function buildScene(): Look {
   function update(dt: number): void {
     elapsed += dt;
 
-    // Gentle overcast cloud drift on the daylight shafts.
-    northShaftMat.opacity = 0.125 + Math.sin(elapsed * 0.35) * 0.014;
-    westShaftMat.opacity = 0.135 + Math.cos(elapsed * 0.28 + 1.1) * 0.014;
+    // Subtle pre-dawn seepage drift and pulsing club haze beams.
+    northShaftMat.opacity = 0.055 + Math.sin(elapsed * 0.35) * 0.01;
+    westShaftMat.opacity = 0.06 + Math.cos(elapsed * 0.28 + 1.1) * 0.01;
+    clubBeamRed.opacity = 0.062 + Math.sin(elapsed * 1.9) * 0.022;
+    clubBeamViolet.opacity = 0.058 + Math.cos(elapsed * 1.5 + 0.8) * 0.02;
+
+    // Billow fog-machine smoke clouds lazily across the floor.
+    for (const s of smokePlumes) {
+      s.sprite.position.x = s.baseX + Math.sin(elapsed * 0.16 + s.phase) * s.driftX * 3.2;
+      s.sprite.position.z = s.baseZ + Math.cos(elapsed * 0.13 + s.phase * 1.3) * s.driftZ * 2.8;
+      s.sprite.position.y = s.baseY + Math.sin(elapsed * 0.22 + s.phase) * 0.35;
+      s.mat.opacity = s.baseOpacity * (0.78 + 0.22 * Math.sin(elapsed * 0.35 + s.phase));
+    }
 
     // Drift industrial dust motes lazily through the hall volume.
     for (let i = 0; i < DUST_COUNT; i++) {

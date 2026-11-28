@@ -47,11 +47,11 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   sum += texture2D(inputBuffer, uv + vec2(-r.x, r.y) * 0.7) * 0.1;
   vec3 blurred = mix(inputColor.rgb, sum.rgb, clamp(strength * 1.5, 0.0, 1.0));
 
-  // Light falling into the lens. Lift the shadows only. Nothing here raises contrast.
+  // Smoky club haze falling into the lens. Subtle dark-steel/violet lift so blacks stay deep.
   float luma = dot(blurred, vec3(0.2126, 0.7152, 0.0722));
-  vec3 veil = mix(vec3(0.62, 0.74, 0.98), vec3(1.0, 0.78, 0.46), morning);
-  float shadow = smoothstep(0.62, 0.0, luma);
-  vec3 lifted = blurred + veil * shadow * (0.05 + spill * 0.2);
+  vec3 veil = mix(vec3(0.32, 0.38, 0.54), vec3(0.95, 0.74, 0.44), morning);
+  float shadow = smoothstep(0.55, 0.0, luma);
+  vec3 lifted = blurred + veil * shadow * (0.008 + spill * 0.028);
   // First person: wide bands from above. Follow: the same bands aimed past the horse,
   // plus a soft rim where the light wraps the body and haze in the air in front of the lens.
   float s1 = sin((uv.x * 1.5 + uv.y * 0.28) * 6.28318 + phase * 0.1);
@@ -64,14 +64,14 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float beam = pow(clamp(0.5 + 0.5 * sin(ang * 2.5 + phase * 0.08), 0.0, 1.0), 3.0);
   float aimed = beam * smoothstep(0.9, 0.02, length(dir));
   float shafts = mix(wide, max(wide * 0.65, aimed), follow);
-  lifted += veil * shafts * (0.012 + spill * 0.05);
+  lifted += veil * shafts * (0.008 + spill * 0.024);
   vec2 hd = (uv - horse) * vec2(0.85, 1.15);
   float hd2 = dot(hd, hd);
   float rim = smoothstep(0.08, 0.015, hd2) * smoothstep(0.0, 0.012, hd2);
-  lifted += veil * rim * follow * spill * 0.16;
+  lifted += veil * rim * follow * spill * 0.065;
   float front = smoothstep(0.62, 0.0, uv.y) * follow;
-  lifted += veil * front * spill * 0.045;
-  blurred = mix(blurred, lifted, 0.3 + spill * 0.7);
+  lifted += veil * front * spill * 0.018;
+  blurred = mix(blurred, lifted, 0.18 + spill * 0.38);
 
   // Double vision: a drifting ghost copy of the frame.
   vec2 g = vec2(sin(phase * 0.7), cos(phase * 0.53)) * ghost * 0.025;
@@ -225,18 +225,18 @@ export class TripFx {
     this.chroma.offset.set(o * Math.cos(this.t * 2), o * Math.sin(this.t * 1.7));
     this.hue.hue = Math.sin(this.t * 0.25) * k * 0.9;
     this.hue.saturation = state.brainFreezeActive ? -0.32 : -0.24 + k * 0.45 - this.spill * 0.06;
-    // Brighter in the eyes, but contrast goes down so the extra light stays soft.
-    this.grade.brightness = this.spill * 0.09 + this.morning * 0.06;
-    this.grade.contrast = (state.brainFreezeActive ? 0.14 : 0.1 + k * 0.05) - this.spill * 0.07;
-    this.vignette.darkness = 0.62 - this.spill * 0.34 - this.morning * 0.08;
-    this.vignette.offset = 0.3 + this.spill * 0.14;
+    // Dark hazy Berghain grade without crushing sRGB blacks; bloom catches strobes, lasers & unicorn horns.
+    this.grade.brightness = -0.012 + this.spill * 0.016 + this.morning * 0.06;
+    this.grade.contrast = (state.brainFreezeActive ? 0.13 : 0.11 + k * 0.04) - this.spill * 0.015;
+    this.vignette.darkness = 0.78 - this.spill * 0.1 - this.morning * 0.1;
+    this.vignette.offset = 0.26 + this.spill * 0.05;
     const lum = this.bloom.luminanceMaterial;
-    lum.threshold = 0.7 - this.spill * 0.2 - this.morning * 0.06;
-    lum.smoothing = 0.28 + this.spill * 0.16;
-    this.bloom.mipmapBlurPass.radius = 0.72 + this.spill * 0.28;
+    lum.threshold = 0.74 - this.spill * 0.08 - this.morning * 0.05;
+    lum.smoothing = 0.3 + this.spill * 0.16;
+    this.bloom.mipmapBlurPass.radius = 0.78 + this.spill * 0.24;
     this.bloom.intensity = Math.min(
-      1.7,
-      (state.brainFreezeActive ? 0.4 : 0.5 + k * 0.1) + this.spill * 0.65 + this.morning * 0.3,
+      1.25,
+      (state.brainFreezeActive ? 0.35 : 0.45 + k * 0.12) + this.spill * 0.32 + this.morning * 0.25,
     );
 
     // Camera wobble grows with the trip; applied from baseCamPos and clamped so it never dips underground.
