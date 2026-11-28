@@ -779,6 +779,30 @@ export class Crowd {
     return bumped;
   }
 
+  /**
+   * Keep a ring clear around (x, z) on this floor: anyone inside is set on the ring's edge.
+   * Called every frame while you talk to someone, so no dancer walks through the conversation camera.
+   */
+  clearRing(x: number, z: number, radius: number, y = 0): void {
+    const n = this.pos.length / 2;
+    for (let i = 0; i < n; i++) {
+      if (Math.abs(this.baseY[i] - y) > 2.2) continue;
+      const ix = i * 2;
+      const dx = this.pos[ix] - x;
+      const dz = this.pos[ix + 1] - z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= radius * radius) continue;
+      const d = Math.sqrt(d2);
+      // Dead centre: pick a fixed direction from the index so they don't all stack on one side.
+      const nx = d > 1e-4 ? dx / d : Math.cos(i);
+      const nz = d > 1e-4 ? dz / d : Math.sin(i);
+      this.pos[ix] = x + nx * radius;
+      this.pos[ix + 1] = z + nz * radius;
+      this.vel[ix] = 0;
+      this.vel[ix + 1] = 0;
+    }
+  }
+
   /** True if one of the rare unicorns is within range on the same floor. */
   nearUnicorn(x: number, z: number, playerY = 0, range = 2.4): boolean {
     let found = false;

@@ -44,7 +44,11 @@
   },
   "title": "ESCAPE BERGHAIN",
   "goal": {
-    "lines": ["You turned into a horse.", "Find your 5 lost memories.", "Sneak past security and escape before you forever fall into the horse hole."]
+    "lines": [
+      "You turned into a horse.",
+      "Find your 5 lost memories.",
+      "Sneak past security and escape before you forever fall into the horse hole."
+    ]
   },
   "title_ui": {
     "show_controls": "Controls",
@@ -64,7 +68,16 @@
     "hooved": "Hooved. The floor tilts sideways.",
     "bag_found": "Something small and square. Space to take it."
   },
-  "animals": { "lines": ["Neigh. The floor is just a rumor.", "I traded my shoes for a rumor yesterday.", "The unicorn says the exit is a myth. It is not.", "I snorted the strobe light. It was green.", "Four hooves, zero plans.", "Everyone in here is a horse. Even the DJ."] },
+  "animals": {
+    "lines": [
+      "Neigh. The floor is just a rumor.",
+      "I traded my shoes for a rumor yesterday.",
+      "The unicorn says the exit is a myth. It is not.",
+      "I snorted the strobe light. It was green.",
+      "Four hooves, zero plans.",
+      "Everyone in here is a horse. Even the DJ."
+    ]
+  },
   "herd": {
     "hint": "Stand in their line. E on the beat. Four times.",
     "miss": "Off beat. They pretend not to notice.",
@@ -143,5 +156,34 @@
     ]
   ],
   "talk_hint": "Space to continue. Esc to leave.",
-  "view_hint": "V to change view"
+  "view_hint": "V to change view",
+  "talk_outcomes": {
+    "sober": "Your head clears a little.",
+    "trip_up": "That was not water. The floor starts breathing.",
+    "mate": "A cold Club Mate appears by your hooves.",
+    "brain_freeze": "Brain freeze. Everything is very clear and very cold.",
+    "cheer": "The crowd roars. Nobody is watching you right now.",
+    "shortcut": "A side door, a corridor, a staircase. Suddenly you're somewhere useful.",
+    "wrong_way": "A side door, a corridor, a staircase. This is not where you wanted to be.",
+    "snitch": "A torch swings your way. Somebody talked.",
+    "lie": "You get the feeling that was not entirely true.",
+    "nothing": "Nothing happens. It's still a nice moment."
+  },
+  "talk_lies": {
+    "1": "Your glasses? Definitely on the 9 metre gallery. Upstairs. Way upstairs.",
+    "2": "Wrist stamp? You don't have one. Nobody does. It's a myth.",
+    "3": "Ticket 47 is in the toilet cistern. The third one. Reach in.",
+    "4": "Your keys? Lost forever. Just live here now.",
+    "5": "The riddle answer is 'banana'. Always banana.",
+    "done": "The back exit is closed. Use the front door, the bouncer loves horses."
+  },
+  "talk_hints": {
+    "1": "Your glasses. Under the left speaker by the DJ booth.",
+    "2": "Your wrist stamp. Press Q now that you can see.",
+    "3": "Ticket 47. Taped to a pillar right by the bar.",
+    "4": "Your keys. Give ticket 47 to coat check.",
+    "5": "The riddle horse in the toilet corridor. Answer his riddle.",
+    "done": "You have everything. Back exit, past the toilets. Go."
+  },
+  "talk_choose_hint": "Up/Down or W/S to choose. Enter to answer, or press 1 to 4. Esc to leave."
 }
