@@ -210,7 +210,10 @@
       "E to stomp on the beat. Q to look at yourself. V to change view."
     ],
     "mission": "Find your 5 memories, then get out the back exit.",
-    "mission_done": "Back exit. Past the toilets. Go.",
+    "mission_done": "That's every memory. The back exit is past the toilets.",
+    "find_next": "Find next",
+    "recovered": "recovered",
+    "found": "(found)",
     "memories": [
       "Glasses",
       "Wrist stamp",
@@ -219,18 +222,11 @@
       "The bike riddle"
     ],
     "hints": [
-      "Glasses: under the speaker by the DJ booth.",
-      "Wrist stamp: press Q to look at yourself.",
-      "Ticket 47: taped to a pillar by the bar.",
-      "Keys: give ticket 47 to coat check.",
-      "The bike riddle: the riddle horse waits in the toilet corridor."
-    ],
-    "next": [
-      "Next: glasses, under the left speaker by the DJ booth.",
-      "Next: press Q and look at your own front leg.",
-      "Next: ticket 47, taped to a pillar by the bar.",
-      "Almost there. Next: give ticket 47 to coat check.",
-      "Almost there. Next: the riddle horse in the toilet corridor."
+      "Your glasses. Check under the left speaker by the DJ booth.",
+      "Your wrist stamp. Check your own front leg. Press Q.",
+      "Your ticket 47. Check the pillar by the bar. Taped on.",
+      "Your keys. Check coat check. Hand over ticket 47.",
+      "The bike riddle. Check the riddle horse in the toilet corridor."
     ]
   },
   "darkroom": {
