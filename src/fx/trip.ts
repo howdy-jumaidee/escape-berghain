@@ -18,6 +18,7 @@ import {
   BlendFunction,
 } from 'postprocessing';
 import { bus, state, TRIP_MAX } from '../contracts';
+import { ProximityGlowEffect } from './glow';
 
 const TRIP_PER_SECOND = 0.8; // the horse gets properly high in ~2 minutes
 const FRAGMENT_RELIEF = 10;
@@ -117,6 +118,7 @@ export class TripFx {
   private chroma: ChromaticAberrationEffect;
   private blur: TripBlurEffect;
   private hue: HueSaturationEffect;
+  private glow: ProximityGlowEffect;
   private camera: THREE.Camera;
   private baseCamPos = new THREE.Vector3();
   private camWobbleScale = 1;
@@ -169,7 +171,9 @@ export class TripFx {
     const noise = new NoiseEffect({ blendFunction: BlendFunction.OVERLAY });
     noise.blendMode.opacity.value = 0.4;
     this.vignette = new VignetteEffect({ darkness: 0.62, offset: 0.32 });
-    this.composer.addPass(new EffectPass(camera, this.grade, this.hue, noise, this.vignette));
+    // Interaction cue rides after the vignette so its warm edge lift reads in the dark.
+    this.glow = new ProximityGlowEffect();
+    this.composer.addPass(new EffectPass(camera, this.grade, this.hue, noise, this.vignette, this.glow));
     bus.on('shutters:open', () => {
       this.morning = Math.max(this.morning, 0.01);
     });
@@ -244,6 +248,7 @@ export class TripFx {
     lum.threshold = 0.74 - this.spill * 0.08 - this.morning * 0.05;
     lum.smoothing = 0.3 + this.spill * 0.16;
     this.bloom.mipmapBlurPass.radius = 0.78 + this.spill * 0.24;
+    this.glow.tick(dt);
     this.bloom.intensity = Math.min(
       1.25,
       (state.brainFreezeActive ? 0.35 : 0.45 + k * 0.12) + this.spill * 0.32 + this.morning * 0.25,

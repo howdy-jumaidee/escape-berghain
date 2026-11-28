@@ -303,6 +303,14 @@ export class Techno {
     this.warm = mix.warm;
   }
 
+  /** The sound effect bus (dry, past the wall filter) and the reverb send. For the ear cues in cues.ts. */
+  get sfxIn(): AudioNode {
+    return this.sfx;
+  }
+  get verbIn(): AudioNode {
+    return this.reverb;
+  }
+
   /** Peak level at the master right now, 0..1. For the ?debug meter: window.ebAudio(). */
   level(): number {
     const buf = new Float32Array(this.meter.fftSize);
