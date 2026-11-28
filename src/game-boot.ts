@@ -35,7 +35,7 @@ scene.add(npcs.root);
 let horseY = 0;
 const horse = new Horse((pos, r) => {
   world.resolve(pos, r, state.floor, horseY);
-  if (state.floor === 0 && horseY < 1.5) npcs.pushPlayer(pos, r);
+  npcs.pushPlayer(pos, r, horseY);
   world.resolve(pos, r, state.floor, horseY);
 });
 horse.setPosition(world.level.start.x, world.level.start.z);

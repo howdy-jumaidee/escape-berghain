@@ -140,6 +140,30 @@ export class Crowd {
       for (let x = (q[0][0] + 1) * CELL + 1; x < q[0][0] * CELL + 11.5; x += 1.05) add(x, z + (rand() - 0.5) * 0.3, true);
     }
 
+    // Floor 1: the 9 m galleries and catwalk. Same guests as downstairs, kept in from the rails.
+    // Rectangles match the walkable decks in src/world/galleries.ts. Stairs stay clear.
+    const pillars: { x: number; z: number }[] = [];
+    level.grid.forEach((line, row) => {
+      [...line].forEach((ch, col) => {
+        if (level.legend[ch] === 'hall_pillar') pillars.push(cellCenter(col, row));
+      });
+    });
+    const deckBlocked = (x: number, z: number) =>
+      pillars.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < 2.4 ** 2) || (x > 24.2 && x < 30.4 && z > 46 && z < 54);
+    const GY = 9;
+    const column = (x: number, z0: number, z1: number) => {
+      for (let z = z0; z <= z1; z += 2.6) if (!deckBlocked(x, z)) add(x, z, false, GY);
+    };
+    column(8.6, 15, 46);
+    column(10.8, 15, 46);
+    column(61.2, 15, 46);
+    column(63.8, 15, 46);
+    for (let x = 10; x <= 62; x += 2.6) {
+      if (!deckBlocked(x, 49.3)) add(x, 49.3, false, GY);
+      if (!deckBlocked(x, 51.7)) add(x, 51.7, false, GY);
+    }
+    for (let x = 16; x <= 56; x += 3.4) if (!deckBlocked(x, 28.2)) add(x, 28.2, false, GY);
+
     const counts = [0, 0, 0, 0];
     this.slot = this.species.map((s) => counts[s]++);
     const clothMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.62, metalness: 0.12 });
