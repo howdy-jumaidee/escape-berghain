@@ -31,7 +31,7 @@ export const css = /* css */ `
 .eb-talk.on { opacity: 1; }
 .eb-talk b { display: block; font: 400 11px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
 .eb-talk p { margin: 0; font: 400 16px/1.5 var(--mono); }
-.eb-answers { margin-top: 14px; display: grid; gap: 4px; pointer-events: auto; }
+.eb-answers { margin-top: 16px; padding-top: 12px; border-top: 1px solid #2e2e2e; display: grid; gap: 4px; pointer-events: auto; }
 .eb-answers button { all: unset; cursor: pointer; font: 400 15px/1.6 var(--mono); color: var(--paper); }
 .eb-answers button:hover, .eb-answers button:focus-visible { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
 .eb-answers kbd { font: 400 13px var(--mono); color: var(--dim); margin-right: 14px; }
@@ -41,7 +41,10 @@ export const css = /* css */ `
 .eb-bar-top { top: 0; transform: translateY(-100%); }
 .eb-bar-bottom { bottom: 0; transform: translateY(100%); }
 .eb-bar-top.focus, .eb-bar-bottom.focus { transform: none; }
-.eb-talk.focus { left: 50%; bottom: 3vh; transform: translateX(-50%); width: min(720px, 90vw); text-align: center; z-index: 1; }
+.eb-talk.focus { left: 50%; bottom: 4vh; transform: translateX(-50%); width: min(720px, 90vw); text-align: center; z-index: 1;
+  background: rgba(0, 0, 0, 0.72); border: 1px solid #2e2e2e; padding: 18px 22px 14px; }
+/* While talking, ambient captions move to the top so they never sit on the dialogue or the answers. */
+.eb-ui.talking .eb-say { bottom: auto; top: 10vh; }
 .eb-talk.focus p { font-size: 19px; }
 .eb-talk.focus b { font-size: 12px; }
 .eb-talk-hint { display: none; margin-top: 12px; font: 400 11px var(--mono); color: #6a6a6a; }

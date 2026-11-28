@@ -179,6 +179,7 @@ export class Npcs {
   private guidePulse = 0;
   private guideVisible = false;
   private barkAt = 0;
+  private animalBarkAt = -1e9;
   private choirNear = false;
   private mopTimer = MOP_EVERY;
   private cleanerPhase = 0;
@@ -225,6 +226,7 @@ export class Npcs {
 
     bus.on('player:moved', ({ x, z }) => {
       this.player.set(x, 0, z);
+      this.animalBark(x, z);
       if (this.talking && (state.floor !== 0 || this.talking.pos.distanceTo(this.player) > WALK_AWAY)) {
         this.talking = null;
         bus.emit('npc:silent', {});
@@ -321,6 +323,7 @@ export class Npcs {
       this.guideVisible = true;
       this.guide.visible = true;
       this.guide.position.copy(this.player).add(new THREE.Vector3(-1.2, 0, -0.8));
+      this.crownAroundPlayer();
     });
     bus.on('ui:say', ({ key }) => {
       if (key.startsWith('story:spirit_guide') || key.startsWith('story:intro') || key.startsWith('story:finale')) this.guidePulse = 1;
@@ -689,6 +692,25 @@ export class Npcs {
     }
   }
 
+  /** Start ritual: the eight nearest regulars form a crown around the horse and stay there. */
+  private crownAroundPlayer(): void {
+    const ring = [...this.npcs]
+      .sort((a, b) => a.pos.distanceTo(this.player) - b.pos.distanceTo(this.player))
+      .slice(0, 8);
+    ring.forEach((npc, k) => {
+      const a = (k / ring.length) * Math.PI * 2 + 0.4;
+      const hx = this.player.x + Math.cos(a) * 2.6;
+      const hz = this.player.z + Math.sin(a) * 2.6;
+      npc.holders.forEach((h, i) => {
+        const off = (i - (npc.holders.length - 1) / 2) * 1.2;
+        h.position.set(hx + off, 0, hz);
+        npc.homes[i].set(hx + off, 0, hz);
+        npc.targets[i].copy(npc.homes[i]);
+        npc.retarget[i] = 8 + k;
+      });
+    });
+  }
+
   /** The leather choir: stand with them and the music opens up. */
   private choir(): void {
     const c = this.npcs.find((n) => n.id === 'leather_choir');
@@ -1055,6 +1077,16 @@ export class Npcs {
     if (state.floor !== 0) return false;
     const herd = this.npcs.find((n) => n.id === 'herd');
     return !!herd && Math.abs(z - herd.pos.z) < 1.8 && Math.abs(x - herd.pos.x) < 6;
+  }
+
+  /** An animal guest nearby says something crazy, at most every 7 s. */
+  private animalBark(x: number, z: number): void {
+    if (!state.started || state.ending || this.convo) return;
+    const now = performance.now();
+    if (now - this.animalBarkAt < 7000) return;
+    if (this.crowd.animalNear(x, z, 3) === 0) return;
+    this.animalBarkAt = now;
+    bus.emit('ui:say', { key: `story:animals.lines.${Math.floor(Math.random() * 6)}`, seconds: 3 });
   }
 
   private herdHint(): void {
