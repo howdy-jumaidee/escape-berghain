@@ -2,6 +2,7 @@
 // World coordinates: CELL = 6, CEILING = 19, FLOOR_HEIGHT = 9. Main hall spans x = 6..66, z = 6..54.
 import * as THREE from 'three';
 import { CELL, CEILING } from '../contracts';
+import { painterlyFromUrl } from './painterly';
 
 /** Positions laid out for 4 m cells; S scales them to the current cell size (1.5 for CELL = 6). */
 const S = CELL / 4;
@@ -160,6 +161,8 @@ function createLightShaft(
 
 export function buildScene(): Look {
   const scene = new THREE.Scene();
+  const painterly = painterlyFromUrl();
+  let paintScanIn = 0;
   scene.background = new THREE.Color(0x020305);
   // Thick, dark Berghain smoke haze: distant concrete and pillars dissolve into heavy gloom.
   scene.fog = new THREE.FogExp2(0x04060a, 0.034); // darker and thicker: harder to read the hall
@@ -465,6 +468,12 @@ export function buildScene(): Look {
   let elapsed = 0;
   function update(dt: number): void {
     elapsed += dt;
+    // Includes new asynchronous model replacements, without touching other systems.
+    paintScanIn -= dt;
+    if (painterly && paintScanIn <= 0) {
+      painterly.apply(scene);
+      paintScanIn = 0.25;
+    }
 
     // Subtle pre-dawn seepage drift and pulsing club haze beams.
     northShaftMat.opacity = 0.055 + Math.sin(elapsed * 0.35) * 0.01;

@@ -152,6 +152,7 @@ export class Horse {
   private rEuler = new THREE.Euler(0, 0, 0, 'XYZ');
 
   constructor(resolve: Resolver) {
+    this.root.userData.painterlyRole = 'character';
     this.resolve = resolve;
     this.root.add(this.rig);
 
