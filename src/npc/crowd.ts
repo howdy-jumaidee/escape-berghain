@@ -11,8 +11,10 @@ import type { LevelData } from '../data';
 
 const DEFAULT_DENSITY: Partial<Record<ZoneId, number>> = {
   main_hall: 3.2,
-  panorama_bar: 1.6,
-  bar_cloakroom: 0.7,
+  panorama_bar: 4.4,
+  bar_cloakroom: 3.4,
+  toilet_corridor: 5.5,
+  back_exit: 1.4,
 };
 const RADIUS = 0.28;
 const HASH = 1.5;
@@ -183,6 +185,13 @@ export class Crowd {
       this.n++;
     };
 
+    // Keep clear of the ground-floor Panorama Bar Selector stand ([8, 10]), bar doorway, gate_shortcut ([13, 9]), and rare ghoul ([15, 7]).
+    const floorSpotBlocked = (x: number, z: number) =>
+      (x - 51.7) ** 2 + (z - 63.7) ** 2 < 1.55 ** 2 ||
+      (x >= 85.8 && x <= 88.2 && z >= 30.0 && z <= 36.2) ||
+      (x - 81) ** 2 + (z - 53.5) ** 2 < 1.85 ** 2 ||
+      (x - 93.4) ** 2 + (z - 45.8) ** 2 < 1.5 ** 2;
+
     const density = { ...DEFAULT_DENSITY, ...(level.crowd ?? {}) };
     level.grid.forEach((line, row) => {
       [...line].forEach((ch, col) => {
@@ -198,6 +207,7 @@ export class Crowd {
             const x = c.x + (rand() - 0.5) * (CELL - 0.8);
             const z = c.z + (rand() - 0.5) * (CELL - 0.8);
             if (clear && Math.hypot(x - c.x, z - c.z) < clear) continue;
+            if (floorSpotBlocked(x, z)) continue;
             add(x, z);
             break;
           }
@@ -205,15 +215,59 @@ export class Crowd {
       });
     });
 
-    // The toilet queue: a line along the cubicles, leaving the doorway from the bar free.
+    // Overcrowded Berghain toilets: a dense, buzzing multi-row staggered queue along the cubicles
+    // plus tight social clusters around toilet_corridor, while keeping squeezable paths clear.
     const q = level.zones.toilet_corridor;
     if (q) {
-      const z = q[0][1] * CELL + CELL + 1.2;
-      for (let x = (q[0][0] + 1) * CELL + 1; x < q[0][0] * CELL + 11.5; x += 1.05) add(x, z + (rand() - 0.5) * 0.3, true);
+      const xMin = (q[0][0] + 1) * CELL + 0.85; // col 12 left edge (~72.85)
+      const zCubicleFront = q[0][1] * CELL + CELL - 1.55; // row 5 south edge (~34.45)
+
+      // 3-row staggered queue in front of cubicles [12,5] & [13,5] (~28-32 people), plus right-cubicle queue (~6-7 people).
+      const rows = [
+        { z: zCubicleFront, x0: xMin, x1: xMin + 12.1, step: 0.98 },
+        { z: zCubicleFront + 1.08, x0: xMin + 0.45, x1: xMin + 12.2, step: 1.02 },
+        { z: zCubicleFront + 2.15, x0: xMin + 0.2, x1: xMin + 12.2, step: 1.12 },
+      ];
+      for (const rowSpec of rows) {
+        for (let x = rowSpec.x0; x <= rowSpec.x1; x += rowSpec.step) {
+          const qx = x + (rand() - 0.5) * 0.26;
+          const qz = rowSpec.z + (rand() - 0.5) * 0.28;
+          if (!floorSpotBlocked(qx, qz)) add(qx, qz, true);
+        }
+      }
+      // Right cubicle [15,5] mini-queue past the bar doorway.
+      for (let x = 89.2; x <= 95.0; x += 1.08) {
+        const qx = x + (rand() - 0.5) * 0.2;
+        const qz = zCubicleFront + (rand() - 0.5) * 0.24;
+        if (!floorSpotBlocked(qx, qz)) add(qx, qz, true);
+      }
+      for (let x = 89.7; x <= 94.6; x += 1.35) {
+        const qx = x + (rand() - 0.5) * 0.22;
+        const qz = zCubicleFront + 1.05 + (rand() - 0.5) * 0.24;
+        if (!floorSpotBlocked(qx, qz)) add(qx, qz, true);
+      }
+
+      // Extra buzzing clusters hanging out & chatting in the green toilet light.
+      const clusters: [number, number, number, number, number][] = [
+        [79.2, 85.0, 39.2, 46.8, 1.45],
+        [89.2, 94.8, 41.5, 49.4, 1.55],
+        [73.2, 77.6, 43.2, 51.0, 1.55],
+      ];
+      for (const [cx0, cx1, cz0, cz1, step] of clusters) {
+        for (let z = cz0; z <= cz1; z += step) {
+          for (let x = cx0; x <= cx1; x += step) {
+            if (rand() < 0.24) continue;
+            const px = x + (rand() - 0.5) * 0.45;
+            const pz = z + (rand() - 0.5) * 0.45;
+            if (!floorSpotBlocked(px, pz)) add(px, pz, false);
+          }
+        }
+      }
     }
 
     // Floor 1: the 9 m galleries and catwalk. Strictly inside walkable decks from src/world/galleries.ts,
-    // kept well clear of rails, hall pillars, and the top stair opening (x = 25.5..29.1, z = 47.5..53.5).
+    // kept well clear of rails, hall pillars, the top stair opening (x = 25.5..29.1, z = 47.5..53.5),
+    // the upstairs Panorama Bar DJ console at (33, 51.3), and the pano_bar counter (x > 60.2, z > 51.9).
     const pillars: { x: number; z: number }[] = [];
     level.grid.forEach((line, row) => {
       [...line].forEach((ch, col) => {
@@ -227,7 +281,9 @@ export class Crowd {
     const deckBlocked = (x: number, z: number) =>
       !inWalkableDeck(x, z) ||
       pillars.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < 2.5 ** 2) ||
-      (x > 24.0 && x < 30.6 && z > 46.0 && z < 54.0);
+      (x > 24.0 && x < 30.6 && z > 46.0 && z < 54.0) ||
+      (x - 33) ** 2 + (z - 51.3) ** 2 < 1.85 ** 2 ||
+      (x > 60.2 && z > 51.9);
     const column = (x: number, z0: number, z1: number) => {
       for (let z = z0; z <= z1; z += 2.6) if (!deckBlocked(x, z)) add(x, z, false, GALLERY_Y);
     };
@@ -235,9 +291,18 @@ export class Crowd {
     column(10.8, 15, 46);
     column(61.2, 15, 46);
     column(63.8, 15, 46);
-    for (let x = 10; x <= 62; x += 2.6) {
-      if (!deckBlocked(x, 49.3)) add(x, 49.3, false, GALLERY_Y);
-      if (!deckBlocked(x, 51.7)) add(x, 51.7, false, GALLERY_Y);
+    // Lively, packed upstairs Panorama Bar along SOUTH_DECK (z = 48..53, y = 9.0).
+    const southRows = [
+      { z: 48.9, offset: 0 },
+      { z: 50.35, offset: 0.72 },
+      { z: 51.8, offset: 0.35 },
+    ];
+    for (const rowSpec of southRows) {
+      for (let x = 8.4 + rowSpec.offset; x <= 63.8; x += 1.45) {
+        const gx = x + (rand() - 0.5) * 0.36;
+        const gz = rowSpec.z + (rand() - 0.5) * 0.28;
+        if (!deckBlocked(gx, gz)) add(gx, gz, false, GALLERY_Y);
+      }
     }
     for (let x = 16; x <= 56; x += 3.4) if (!deckBlocked(x, 28.2)) add(x, 28.2, false, GALLERY_Y);
 
@@ -579,7 +644,7 @@ export class Crowd {
       if (this.faceTarget && !queue && Math.hypot(this.faceTarget.x - x, this.faceTarget.z - z) < 30) {
         yaw = Math.atan2(this.faceTarget.x - x, this.faceTarget.z - z) + Math.sin(this.t * 0.7 + ph) * 0.4;
       }
-      if (queue) yaw = -Math.PI / 2 + Math.sin(this.t * 0.3 + ph) * 0.1;
+      if (queue) yaw = -Math.PI / 2 + Math.sin(ph * 3.7) * 0.45 + Math.sin(this.t * 0.45 + ph) * 0.14;
       const style = this.style[i];
       const big = style === 3 ? 2.4 : 1;
       const jump = queue ? 0 : pulse * this.hop[i] * frenzy * big + (this.cheer > 0 ? Math.abs(Math.sin(this.t * 9 + ph)) * 0.28 : 0);

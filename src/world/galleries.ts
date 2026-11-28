@@ -3,6 +3,14 @@
 import * as THREE from 'three';
 import { CELL, FLOOR_HEIGHT, cellCenter } from '../contracts';
 import type { LevelData } from '../data';
+import {
+  applyWorldUVs,
+  boardConcreteTextures,
+  CONCRETE_GALLERY_COLOR,
+  CONCRETE_TILE_SIZE,
+  concreteBox,
+  mergeNonIndexed,
+} from './architecture';
 
 export interface Galleries {
   root: THREE.Group;
@@ -109,48 +117,6 @@ function clampToUnion(pos: THREE.Vector3, rects: Rect[]): void {
   pos.z = bestZ;
 }
 
-/** Procedural raw board-marked concrete texture for gallery slabs and fascia. */
-function makeConcreteTexture(): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = 256;
-  c.height = 256;
-  const g = c.getContext('2d');
-  if (g) {
-    g.fillStyle = '#36383b';
-    g.fillRect(0, 0, 256, 256);
-    // Horizontal shuttering plank bands.
-    for (let y = 0; y < 256; y += 32) {
-      const shade = 48 + ((y * 17) % 14);
-      g.fillStyle = `rgb(${shade},${shade + 1},${shade + 3})`;
-      g.fillRect(0, y, 256, 30);
-      g.fillStyle = 'rgba(10,12,14,0.45)';
-      g.fillRect(0, y + 30, 256, 2);
-    }
-    // Subtle speckle and grime streaks.
-    for (let i = 0; i < 650; i++) {
-      const px = (i * 73) % 256;
-      const py = (i * 137) % 256;
-      const v = 35 + ((i * 29) % 35);
-      g.fillStyle = `rgba(${v},${v},${v + 2},0.28)`;
-      g.fillRect(px, py, 2 + (i % 3), 2 + ((i * 3) % 8));
-    }
-    // Formwork tie-rod holes.
-    g.fillStyle = 'rgba(14,15,17,0.6)';
-    for (let y = 16; y < 256; y += 64) {
-      for (let x = 32; x < 256; x += 64) {
-        g.beginPath();
-        g.arc(x, y, 2.5, 0, Math.PI * 2);
-        g.fill();
-      }
-    }
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(4, 4);
-  return tex;
-}
-
 /** Procedural industrial steel catwalk grating texture. */
 function makeGrateTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -252,13 +218,16 @@ export function buildGalleries(data: LevelData): Galleries {
     });
   });
 
-  // Materials.
-  const concreteTex = makeConcreteTexture();
+  // Materials (reuses shared cold Sichtbeton PBR texture triplet from architecture.ts).
+  const concreteTex = boardConcreteTextures();
   const concreteMat = new THREE.MeshStandardMaterial({
-    color: 0x5c6066,
-    map: concreteTex,
-    roughness: 0.92,
-    metalness: 0.06,
+    color: CONCRETE_GALLERY_COLOR,
+    map: concreteTex.map,
+    bumpMap: concreteTex.bumpMap,
+    bumpScale: 0.11,
+    roughnessMap: concreteTex.roughnessMap,
+    roughness: 0.94,
+    metalness: 0.04,
   });
   const grateTex = makeGrateTexture();
   const grateMat = new THREE.MeshStandardMaterial({
@@ -297,9 +266,14 @@ export function buildGalleries(data: LevelData): Galleries {
   const addSlab = (minX: number, maxX: number, minZ: number, maxZ: number, name: string) => {
     const w = maxX - minX;
     const d = maxZ - minZ;
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, SLAB_THICK, d), concreteMat);
+    const cx = (minX + maxX) / 2;
+    const cy = DECK_Y - SLAB_THICK / 2;
+    const cz = (minZ + maxZ) / 2;
+    const geo = new THREE.BoxGeometry(w, SLAB_THICK, d);
+    applyWorldUVs(geo, CONCRETE_TILE_SIZE, cx, cy, cz);
+    const mesh = new THREE.Mesh(geo, concreteMat);
     mesh.name = name;
-    mesh.position.set((minX + maxX) / 2, DECK_Y - SLAB_THICK / 2, (minZ + maxZ) / 2);
+    mesh.position.set(cx, cy, cz);
     root.add(mesh);
   };
   addSlab(hallMinX, WEST_DECK.maxX, WEST_DECK.minZ, SOUTH_DECK.minZ, 'gallery_west_slab');
@@ -316,21 +290,24 @@ export function buildGalleries(data: LevelData): Galleries {
 
   // 3. Cantilevered concrete wall corbel brackets (y = 5.6..8.2 m, completely clear of floor-0 navigation).
   // Placed only on solid wall segments (skipping doorway openings at z = 24..30 and x = 36..42).
-  const corbels: BoxTransform[] = [];
+  // Merged with world-scale concrete UVs so every corbel stays 1 draw call with zero texture stretching.
+  const corbelParts: THREE.BufferGeometry[] = [];
   const sideBracketZs = [14, 20, 34, 40, 46, 52];
   for (const bz of sideBracketZs) {
     // Upper haunch + angled strut feel using stepped brutalist corbel block on west and east walls.
-    corbels.push({ x: hallMinX + 1.8, y: DECK_Y - SLAB_THICK - 0.55, z: bz, sx: 3.6, sy: 1.1, sz: 0.75 });
-    corbels.push({ x: hallMinX + 0.9, y: DECK_Y - SLAB_THICK - 1.65, z: bz, sx: 1.8, sy: 1.1, sz: 0.75 });
-    corbels.push({ x: hallMaxX - 1.8, y: DECK_Y - SLAB_THICK - 0.55, z: bz, sx: 3.6, sy: 1.1, sz: 0.75 });
-    corbels.push({ x: hallMaxX - 0.9, y: DECK_Y - SLAB_THICK - 1.65, z: bz, sx: 1.8, sy: 1.1, sz: 0.75 });
+    corbelParts.push(concreteBox(3.6, 1.1, 0.75, hallMinX + 1.8, DECK_Y - SLAB_THICK - 0.55, bz));
+    corbelParts.push(concreteBox(1.8, 1.1, 0.75, hallMinX + 0.9, DECK_Y - SLAB_THICK - 1.65, bz));
+    corbelParts.push(concreteBox(3.6, 1.1, 0.75, hallMaxX - 1.8, DECK_Y - SLAB_THICK - 0.55, bz));
+    corbelParts.push(concreteBox(1.8, 1.1, 0.75, hallMaxX - 0.9, DECK_Y - SLAB_THICK - 1.65, bz));
   }
   const southBracketXs = [12, 18, 24, 30, 46, 52, 58];
   for (const bx of southBracketXs) {
-    corbels.push({ x: bx, y: DECK_Y - SLAB_THICK - 0.55, z: hallMaxZ - 1.8, sx: 0.75, sy: 1.1, sz: 3.6 });
-    corbels.push({ x: bx, y: DECK_Y - SLAB_THICK - 1.65, z: hallMaxZ - 0.9, sx: 0.75, sy: 1.1, sz: 1.8 });
+    corbelParts.push(concreteBox(0.75, 1.1, 3.6, bx, DECK_Y - SLAB_THICK - 0.55, hallMaxZ - 1.8));
+    corbelParts.push(concreteBox(0.75, 1.1, 1.8, bx, DECK_Y - SLAB_THICK - 1.65, hallMaxZ - 0.9));
   }
-  root.add(makeInstancedBoxes(corbels, concreteMat, 'gallery_corbels'));
+  const corbelMesh = new THREE.Mesh(mergeNonIndexed(corbelParts), concreteMat);
+  corbelMesh.name = 'gallery_corbels';
+  root.add(corbelMesh);
 
   // 4. Structural dark steel members (catwalk girders, under-deck ribs, pillar collars, fascia edge channels, stair stringers).
   const steelBoxes: BoxTransform[] = [];

@@ -30,6 +30,30 @@ interface Pickup {
 
 const glow = (color: number) => new THREE.MeshBasicMaterial({ color });
 
+/** Mate bottle: squat body, neck, cap. Placeholder primitives; prop_mate.glb replaces it when Emma ships one. */
+function bottleMesh(): THREE.Group {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.3, 10), glow(0xd9a520));
+  body.position.y = 0.15;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.03, 0.1, 8), glow(0xd9a520));
+  neck.position.y = 0.35;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.03, 8), glow(0xfff0c0));
+  cap.position.y = 0.41;
+  g.add(body, neck, cap);
+  return g;
+}
+
+/** Hoof bag: a small flat square packet. Looks almost like the mate bottle's aura, but barely different. */
+function packetMesh(): THREE.Group {
+  const g = new THREE.Group();
+  const packet = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.018, 0.11), glow(0xf5efdc));
+  packet.position.y = 0.02;
+  const fold = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.008, 0.03), glow(0xd8d2c0));
+  fold.position.y = 0.033;
+  g.add(packet, fold);
+  return g;
+}
+
 export class World {
   readonly level: BuiltLevel;
   readonly root: THREE.Group;
@@ -72,6 +96,10 @@ export class World {
     }
     for (const [col, row] of this.level.cells.get('mate') ?? []) {
       this.addPickup({ kind: 'item', item: 'mate', slips: 0 }, 'prop_mate', { x: 0.14, y: 0.45, z: 0.14 }, 0xffb300, col, row);
+    }
+    // Hoof bags: small square packets scattered all over the club, more common than mate.
+    for (const [col, row] of this.level.cells.get('hoof_bag') ?? []) {
+      this.addPickup({ kind: 'item', item: 'bag', slips: 0 }, 'prop_bag', { x: 0.12, y: 0.05, z: 0.12 }, 0xffb300, col, row);
     }
     const exit = this.level.cells.get('exit_door')?.[0];
     if (exit) {
@@ -126,8 +154,15 @@ export class World {
       bus.emit('player:teleport', p);
     });
     bus.on('item:spawn', ({ item, x, z }) => {
-      if (item !== 'mate') return;
-      this.addPickupAt({ kind: 'item', item, slips: 0 }, 'prop_mate', { x: 0.14, y: 0.45, z: 0.14 }, 0xffb300, x, z);
+      const isMate = item === 'mate';
+      this.addPickupAt(
+        { kind: 'item', item, slips: 0 },
+        isMate ? 'prop_mate' : 'prop_bag',
+        isMate ? { x: 0.14, y: 0.45, z: 0.14 } : { x: 0.12, y: 0.05, z: 0.12 },
+        0xffb300,
+        x,
+        z,
+      );
     });
     bus.on('riddle:answered', ({ correct }) => {
       if (correct) this.openGate();
@@ -195,7 +230,7 @@ export class World {
       pu.object.position.y = pu.baseY + Math.sin(this.t * 3) * 0.08;
       if (state.floor === 0 && pu.kind === 'item' && !pu.hinted && dist(pu.object.position, p) < 2.5) {
         pu.hinted = true;
-        bus.emit('ui:say', { key: 'story:items.mate_found', seconds: 3 });
+        bus.emit('ui:say', { key: pu.item === 'bag' ? 'story:items.bag_found' : 'story:items.mate_found', seconds: 3 });
       }
     }
 
@@ -285,13 +320,20 @@ export class World {
     z: number,
   ): void {
     const object = placeModel(model, size, glow(color));
+    // Placeholder props are primitive shapes (Emma can drop a .glb of the same name in later):
+    // mate is a bottle, the hoof bag is a small flat square packet that barely differs from the bottle's aura.
+    if (model === 'prop_mate' || model === 'prop_bag') {
+      object.clear();
+      object.add(model === 'prop_mate' ? bottleMesh() : packetMesh());
+    }
     const baseY = 0.35;
     object.position.set(x, baseY, z);
     // A halo so it's findable in the haze. A sprite, not a light: changing the light count recompiles every shader.
+    // Mate's aura is slightly smaller than the fragments'; the bag's is smaller still.
     const halo = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: haloTexture(), color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }),
     );
-    halo.scale.setScalar(1.6);
+    halo.scale.setScalar(model === 'prop_mate' ? 1.25 : model === 'prop_bag' ? 1.0 : 1.6);
     halo.position.y = 0.1;
     object.add(halo);
     this.root.add(object);
@@ -346,6 +388,7 @@ export class World {
     if (best.kind === 'item' && best.item) {
       bus.emit('item:consumed', { item: best.item });
       if (best.item === 'mate') bus.emit('ui:say', { key: 'story:spirit_guide.mate', seconds: 3 });
+      if (best.item === 'bag') bus.emit('ui:say', { key: 'story:items.hooved', seconds: 3 });
       return;
     }
     if (best.fragment) this.foundFragment(best.fragment);

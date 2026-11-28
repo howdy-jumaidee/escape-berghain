@@ -1,10 +1,13 @@
 // NPCs: the crowd, the named weirdos, dialogue from content/npcs.json, the riddle horse, the herd, the spirit guide.
 // Issues #14, #15, #16. Model names: npc_<id>.glb in public/models/, e.g. npc_patrick.glb. Missing models are grey boxes.
 import * as THREE from 'three';
-import { bus, state, cellCenter, BeatCounter, lock, unlock, type NpcId } from '../contracts';
+import { bus, state, cellCenter, BeatCounter, lock, unlock, type NpcId, type TextKey } from '../contracts';
 import { placeModel } from '../look/models';
 import { level, npcText } from '../data';
 import { Crowd, type Spot } from './crowd';
+import { Djs } from './djs';
+import { animateCharacter, bindRig, type DanceArchetype } from './motion';
+import { SpecialCreatures } from './specials';
 
 const TALK_RANGE = 2.4;
 const WALK_AWAY = 4.5;
@@ -47,10 +50,35 @@ interface Npc {
   /** Where each figure started, where it's drifting to, and when it picks a new spot. */
   homes: THREE.Vector3[];
   targets: THREE.Vector3[];
+  prevPos: THREE.Vector3[];
   retarget: number[];
+  seeds: number[];
   pos: THREE.Vector3;
   line: number;
 }
+
+const ARCHETYPES: Partial<Record<NpcId, DanceArchetype>> = {
+  herd: 'herd_sync',
+  riddle_horse: 'herd_sync',
+  patrick: 'herd_sync',
+  ice_cream_horse: 'herd_sync',
+  leather_choir: 'choir_trance',
+  philosopher: 'choir_trance',
+  leather_daddy: 'leather_groove',
+  rubber_knight: 'leather_groove',
+  bartender_bear: 'leather_groove',
+  darkroom_keeper: 'leather_groove',
+  drag_oracle: 'diva_sway',
+  glitter_boy: 'diva_sway',
+  coat_check: 'chill_nod',
+  bouncer: 'chill_nod',
+  lighting_tech: 'chill_nod',
+  cleaner: 'chill_nod',
+  spirit_guide: 'chill_nod',
+  friday_guy: 'techno_pump',
+  tourists: 'techno_pump',
+  old_raver: 'techno_pump',
+};
 
 /** How each regular dances: hop height, side step, twist, and how far they wander from their spot (metres). */
 interface DanceStyle {
@@ -98,47 +126,33 @@ const BUMP_RANGE = 1.5;
 /** Walk this far away before they can grab you again. */
 const REARM_RANGE = 4.5;
 
+const TALK_BACK_NPCS = new Set<NpcId>(['friday_guy', 'bartender_bear', 'philosopher', 'leather_daddy', 'drag_oracle']);
+
+interface TalkChoiceEntry {
+  id: string;
+  text: string;
+  reply?: string;
+  reply_used?: string;
+}
+
 interface Convo {
   npc: Npc;
   holderIndex: number;
   keys: string[];
   i: number;
   after?: () => void;
-  /** Stay face to face after the last line (the riddle is asked in your face). */
+  /** Stay face to face after the last line (the riddle or choices are shown in your face). */
   keepFocus?: boolean;
+  /** Jump straight to choices after showing the opening/summary line (used on repeat talks). */
+  immediateChoices?: boolean;
 }
 const STOP_FOR_PLAYER = 3.5;
-
-interface LimbRig {
-  legL?: THREE.Object3D;
-  legR?: THREE.Object3D;
-  armL?: THREE.Object3D;
-  armR?: THREE.Object3D;
-  head?: THREE.Object3D;
-  swing: number;
-  vel: number;
-}
-
-/** Find the limb pivots once the glTF has replaced the grey box. Missing parts are skipped. */
-function limbRig(root: THREE.Object3D): LimbRig | null {
-  const modelNode = root.children[0]?.children[0] ?? root.children[0];
-  if (!modelNode) return null;
-  if (root.userData.rigSource === modelNode) return (root.userData.rig as LimbRig | null) ?? null;
-  const rig: LimbRig = { swing: 0, vel: 0 };
-  root.traverse((c) => {
-    if (c.name === 'legL' || c.name === 'legR' || c.name === 'armL' || c.name === 'armR' || c.name === 'head') {
-      rig[c.name] = c;
-    }
-  });
-  root.userData.rigSource = modelNode;
-  const found = !!(rig.legL || rig.legR || rig.armL || rig.armR || rig.head);
-  root.userData.rig = found ? rig : null;
-  return found ? rig : null;
-}
 
 export class Npcs {
   readonly root = new THREE.Group();
   readonly crowd: Crowd;
+  private djs = new Djs();
+  private specials = new SpecialCreatures();
   private npcs: Npc[] = [];
   private player = new THREE.Vector3();
   private talking: Npc | null = null;
@@ -147,6 +161,7 @@ export class Npcs {
   private riddleTimer = 0;
   private beatN = 0;
   private beatPulse = 0;
+  private cheerLeft = 0;
   private herd = new BeatCounter();
   private herdSynced = false;
   private herdHintAt = -1e9;
@@ -166,6 +181,10 @@ export class Npcs {
   private puddleGeo = new THREE.CircleGeometry(PUDDLE_RADIUS, 24);
   private puddles: { mesh: THREE.Mesh; left: number }[] = [];
   private convo: Convo | null = null;
+  private replyActive = false;
+  private replyTimer = 0;
+  private talkCooldownUntil = 0;
+  private usedChoices = new Set<string>();
   /** Currently focused NPC figure (covers active convo plus keepFocus riddle state until npc:unfocus). */
   private focused: { npc: Npc; holderIndex: number } | null = null;
   /** Optional world XZ target for the focused NPC to face (e.g. when focus camera dodges a wall). */
@@ -196,6 +215,8 @@ export class Npcs {
     }
     this.crowd = new Crowd(level, avoid);
     this.root.add(this.crowd.root);
+    this.root.add(this.djs.root);
+    this.root.add(this.specials.root);
 
     bus.on('player:moved', ({ x, z }) => {
       this.player.set(x, 0, z);
@@ -208,13 +229,25 @@ export class Npcs {
       this.bumpInto();
     });
     addEventListener('keydown', (e) => {
-      if (!this.convo || e.repeat) return;
+      if (e.repeat) return;
+      if (this.replyActive) {
+        if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') {
+          e.preventDefault();
+          this.closeReply();
+        }
+        return;
+      }
+      if (!this.convo) return;
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
         this.nextLine();
       } else if (e.code === 'Escape') {
         this.endConvo(false);
       }
+    });
+    window.addEventListener('eb:choice-picked', (ev) => {
+      const detail = (ev as CustomEvent<{ npc: NpcId; choiceId: string; index: number }>).detail;
+      if (detail) this.handleChoicePicked(detail.npc, detail.choiceId, detail.index);
     });
     bus.on('player:grab', ({ x, z }) => this.talk(new THREE.Vector3(x, 0, z)));
     bus.on('player:stomp', ({ x, z, time }) => this.stomp(x, z, time));
@@ -225,12 +258,20 @@ export class Npcs {
     });
     bus.on('riddle:answered', ({ correct }) => this.riddleAnswered(correct));
     bus.on('npc:unfocus', () => {
+      clearTimeout(this.replyTimer);
+      this.replyTimer = 0;
+      this.replyActive = false;
       this.focused = null;
       this.focusLookTarget = null;
+      this.talkCooldownUntil = performance.now() + 250;
+      unlock('talk');
     });
     const abortConvo = () => {
       clearTimeout(this.riddleTimer);
       this.riddleTimer = 0;
+      clearTimeout(this.replyTimer);
+      this.replyTimer = 0;
+      this.replyActive = false;
       if (this.convo) {
         this.endConvo(false);
       } else if (this.focused) {
@@ -240,6 +281,7 @@ export class Npcs {
         bus.emit('npc:silent', {});
       }
       unlock('talk');
+      unlock('choice');
     };
     bus.on('player:caught', abortConvo);
     bus.on('trip:max', abortConvo);
@@ -251,8 +293,14 @@ export class Npcs {
       this.crowdLooksAt = new THREE.Vector3(c.x, 0, c.z);
       this.crowd.turnTo(c.x, c.z);
     });
-    bus.on('crowd:cheer', () => this.crowd.cheerNow(2.5));
-    bus.on('game:finale', () => this.crowd.cheerNow(3));
+    bus.on('crowd:cheer', () => {
+      this.crowd.cheerNow(2.5);
+      this.cheerLeft = Math.max(this.cheerLeft, 2.5);
+    });
+    bus.on('game:finale', () => {
+      this.crowd.cheerNow(3);
+      this.cheerLeft = Math.max(this.cheerLeft, 3);
+    });
 
     // The spirit guide: a tiny faint ghost of human you. More solid with every memory, fades when you forget.
     this.guideMat = new THREE.MeshStandardMaterial({
@@ -313,16 +361,45 @@ export class Npcs {
     this.checkSelfie();
     this.mop(dt);
     this.beatPulse = Math.max(0, this.beatPulse - dt * 4);
+    this.cheerLeft = Math.max(0, this.cheerLeft - dt);
     this.crowd.update(dt, this.beatPulse, this.beatN);
+    this.djs.update(dt, this.beatPulse, this.beatN);
+    this.specials.update(dt, this.beatPulse, this.beatN, this.player);
     const bounce = this.beatPulse * this.beatPulse;
+    const cheering = this.cheerLeft > 0 || !!this.crowdLooksAt;
+
     for (const npc of this.npcs) {
       const activeFocus = this.convo?.npc === npc ? this.convo : this.focused?.npc === npc ? this.focused : null;
+      const archetype = ARCHETYPES[npc.id] ?? 'techno_pump';
+
       npc.objects.forEach((o, i) => {
+        const h = npc.holders[i];
+        const prev = npc.prevPos[i];
+        let moveSpeed = 0;
+
         if (activeFocus && i === activeFocus.holderIndex) {
-          this.holdForConvo(npc, i, o, dt);
+          this.holdForConvo(npc, i, o, dt, archetype);
+          prev.copy(h.position);
         } else if (this.crowdLooksAt) {
           o.lookAt(this.crowdLooksAt.x, o.position.y, this.crowdLooksAt.z);
           o.position.y = bounce * 0.2;
+          const rig = bindRig(o);
+          if (rig) {
+            animateCharacter(rig, {
+              dt,
+              t: this.t,
+              beatN: this.beatN,
+              beatPulse: this.beatPulse,
+              archetype,
+              moveSpeed: 0,
+              attentive: false,
+              talking: false,
+              cheer: true,
+              finale: state.finale,
+              seed: npc.seeds[i],
+            });
+          }
+          prev.copy(h.position);
         } else if (npc.id === 'herd') {
           // Perfect sync: hop and twist on every beat, all three the same.
           o.position.x = 0;
@@ -330,16 +407,50 @@ export class Npcs {
           o.position.y = bounce * 0.25;
           o.rotation.y = Math.PI + Math.sin(this.beatN * Math.PI * 0.5) * 0.6;
           o.rotation.z = 0;
-          this.animateHerdLimbs(o, dt);
+          const rig = bindRig(o);
+          if (rig) {
+            animateCharacter(rig, {
+              dt,
+              t: this.t,
+              beatN: this.beatN,
+              beatPulse: this.beatPulse,
+              archetype: 'herd_sync',
+              moveSpeed: 0,
+              attentive: false,
+              talking: false,
+              cheer: cheering,
+              finale: state.finale,
+              seed: 0,
+            });
+          }
+          prev.copy(h.position);
         } else if (npc.id === 'leather_choir') {
           // Heads together, swaying as one, humming the bassline.
           o.position.set(0, 0, 0);
-          o.rotation.y = Math.atan2(npc.pos.x - npc.holders[i].position.x, npc.pos.z - npc.holders[i].position.z);
+          o.rotation.y = Math.atan2(npc.pos.x - h.position.x, npc.pos.z - h.position.z);
           o.rotation.z = Math.sin(this.t * 1.1) * 0.08;
-          this.animateChoirLimbs(o);
+          const rig = bindRig(o);
+          if (rig) {
+            animateCharacter(rig, {
+              dt,
+              t: this.t,
+              beatN: this.beatN,
+              beatPulse: this.beatPulse,
+              archetype: 'choir_trance',
+              moveSpeed: 0,
+              attentive: false,
+              talking: false,
+              cheer: false,
+              finale: state.finale,
+              seed: 0,
+            });
+          }
+          prev.copy(h.position);
         } else {
-          this.danceAndWander(npc, i, o, bounce, dt, !!activeFocus);
+          moveSpeed = this.danceAndWander(npc, i, o, bounce, dt, archetype, cheering, !!activeFocus);
         }
+        // Keep prevPos synced even if moveSpeed was measured inside danceAndWander.
+        void moveSpeed;
       });
       // Keep the talk spot on the figures as they move.
       if (npc.id !== 'cleaner' && npc.holders.length) {
@@ -360,8 +471,8 @@ export class Npcs {
     if (h && o) o.rotation.y = Math.atan2(x - h.position.x, z - h.position.z);
   }
 
-  /** Keep the focused NPC centred, facing the camera (or player), and calm while talking. */
-  private holdForConvo(npc: Npc, i: number, o: THREE.Object3D, dt: number): void {
+  /** Keep the focused NPC centred, facing the camera (or player), and expressively alive while talking. */
+  private holdForConvo(npc: Npc, i: number, o: THREE.Object3D, dt: number, archetype: DanceArchetype): void {
     const h = npc.holders[i];
     const k = 1 - Math.exp(-14 * dt);
     o.position.multiplyScalar(1 - k);
@@ -371,60 +482,38 @@ export class Npcs {
     const targetYaw = Math.atan2(lookX - h.position.x, lookZ - h.position.z);
     const diff = Math.atan2(Math.sin(targetYaw - o.rotation.y), Math.cos(targetYaw - o.rotation.y));
     o.rotation.y += diff * (1 - Math.exp(-12 * dt));
-    const rig = limbRig(o);
+    const rig = bindRig(o);
     if (rig) {
-      rig.swing *= 1 - k;
-      rig.vel *= 1 - k;
-      const breath = Math.sin(this.t * 1.8) * 0.04;
-      if (rig.legL) rig.legL.rotation.x = rig.swing;
-      if (rig.legR) rig.legR.rotation.x = -rig.swing;
-      if (rig.armL) rig.armL.rotation.x = -rig.swing * 0.5 + breath;
-      if (rig.armR) rig.armR.rotation.x = rig.swing * 0.5 - breath;
-      if (rig.head) {
-        rig.head.rotation.x = Math.sin(this.t * 2.2) * 0.05;
-        rig.head.rotation.z = Math.sin(this.t * 1.1) * 0.03;
-      }
-    }
-  }
-
-  /** Tight synchronous beat swing for all three herd horses. */
-  private animateHerdLimbs(o: THREE.Object3D, dt: number): void {
-    const rig = limbRig(o);
-    if (!rig) return;
-    const dir = this.beatN % 2 === 0 ? 1 : -1;
-    const target = dir * Math.sin(this.beatPulse * Math.PI * 0.65) * 0.65;
-    rig.vel += (target - rig.swing) * 36 * dt;
-    rig.vel *= Math.exp(-6.5 * dt);
-    rig.swing += rig.vel * dt;
-    if (rig.legL) rig.legL.rotation.x = rig.swing;
-    if (rig.legR) rig.legR.rotation.x = -rig.swing;
-    if (rig.armL) rig.armL.rotation.x = -rig.swing * 0.85;
-    if (rig.armR) rig.armR.rotation.x = rig.swing * 0.85;
-    if (rig.head) {
-      rig.head.rotation.x = this.beatPulse * 0.22;
-      rig.head.rotation.z = 0;
-    }
-  }
-
-  /** Gentle unison sway for the leather choir. */
-  private animateChoirLimbs(o: THREE.Object3D): void {
-    const rig = limbRig(o);
-    if (!rig) return;
-    const sway = Math.sin(this.t * 1.1) * 0.14;
-    if (rig.legL) rig.legL.rotation.x = sway * 0.35;
-    if (rig.legR) rig.legR.rotation.x = -sway * 0.35;
-    if (rig.armL) rig.armL.rotation.x = -0.18 + sway;
-    if (rig.armR) rig.armR.rotation.x = -0.18 - sway;
-    if (rig.head) {
-      rig.head.rotation.x = 0.08 + Math.sin(this.t * 1.1) * 0.08;
-      rig.head.rotation.z = Math.sin(this.t * 1.1) * 0.06;
+      animateCharacter(rig, {
+        dt,
+        t: this.t,
+        beatN: this.beatN,
+        beatPulse: this.beatPulse,
+        archetype,
+        moveSpeed: 0,
+        attentive: true,
+        talking: true,
+        cheer: false,
+        finale: false,
+        seed: npc.seeds[i],
+      });
     }
   }
 
   /** Regulars dance on the beat and drift around their spot. Walk up to one and they stop and look at you. */
-  private danceAndWander(npc: Npc, i: number, o: THREE.Object3D, bounce: number, dt: number, freezeWander = false): void {
+  private danceAndWander(
+    npc: Npc,
+    i: number,
+    o: THREE.Object3D,
+    bounce: number,
+    dt: number,
+    archetype: DanceArchetype,
+    cheering: boolean,
+    freezeWander = false,
+  ): number {
     const style = STYLES[npc.id] ?? DEFAULT_STYLE;
     const h = npc.holders[i];
+    const prev = npc.prevPos[i];
     const toPlayer = state.floor === 0 ? Math.hypot(this.player.x - h.position.x, this.player.z - h.position.z) : Infinity;
     const attentive = toPlayer < STOP_FOR_PLAYER;
     let yaw = o.rotation.y;
@@ -447,32 +536,48 @@ export class Npcs {
         yaw = Math.atan2(dx, dz);
       }
     }
+
+    // Measure actual horizontal movement speed (covers wandering regulars AND the mopping cleaner!).
+    const movedX = h.position.x - prev.x;
+    const movedZ = h.position.z - prev.z;
+    const moveSpeed = dt > 1e-4 ? Math.hypot(movedX, movedZ) / dt : 0;
+    prev.copy(h.position);
+
+    // Let the mopping cleaner face its direction of travel when not looking at the player.
+    if (npc.id === 'cleaner' && moveSpeed > 0.08 && !attentive) {
+      const moveYaw = Math.atan2(movedX, movedZ);
+      const diff = Math.atan2(Math.sin(moveYaw - yaw), Math.cos(moveYaw - yaw));
+      yaw += diff * (1 - Math.exp(-8 * dt));
+    }
+
     if (attentive) yaw = Math.atan2(this.player.x - h.position.x, this.player.z - h.position.z);
 
-    // Dance: hop on the beat, step side to side every other beat, a twist.
+    // Dance translation: damped when walking so locomotion stride stays grounded.
+    const danceWeight = Math.max(0, 1 - moveSpeed * 1.4);
     const side = this.beatN % 2 === 0 ? 1 : -1;
-    o.position.y = bounce * style.hop * (attentive ? 0.4 : 1);
-    o.position.x = Math.cos(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
-    o.position.z = -Math.sin(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
-    o.rotation.y = yaw + (attentive ? 0 : Math.sin(this.beatN * Math.PI * 0.5 + i) * style.twist);
+    o.position.y = bounce * style.hop * (attentive ? 0.4 : 1) * danceWeight;
+    o.position.x = Math.cos(yaw) * side * style.step * (1 - this.beatPulse * 0.5) * danceWeight;
+    o.position.z = -Math.sin(yaw) * side * style.step * (1 - this.beatPulse * 0.5) * danceWeight;
+    o.rotation.y = yaw + (attentive ? 0 : Math.sin(this.beatN * Math.PI * 0.5 + i) * style.twist * danceWeight);
     o.rotation.z = 0;
-    // Fake ragdoll: limbs are separate pivots in the glTF. A spring lets the swing overshoot the beat.
-    const rig = limbRig(o);
+
+    const rig = bindRig(o);
     if (rig) {
-      const amp = (attentive ? 0.22 : 0.62) * (style.hop < 0.05 ? 0.35 : 1);
-      const target = Math.sin(this.t * 6.4 + i * 1.7) * amp;
-      rig.vel += (target - rig.swing) * 28 * dt;
-      rig.vel *= Math.exp(-5.5 * dt);
-      rig.swing += rig.vel * dt;
-      if (rig.legL) rig.legL.rotation.x = rig.swing;
-      if (rig.legR) rig.legR.rotation.x = -rig.swing;
-      if (rig.armL) rig.armL.rotation.x = -rig.swing * 0.9;
-      if (rig.armR) rig.armR.rotation.x = rig.swing * 0.9;
-      if (rig.head) {
-        rig.head.rotation.x = Math.sin(this.t * 2.1 + i) * 0.07;
-        rig.head.rotation.z = Math.sin(this.t * 1.3 + i) * 0.05;
-      }
+      animateCharacter(rig, {
+        dt,
+        t: this.t,
+        beatN: this.beatN,
+        beatPulse: this.beatPulse,
+        archetype,
+        moveSpeed,
+        attentive,
+        talking: false,
+        cheer: cheering,
+        finale: state.finale,
+        seed: npc.seeds[i],
+      });
     }
+    return moveSpeed;
   }
 
   private spawn(id: NpcId, col: number, row: number): void {
@@ -508,7 +613,9 @@ export class Npcs {
       holders,
       homes: holders.map((h) => h.position.clone()),
       targets: holders.map((h) => h.position.clone()),
+      prevPos: holders.map((h) => h.position.clone()),
       retarget: holders.map(() => Math.random() * 4),
+      seeds: holders.map((_, i) => i * 1.73 + col * 0.37 + row * 0.91),
       pos,
       line: 0,
     });
@@ -529,7 +636,10 @@ export class Npcs {
   }
 
   private talk(at: THREE.Vector3): void {
-    if (state.ending || state.floor !== 0) return;
+    if (state.ending || this.convo || this.replyActive || performance.now() < this.talkCooldownUntil) return;
+    // Check rare creatures first across ALL floors (the rare Lemur lives on floor 1 / y = 9!).
+    if (this.specials.interact(at, state.floor)) return;
+    if (state.floor !== 0) return;
     let best: Npc | null = null;
     let bestHolder = 0;
     let bestD = TALK_RANGE;
@@ -680,12 +790,14 @@ export class Npcs {
   }
 
   private startConvo(npc: Npc, holderIndex = this.closestHolder(npc, this.player)): void {
-    if (this.convo || state.ending) return;
+    if (this.convo || this.replyActive || state.ending) return;
     clearTimeout(this.riddleTimer);
     this.riddleTimer = 0;
-    const { keys, after, keepFocus } = this.script(npc);
+    clearTimeout(this.replyTimer);
+    this.replyTimer = 0;
+    const { keys, after, keepFocus, immediateChoices } = this.script(npc);
     if (!keys.length) return;
-    this.convo = { npc, holderIndex, keys, i: 0, after, keepFocus };
+    this.convo = { npc, holderIndex, keys, i: 0, after, keepFocus, immediateChoices };
     this.focused = { npc, holderIndex };
     this.disarmed.add(npc);
     this.talking = npc;
@@ -702,10 +814,11 @@ export class Npcs {
     const face = (SIZES[npc.id]?.y ?? (HORSES.has(npc.id) ? 2.2 : 1.8)) - 0.32;
     bus.emit('npc:focus', { npc: npc.id, x: h.position.x, y: face, z: h.position.z });
     this.sayLine();
+    if (immediateChoices) this.endConvo(true);
   }
 
   /** What an NPC says, given where you are in the story. Some of it is true. Some of it isn't. */
-  private script(npc: Npc): { keys: string[]; after?: () => void; keepFocus?: boolean } {
+  private script(npc: Npc): { keys: string[]; after?: () => void; keepFocus?: boolean; immediateChoices?: boolean } {
     const talk = (npcText[npc.id]?.talk as string[] | undefined) ?? [];
     const full = talk.map((_, i) => `talk.${i}`);
     const once = (keys: string[]) => {
@@ -713,6 +826,20 @@ export class Npcs {
       this.heard.add(npc.id);
       return first ? keys : keys.slice(-1);
     };
+    if (TALK_BACK_NPCS.has(npc.id)) {
+      const choices = (npcText[npc.id]?.choices as TalkChoiceEntry[] | undefined) ?? [];
+      if (choices.length) {
+        const first = !this.heard.has(npc.id);
+        this.heard.add(npc.id);
+        const keys = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        return {
+          keys,
+          keepFocus: true,
+          immediateChoices: !first,
+          after: () => this.openChoices(npc),
+        };
+      }
+    }
     switch (npc.id) {
       case 'riddle_horse':
         if (this.riddleSolved) return { keys: ['riddle.right'] };
@@ -727,6 +854,94 @@ export class Npcs {
       default:
         return { keys: once(full.length ? full : ['lines.0']) };
     }
+  }
+
+  private openChoices(npc: Npc): void {
+    if (state.ending) {
+      this.focused = null;
+      bus.emit('npc:unfocus', {});
+      bus.emit('npc:silent', {});
+      return;
+    }
+    const raw = (npcText[npc.id]?.choices as TalkChoiceEntry[] | undefined) ?? [];
+    if (!raw.length) {
+      this.focused = null;
+      bus.emit('npc:unfocus', {});
+      bus.emit('npc:silent', {});
+      return;
+    }
+    const choices = raw.map((c, i) => ({
+      id: c.id,
+      textKey: `npcs:${npc.id}.choices.${i}.text` as TextKey,
+    }));
+    window.dispatchEvent(new CustomEvent('eb:choices', { detail: { npc: npc.id, choices } }));
+  }
+
+  private handleChoicePicked(npcId: NpcId, choiceId: string, index: number): void {
+    if (state.ending) return;
+    const npc = this.npcs.find((n) => n.id === npcId);
+    const raw = (npcText[npcId]?.choices as TalkChoiceEntry[] | undefined) ?? [];
+    const choice = raw[index];
+    if (!npc || !choice) {
+      this.focused = null;
+      bus.emit('npc:unfocus', {});
+      bus.emit('npc:silent', {});
+      return;
+    }
+
+    const actionKey = `${npcId}:${choiceId}`;
+    const alreadyUsed = this.usedChoices.has(actionKey);
+    let lineId: TextKey = `npcs:${npcId}.choices.${index}.${alreadyUsed && choice.reply_used ? 'reply_used' : 'reply'}`;
+
+    if (npcId === 'friday_guy') {
+      if (choiceId === 'glasses' && !alreadyUsed) {
+        this.usedChoices.add(actionKey);
+        state.trip = Math.max(0, state.trip - 8);
+        bus.emit('trip:changed', { trip: state.trip });
+      } else if (choiceId === 'mate' && !alreadyUsed) {
+        this.usedChoices.add(actionKey);
+        bus.emit('item:spawn', { item: 'mate', x: npc.pos.x + 1.2, z: npc.pos.z + 1.0 });
+      }
+    } else if (npcId === 'bartender_bear') {
+      if (choiceId === 'serve' && !alreadyUsed) {
+        this.usedChoices.add(actionKey);
+        bus.emit('item:consumed', { item: 'mate' });
+      }
+    } else if (npcId === 'philosopher') {
+      if (choiceId === 'horse' && !alreadyUsed) {
+        this.usedChoices.add(actionKey);
+        bus.emit('item:consumed', { item: 'ice_cream' });
+      }
+    } else if (npcId === 'leather_daddy') {
+      if (choiceId === 'stealth' && !alreadyUsed) {
+        this.usedChoices.add(actionKey);
+        bus.emit('crowd:cheer', {});
+        bus.emit('item:consumed', { item: 'ice_cream' });
+      }
+    } else if (npcId === 'drag_oracle' && choiceId === 'next') {
+      const missing = ([1, 2, 3, 4, 5] as const).find((id) => !state.fragments.includes(id));
+      lineId = missing ? `npcs:drag_oracle.choices.0.next_${missing}` : 'npcs:drag_oracle.choices.0.next_done';
+    }
+
+    this.talking = npc;
+    this.replyActive = true;
+    lock('talk');
+    bus.emit('npc:talk', { npc: npcId, lineId });
+    clearTimeout(this.replyTimer);
+    this.replyTimer = window.setTimeout(() => this.closeReply(), 3800);
+  }
+
+  private closeReply(): void {
+    if (!this.replyActive && !this.replyTimer) return;
+    clearTimeout(this.replyTimer);
+    this.replyTimer = 0;
+    this.replyActive = false;
+    this.focused = null;
+    this.focusLookTarget = null;
+    this.talkCooldownUntil = performance.now() + 250;
+    unlock('talk');
+    bus.emit('npc:unfocus', {});
+    bus.emit('npc:silent', {});
   }
 
   private sayLine(): void {

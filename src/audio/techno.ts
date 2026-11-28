@@ -675,6 +675,26 @@ export class Techno {
     this.tone(t, 220, 660, 0.4, 0.07, 'sine', 0.4);
   }
 
+  /** A hoof bag: low heavy thud with a wobbling detune, like the floor gives way. */
+  sfxHoof(): void {
+    const t = this.ctx.currentTime;
+    this.tone(t, 110, 55, 0.5, 0.4, 'sine', 0.5);
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(220, t);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.6);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 500;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    o.connect(lp).connect(g).connect(this.sfx);
+    o.start(t);
+    o.stop(t + 0.75);
+  }
+
   private tone(t: number, f0: number, f1: number, len: number, vol: number, type: OscillatorType, verb = 0): void {
     const ctx = this.ctx;
     const o = ctx.createOscillator();

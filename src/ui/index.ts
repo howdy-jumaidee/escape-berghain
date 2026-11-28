@@ -33,14 +33,15 @@ export function startUi(): void {
   const answers = el('div', 'eb-answers', talk);
   let talkTimer = 0;
   let riddleOpen = false;
+  let choiceOpen = false;
   const hideTalk = () => {
-    if (!riddleOpen) talk.classList.remove('on');
+    if (!riddleOpen && !choiceOpen) talk.classList.remove('on');
   };
   const talkHint = el('div', 'eb-talk-hint', talk);
   talkHint.textContent = t('story:talk_hint');
   let focused = false;
   bus.on('npc:talk', ({ npc, lineId }) => {
-    if (riddleOpen) return;
+    if (riddleOpen || choiceOpen) return;
     talkName.textContent = t(`npcs:${npc}.name`);
     talkText.textContent = t(lineId);
     answers.replaceChildren();
@@ -64,11 +65,14 @@ export function startUi(): void {
     for (const e of [barTop, barBottom, talk]) e.classList.remove('focus');
   });
 
-  // Riddle: three answers, keys 1 to 3 or click.
+  // Riddle & talk-back choices: keys 1 to 3 or click.
   let riddleAnswers: { text: string; correct: boolean }[] = [];
+  let activeChoices: { id: string; textKey: string }[] = [];
+  let activeChoiceNpc = '';
   const resetConversationUi = () => {
     focused = false;
     clearTimeout(talkTimer);
+    answers.replaceChildren();
     for (const e of [barTop, barBottom, talk]) e.classList.remove('focus');
     talk.classList.remove('on');
   };
@@ -80,6 +84,19 @@ export function startUi(): void {
     talk.classList.remove('on');
     bus.emit('npc:unfocus', {});
   };
+  const closeChoice = (unfocus: boolean) => {
+    if (!choiceOpen) return;
+    choiceOpen = false;
+    activeChoices = [];
+    activeChoiceNpc = '';
+    unlock('choice');
+    answers.replaceChildren();
+    if (unfocus) {
+      talk.classList.remove('on');
+      bus.emit('npc:unfocus', {});
+      bus.emit('npc:silent', {});
+    }
+  };
   const answer = (i: number) => {
     const a = riddleAnswers[i];
     if (!riddleOpen || !a) return;
@@ -89,8 +106,20 @@ export function startUi(): void {
     talk.classList.remove('on');
     bus.emit('riddle:answered', { correct: a.correct });
   };
+  const pickChoice = (i: number) => {
+    const c = activeChoices[i];
+    if (!choiceOpen || !c) return;
+    const npc = activeChoiceNpc;
+    choiceOpen = false;
+    activeChoices = [];
+    activeChoiceNpc = '';
+    unlock('choice');
+    answers.replaceChildren();
+    window.dispatchEvent(new CustomEvent('eb:choice-picked', { detail: { npc, choiceId: c.id, index: i } }));
+  };
   bus.on('riddle:show', () => {
     clearTimeout(talkTimer);
+    closeChoice(false);
     riddleOpen = true;
     lock('riddle');
     riddleAnswers = (lookup('npcs:riddle_horse.riddle.answers') as typeof riddleAnswers | undefined) ?? [];
@@ -99,6 +128,7 @@ export function startUi(): void {
     answers.replaceChildren(
       ...riddleAnswers.map((a, i) => {
         const b = el('button', '');
+        b.type = 'button';
         el('kbd', '', b).textContent = String(i + 1);
         b.append(a.text);
         b.addEventListener('click', () => answer(i));
@@ -107,9 +137,52 @@ export function startUi(): void {
     );
     talk.classList.add('on');
   });
+  window.addEventListener('eb:choices', (ev) => {
+    const detail = (ev as CustomEvent<{ npc: string; promptKey?: string; choices: { id: string; textKey: string }[] }>).detail;
+    if (!detail || state.ending || riddleOpen) {
+      unlock('choice');
+      return;
+    }
+    clearTimeout(talkTimer);
+    choiceOpen = true;
+    activeChoiceNpc = detail.npc;
+    activeChoices = detail.choices ?? [];
+    lock('choice');
+    talkName.textContent = t(`npcs:${detail.npc}.name`);
+    if (detail.promptKey) talkText.textContent = t(detail.promptKey);
+    answers.replaceChildren(
+      ...activeChoices.map((c, i) => {
+        const b = el('button', '');
+        b.type = 'button';
+        el('kbd', '', b).textContent = String(i + 1);
+        b.append(t(c.textKey));
+        b.addEventListener('click', () => pickChoice(i));
+        return b;
+      }),
+    );
+    talk.classList.add('on');
+  });
   addEventListener('keydown', (e) => {
-    if (riddleOpen && e.code === 'Escape') closeRiddle();
-    if (riddleOpen && /^Digit[1-9]$/.test(e.code)) answer(Number(e.code.slice(5)) - 1);
+    if (e.repeat) return;
+    if (riddleOpen) {
+      if (e.code === 'Escape') {
+        e.preventDefault();
+        closeRiddle();
+      } else if (/^Digit[1-9]$/.test(e.code)) {
+        e.preventDefault();
+        answer(Number(e.code.slice(5)) - 1);
+      }
+      return;
+    }
+    if (choiceOpen) {
+      if (e.code === 'Escape') {
+        e.preventDefault();
+        closeChoice(true);
+      } else if (/^Digit[1-9]$/.test(e.code)) {
+        e.preventDefault();
+        pickChoice(Number(e.code.slice(5)) - 1);
+      }
+    }
   });
 
   // View toggle hint: slowly fades in 2.8 s after landing, holds 9 s, then fades out (or immediately on V).
@@ -136,20 +209,31 @@ export function startUi(): void {
     if (e.code === 'KeyV' && state.started) hideViewHint();
   });
 
-  // Pass out: a short fade to black. Keep it black on the 3rd pass-out while the herd ending fades in.
+  // Pass out: let the horse buckle & ragdoll on the floor before fading to black.
+  // Keep it black on the 3rd pass-out while the herd ending fades in.
   const fade = el('div', 'eb-fade', root);
+  let fadeDelayTimer = 0;
   let fadeTimer = 0;
   bus.on('trip:max', () => {
+    if (state.ending) return;
     closeRiddle();
+    closeChoice(false);
     resetConversationUi();
     lock('fade');
-    fade.classList.add('on');
+    clearTimeout(fadeDelayTimer);
     clearTimeout(fadeTimer);
-    if (state.passOuts >= PASS_OUTS_TO_HERD) return;
-    fadeTimer = window.setTimeout(() => {
-      fade.classList.remove('on');
-      unlock('fade');
-    }, 1200);
+    const isHerdEnding = state.passOuts >= PASS_OUTS_TO_HERD;
+    fadeDelayTimer = window.setTimeout(() => {
+      fadeDelayTimer = 0;
+      if (state.ending) return;
+      fade.classList.add('on');
+      if (isHerdEnding || state.passOuts >= PASS_OUTS_TO_HERD) return;
+      fadeTimer = window.setTimeout(() => {
+        fadeTimer = 0;
+        fade.classList.remove('on');
+        unlock('fade');
+      }, 1200);
+    }, 1050);
   });
 
   // Fragment 2: the wrist stamp.
@@ -166,24 +250,33 @@ export function startUi(): void {
   const seen = el('div', 'eb-seen', root);
   bus.on('player:seen', ({ amount }) => (seen.style.opacity = String(amount * 0.9)));
 
-  // Caught: animal control.
+  // Caught: animal control. Wait while the horse ragdolls across the concrete before sliding in the van card.
   const van = el('div', 'eb-van', root);
   const vanBox = el('div', '', van);
   el('h2', '', vanBox).textContent = t('story:caught.title');
   el('p', '', vanBox).textContent = t('story:caught.sub');
   const vanLine = el('p', '', vanBox);
+  let vanDelayTimer = 0;
   let vanTimer = 0;
   bus.on('player:caught', () => {
+    if (state.ending) return;
     closeRiddle();
+    closeChoice(false);
     resetConversationUi();
     lock('van');
-    vanLine.textContent = `"${t('npcs:animal_control.lines.1')}"`;
-    van.classList.add('on');
+    clearTimeout(vanDelayTimer);
     clearTimeout(vanTimer);
-    vanTimer = window.setTimeout(() => {
-      van.classList.remove('on');
-      unlock('van');
-    }, 3000);
+    vanDelayTimer = window.setTimeout(() => {
+      vanDelayTimer = 0;
+      if (state.ending) return;
+      vanLine.textContent = `"${t('npcs:animal_control.lines.1')}"`;
+      van.classList.add('on');
+      vanTimer = window.setTimeout(() => {
+        vanTimer = 0;
+        van.classList.remove('on');
+        unlock('van');
+      }, 2600);
+    }, 1250);
   });
 
   // The tourists' flash.
@@ -196,7 +289,19 @@ export function startUi(): void {
   // Endings.
   const end = el('div', 'eb-end', root);
   bus.on('ending:show', ({ ending }) => {
+    clearTimeout(vanDelayTimer);
+    clearTimeout(vanTimer);
+    clearTimeout(fadeDelayTimer);
+    clearTimeout(fadeTimer);
+    vanDelayTimer = 0;
+    vanTimer = 0;
+    fadeDelayTimer = 0;
+    fadeTimer = 0;
+    van.classList.remove('on');
+    unlock('van');
+    unlock('fade');
     closeRiddle();
+    closeChoice(false);
     resetConversationUi();
     hideViewHint();
     showEnd(end, ending);

@@ -1,10 +1,10 @@
 // Converts unpacked GTA Vice City character .obj + .png packs into oriented,
-// non-T-posing, smoothly 6-bone-skinned glTF 2.0 .glb models for Escape Berghain.
+// non-T-posing, smoothly 11-bone articulated skinned glTF 2.0 .glb models for Escape Berghain.
 //
 // Run: node scripts/import-vice-city.mjs
 // Source: /tmp/vc-unpacked/ (or VC_SRC_DIR env var)
 // Outputs:
-//   - 19 human/regular NPCs: public/models/npc_<id>.glb (6-bone skinned)
+//   - 19 human/regular NPCs: public/models/npc_<id>.glb (11-bone articulated hierarchy)
 //   - 8 crowd dancers:       public/models/crowd_0.glb .. crowd_7.glb (single-mesh for InstancedMesh)
 // Never overwrites the 6 equine GLBs (npc_riddle_horse, npc_patrick, npc_ice_cream_horse, npc_herd*).
 
@@ -551,53 +551,176 @@ function processCharacterMesh(mesh, options) {
   }
   const normals = computeSmoothNormals(pos, indices);
 
-  // 10. Compute 6-bone smooth skin weights & joint pivots (for npc_*.glb).
-  // Joint order: 0=body, 1=head, 2=armL (+X), 3=armR (-X), 4=legL (+X), 5=legR (-X)
+  // 10. Compute 11-bone articulated parent-child skin weights & joint pivots (for npc_*.glb).
+  // Hierarchy:
+  //   0: body (root pelvis)
+  //     1: spine (waist/mid-torso)
+  //       2: head (neck)
+  //       3: armL (+X shoulder)
+  //         4: foreArmL (+X elbow)
+  //       5: armR (-X shoulder)
+  //         6: foreArmR (-X elbow)
+  //     7: legL (+X hip)
+  //       8: calfL (+X knee)
+  //     9: legR (-X hip)
+  //       10: calfR (-X knee)
   const hipY = 0.50 * H;
   const hipX = 0.095 * s;
-  const neckY = 0.855 * H;
+  const spineY = hipY + 0.14 * H;
+  const neckY = clamp(shoulderY + 0.02 * s, 0.80 * H, 0.88 * H);
+  const kneeY = 0.265 * H;
+
   let neckZSum = 0;
   let neckZN = 0;
+  let spineZSum = 0;
+  let spineZN = 0;
   for (let v = 0; v < nVerts; v++) {
+    const x = pos[v * 3];
     const y = pos[v * 3 + 1];
-    if (y >= 0.83 * H && y <= 0.88 * H && Math.abs(pos[v * 3]) < 0.08 * s) {
-      neckZSum += pos[v * 3 + 2];
+    const z = pos[v * 3 + 2];
+    if (y >= 0.83 * H && y <= 0.88 * H && Math.abs(x) < 0.08 * s) {
+      neckZSum += z;
       neckZN++;
+    }
+    if (y >= spineY - 0.04 * H && y <= spineY + 0.04 * H && Math.abs(x) < 0.12 * s && armMask[v] < 0.2) {
+      spineZSum += z;
+      spineZN++;
     }
   }
   const neckZ = neckZN > 0 ? neckZSum / neckZN : 0;
+  const spineZ = spineZN > 0 ? spineZSum / spineZN : 0;
+
+  // Measure actual elbow centroids along each posed arm (armMask > 0.65).
+  const measureElbow = (side) => {
+    const shX = side * shoulderX;
+    const dists = [];
+    for (let v = 0; v < nVerts; v++) {
+      if (armMask[v] > 0.65 && armSide[v] === side) {
+        dists.push(Math.hypot(pos[v * 3] - shX, pos[v * 3 + 1] - shoulderY, pos[v * 3 + 2] - shoulderZ));
+      }
+    }
+    const maxArmDist = dists.length > 0 ? percentile(dists, 0.96) : 0.56 * s;
+    const elbowDist = clamp(maxArmDist * 0.46, 0.21 * s, 0.30 * s);
+    let ex = 0;
+    let ey = 0;
+    let ez = 0;
+    let en = 0;
+    for (let v = 0; v < nVerts; v++) {
+      if (armMask[v] > 0.65 && armSide[v] === side) {
+        const d = Math.hypot(pos[v * 3] - shX, pos[v * 3 + 1] - shoulderY, pos[v * 3 + 2] - shoulderZ);
+        if (Math.abs(d - elbowDist) < 0.055 * s) {
+          ex += pos[v * 3];
+          ey += pos[v * 3 + 1];
+          ez += pos[v * 3 + 2];
+          en++;
+        }
+      }
+    }
+    if (en >= 3) {
+      return { pos: [ex / en, ey / en, ez / en], dist: elbowDist };
+    }
+    return {
+      pos: [
+        shX + side * Math.sin(targetAngleFromVert) * elbowDist,
+        shoulderY - Math.cos(targetAngleFromVert) * elbowDist,
+        shoulderZ,
+      ],
+      dist: elbowDist,
+    };
+  };
+
+  // Measure actual knee centroids for left (+X) and right (-X) legs.
+  const measureKnee = (side) => {
+    let kx = 0;
+    let kz = 0;
+    let kn = 0;
+    for (let v = 0; v < nVerts; v++) {
+      const x = pos[v * 3];
+      const y = pos[v * 3 + 1];
+      const z = pos[v * 3 + 2];
+      if (
+        y >= kneeY - 0.045 * H &&
+        y <= kneeY + 0.045 * H &&
+        armMask[v] < 0.25 &&
+        (side > 0 ? x > 0.005 * s : x < -0.005 * s)
+      ) {
+        kx += x;
+        kz += z;
+        kn++;
+      }
+    }
+    if (kn >= 3) {
+      const avgX = side > 0 ? clamp(kx / kn, 0.045 * s, 0.16 * s) : clamp(kx / kn, -0.16 * s, -0.045 * s);
+      return [avgX, kneeY, kz / kn];
+    }
+    return [side * hipX, kneeY, 0];
+  };
 
   let joints = null;
   let weights = null;
   let skeleton = null;
 
   if (skinned) {
+    const elbowL = measureElbow(1);
+    const elbowR = measureElbow(-1);
+    const kneeL = measureKnee(1);
+    const kneeR = measureKnee(-1);
+
     joints = new Uint8Array(nVerts * 4);
     weights = new Float32Array(nVerts * 4);
+
+    const headLo = Math.min(neckY - 0.015 * s, 0.835 * H);
+    const headHi = Math.max(neckY + 0.035 * s, 0.885 * H);
 
     for (let v = 0; v < nVerts; v++) {
       const x = pos[v * 3];
       const y = pos[v * 3 + 1];
+      const z = pos[v * 3 + 2];
 
       const wArm = armMask[v];
       const rem = 1 - wArm;
-      const wHead = rem * smoothstep(0.835 * H, 0.885 * H, y);
+      const wHead = rem * smoothstep(headLo, headHi, y);
       const rem2 = rem - wHead;
 
       const wLegTotal = smoothstep(0.54 * H, 0.44 * H, y);
       const legEps = y > 0.43 * H ? 0.035 * s : 0.008 * s;
       const leftShare = smoothstep(-legEps, legEps, x);
 
-      const wLegL = rem2 * wLegTotal * leftShare;
-      const wLegR = rem2 * wLegTotal * (1 - leftShare);
-      const wBody = rem2 * (1 - wLegTotal);
+      const wLegLTotal = rem2 * wLegTotal * leftShare;
+      const wLegRTotal = rem2 * wLegTotal * (1 - leftShare);
+      const wTorsoTotal = rem2 * (1 - wLegTotal);
+
+      // Split torso between pelvis (body) and upper torso (spine)
+      const spineShare = smoothstep(hipY + 0.06 * H, hipY + 0.20 * H, y);
+      const wSpine = wTorsoTotal * spineShare;
+      const wBody = wTorsoTotal * (1 - spineShare);
+
+      // Split arm between upper arm (armL/R) and forearm (foreArmL/R)
+      const side = armSide[v];
+      const shX = side * shoulderX;
+      const dSh = Math.hypot(x - shX, y - shoulderY, z - shoulderZ);
+      const eDist = side > 0 ? elbowL.dist : elbowR.dist;
+      const foreShare = smoothstep(eDist - 0.045 * s, eDist + 0.045 * s, dSh);
+      const wUpperArm = wArm * (1 - foreShare);
+      const wForeArm = wArm * foreShare;
+
+      // Split legs between thigh (legL/R) and lower leg/foot (calfL/R)
+      const calfShare = smoothstep(kneeY + 0.045 * H, kneeY - 0.045 * H, y);
+      const wThighL = wLegLTotal * (1 - calfShare);
+      const wCalfL = wLegLTotal * calfShare;
+      const wThighR = wLegRTotal * (1 - calfShare);
+      const wCalfR = wLegRTotal * calfShare;
 
       const pairs = [
         [0, wBody],
-        [1, wHead],
-        [armSide[v] > 0 ? 2 : 3, wArm],
-        [4, wLegL],
-        [5, wLegR],
+        [1, wSpine],
+        [2, wHead],
+        [side > 0 ? 3 : 5, wUpperArm],
+        [side > 0 ? 4 : 6, wForeArm],
+        [7, wThighL],
+        [8, wCalfL],
+        [9, wThighR],
+        [10, wCalfR],
       ];
       pairs.sort((a, bPair) => bPair[1] - a[1]);
 
@@ -617,26 +740,43 @@ function processCharacterMesh(mesh, options) {
       }
     }
 
+    const names = [
+      'body',
+      'spine',
+      'head',
+      'armL',
+      'foreArmL',
+      'armR',
+      'foreArmR',
+      'legL',
+      'calfL',
+      'legR',
+      'calfR',
+    ];
+    const parents = [-1, 0, 1, 1, 3, 1, 5, 0, 7, 0, 9];
     const worldJointPos = [
       [0, hipY, 0],                        // 0: body
-      [0, neckY, neckZ],                   // 1: head
-      [shoulderX, shoulderY, shoulderZ],   // 2: armL (+X)
-      [-shoulderX, shoulderY, shoulderZ],  // 3: armR (-X)
-      [hipX, hipY, 0],                     // 4: legL (+X)
-      [-hipX, hipY, 0],                    // 5: legR (-X)
+      [0, spineY, spineZ],                 // 1: spine
+      [0, neckY, neckZ],                   // 2: head
+      [shoulderX, shoulderY, shoulderZ],   // 3: armL (+X)
+      elbowL.pos,                          // 4: foreArmL (+X)
+      [-shoulderX, shoulderY, shoulderZ],  // 5: armR (-X)
+      elbowR.pos,                          // 6: foreArmR (-X)
+      [hipX, hipY, kneeL[2] * 0.4],        // 7: legL (+X)
+      kneeL,                               // 8: calfL (+X)
+      [-hipX, hipY, kneeR[2] * 0.4],       // 9: legR (-X)
+      kneeR,                               // 10: calfR (-X)
     ];
 
-    const localJointTrans = [
-      [0, hipY, 0],
-      [0, neckY - hipY, neckZ],
-      [shoulderX, shoulderY - hipY, shoulderZ],
-      [-shoulderX, shoulderY - hipY, shoulderZ],
-      [hipX, 0, 0],
-      [-hipX, 0, 0],
-    ];
+    const localJointTrans = worldJointPos.map((wPos, j) => {
+      const p = parents[j];
+      if (p < 0) return [wPos[0], wPos[1], wPos[2]];
+      const pw = worldJointPos[p];
+      return [wPos[0] - pw[0], wPos[1] - pw[1], wPos[2] - pw[2]];
+    });
 
-    const ibm = new Float32Array(6 * 16);
-    for (let j = 0; j < 6; j++) {
+    const ibm = new Float32Array(names.length * 16);
+    for (let j = 0; j < names.length; j++) {
       const off = j * 16;
       ibm[off + 0] = 1;
       ibm[off + 5] = 1;
@@ -648,7 +788,8 @@ function processCharacterMesh(mesh, options) {
     }
 
     skeleton = {
-      names: ['body', 'head', 'armL', 'armR', 'legL', 'legR'],
+      names,
+      parents,
       localJointTrans,
       ibm,
     };
@@ -812,14 +953,20 @@ function buildGlb(processed, pngBuffer, spec) {
   };
 
   if (processed.skeleton) {
-    // Node 0: SkinnedMesh node at identity; Nodes 1..6: body root + 5 child joints
+    // Node 0: SkinnedMesh node at identity; Nodes 1..N: articulated parent-child bone hierarchy
+    const jointCount = processed.skeleton.names.length;
+    const childrenByJoint = Array.from({ length: jointCount }, () => []);
+    for (let j = 0; j < jointCount; j++) {
+      const p = processed.skeleton.parents[j];
+      if (p >= 0) childrenByJoint[p].push(j + 1);
+    }
     gltf.nodes.push({ name: spec.out, mesh: 0, skin: 0 });
-    for (let j = 0; j < 6; j++) {
+    for (let j = 0; j < jointCount; j++) {
       const node = {
         name: processed.skeleton.names[j],
         translation: processed.skeleton.localJointTrans[j],
       };
-      if (j === 0) node.children = [2, 3, 4, 5, 6];
+      if (childrenByJoint[j].length > 0) node.children = childrenByJoint[j];
       gltf.nodes.push(node);
     }
     gltf.skins = [
@@ -827,7 +974,7 @@ function buildGlb(processed, pngBuffer, spec) {
         name: `${spec.out}_skin`,
         inverseBindMatrices: ibmAcc,
         skeleton: 1,
-        joints: [1, 2, 3, 4, 5, 6],
+        joints: Array.from({ length: jointCount }, (_, j) => j + 1),
       },
     ];
   } else {
@@ -949,8 +1096,22 @@ async function verifyGlb(glbPath, spec, expectSkinned) {
   }
 
   let maxWeightErr = 0;
+  let maxRestErr = 0;
+  let maxPosedDisp = 0;
   if (expectSkinned) {
-    const required = ['body', 'head', 'armL', 'armR', 'legL', 'legR'];
+    const required = [
+      'body',
+      'spine',
+      'head',
+      'armL',
+      'foreArmL',
+      'armR',
+      'foreArmR',
+      'legL',
+      'calfL',
+      'legR',
+      'calfR',
+    ];
     for (const r of required) {
       if (!boneNames.has(r)) throw new Error(`${spec.out}: missing bone "${r}"`);
     }
@@ -967,8 +1128,10 @@ async function verifyGlb(glbPath, spec, expectSkinned) {
     // Verify SkeletonUtils.clone produces independent bones bound to the cloned SkinnedMesh
     const cloned = cloneSkinned(gltf.scene);
     let clonedSkinned = null;
+    const clonedBones = new Map();
     cloned.traverse((o) => {
       if (o.isSkinnedMesh) clonedSkinned = o;
+      if (o.isBone) clonedBones.set(o.name, o);
     });
     if (!clonedSkinned || clonedSkinned.skeleton === mesh.skeleton) {
       throw new Error(`${spec.out}: SkeletonUtils.clone failed to create independent skeleton`);
@@ -976,11 +1139,115 @@ async function verifyGlb(glbPath, spec, expectSkinned) {
     if (clonedSkinned.skeleton.bones[0] === mesh.skeleton.bones[0]) {
       throw new Error(`${spec.out}: SkeletonUtils.clone shares bone instances!`);
     }
+
+    // Verify exact parent-child hierarchy on cloned bones
+    const expectedParents = {
+      spine: 'body',
+      head: 'spine',
+      armL: 'spine',
+      foreArmL: 'armL',
+      armR: 'spine',
+      foreArmR: 'armR',
+      legL: 'body',
+      calfL: 'legL',
+      legR: 'body',
+      calfR: 'legR',
+    };
+    for (const [childName, parentName] of Object.entries(expectedParents)) {
+      const child = clonedBones.get(childName);
+      if (!child?.parent || child.parent.name !== parentName) {
+        throw new Error(`${spec.out}: bone "${childName}" parent is "${child?.parent?.name}", expected "${parentName}"`);
+      }
+    }
+
+    // 1. Verify REST POSE applyBoneTransform matches bind positions (confirms IBM == inv(worldRestPos))
+    cloned.updateMatrixWorld(true);
+    clonedSkinned.skeleton.update();
+    const tmp = new THREE.Vector3();
+    for (let v = 0; v < posAttr.count; v++) {
+      tmp.fromBufferAttribute(posAttr, v);
+      const bx = tmp.x;
+      const by = tmp.y;
+      const bz = tmp.z;
+      clonedSkinned.applyBoneTransform(v, tmp);
+      const err = Math.hypot(tmp.x - bx, tmp.y - by, tmp.z - bz);
+      if (!Number.isFinite(err)) throw new Error(`${spec.out}: NaN in rest applyBoneTransform at v=${v}`);
+      if (err > maxRestErr) maxRestErr = err;
+    }
+    if (maxRestErr > 1e-4) {
+      throw new Error(`${spec.out}: rest pose mismatch (maxRestErr=${maxRestErr.toFixed(5)}) — check IBM/local translations!`);
+    }
+
+    // 2. Verify FULL POSED DEFORMATION with ALL 11 bones rotated simultaneously (zero explosion/detachment)
+    clonedBones.get('body').position.y -= 0.05 * (height / 1.8);
+    clonedBones.get('spine').rotation.set(0.08, 0.22, 0.08);
+    clonedBones.get('head').rotation.set(0.16, -0.12, 0.06);
+    clonedBones.get('armL').rotation.set(-0.55, 0, 0.22);
+    clonedBones.get('foreArmL').rotation.set(-0.75, 0, 0);
+    clonedBones.get('armR').rotation.set(0.35, 0, -0.18);
+    clonedBones.get('foreArmR').rotation.set(-0.65, 0, 0);
+    clonedBones.get('legL').rotation.set(-0.42, 0, 0);
+    clonedBones.get('calfL').rotation.set(0.65, 0, 0);
+    clonedBones.get('legR').rotation.set(0.32, 0, 0);
+    clonedBones.get('calfR').rotation.set(0.18, 0, 0);
+
+    cloned.updateMatrixWorld(true);
+    clonedSkinned.skeleton.update();
+
+    const posedPos = new Float32Array(posAttr.count * 3);
+    for (let v = 0; v < posAttr.count; v++) {
+      tmp.fromBufferAttribute(posAttr, v);
+      const bx = tmp.x;
+      const by = tmp.y;
+      const bz = tmp.z;
+      clonedSkinned.applyBoneTransform(v, tmp);
+      if (!Number.isFinite(tmp.x) || !Number.isFinite(tmp.y) || !Number.isFinite(tmp.z)) {
+        throw new Error(`${spec.out}: NaN in posed applyBoneTransform at v=${v}`);
+      }
+      const disp = Math.hypot(tmp.x - bx, tmp.y - by, tmp.z - bz);
+      if (disp > maxPosedDisp) maxPosedDisp = disp;
+      if (Math.abs(tmp.x) > height * 1.4 || Math.abs(tmp.z) > height * 1.4 || tmp.y < -0.35 * height || tmp.y > height * 1.6) {
+        throw new Error(`${spec.out}: vertex ${v} exploded to (${tmp.x.toFixed(2)}, ${tmp.y.toFixed(2)}, ${tmp.z.toFixed(2)})`);
+      }
+      posedPos[v * 3] = tmp.x;
+      posedPos[v * 3 + 1] = tmp.y;
+      posedPos[v * 3 + 2] = tmp.z;
+    }
+    if (maxPosedDisp < 0.05 * (height / 1.8)) {
+      throw new Error(`${spec.out}: posed skinning barely moved vertices (maxPosedDisp=${maxPosedDisp.toFixed(4)})`);
+    }
+
+    // Check no triangle edge exploded during posed deformation
+    const idx = idxAttr.array;
+    for (let i = 0; i < idx.length; i += 3) {
+      const pairs = [
+        [idx[i], idx[i + 1]],
+        [idx[i + 1], idx[i + 2]],
+        [idx[i + 2], idx[i]],
+      ];
+      for (const [a, bVert] of pairs) {
+        const restLen = Math.hypot(
+          posArr[a * 3] - posArr[bVert * 3],
+          posArr[a * 3 + 1] - posArr[bVert * 3 + 1],
+          posArr[a * 3 + 2] - posArr[bVert * 3 + 2],
+        );
+        const posedLen = Math.hypot(
+          posedPos[a * 3] - posedPos[bVert * 3],
+          posedPos[a * 3 + 1] - posedPos[bVert * 3 + 1],
+          posedPos[a * 3 + 2] - posedPos[bVert * 3 + 2],
+        );
+        if (posedLen > Math.max(restLen * 2.6 + 0.06 * (height / 1.8), 0.45 * height)) {
+          throw new Error(
+            `${spec.out}: triangle edge stretched abnormally (${restLen.toFixed(3)} -> ${posedLen.toFixed(3)} m)`,
+          );
+        }
+      }
+    }
   }
 
   return {
     out: spec.out,
-    kind: expectSkinned ? 'NPC(6b)' : 'CROWD',
+    kind: expectSkinned ? 'NPC(11b)' : 'CROWD',
     tris: idxAttr.count / 3,
     kb: buf.length / 1024,
     height,
@@ -991,6 +1258,8 @@ async function verifyGlb(glbPath, spec, expectSkinned) {
     png: `${pngW}x${pngH}`,
     bones: expectSkinned ? boneNames.size : 0,
     maxWeightErr,
+    maxRestErr,
+    maxPosedDisp,
   };
 }
 

@@ -176,6 +176,13 @@ export class TripFx {
 
     bus.on('fragment:found', () => this.relieve(FRAGMENT_RELIEF));
     bus.on('item:consumed', ({ item }) => {
+      if (item === 'bag') {
+        // Hooved: a hard trip spike plus a window where the steering gets much looser.
+        state.trip = Math.min(TRIP_MAX, state.trip + 30);
+        state.hoovedUntil = performance.now() + 20000;
+        bus.emit('trip:changed', { trip: state.trip });
+        return;
+      }
       if (item === 'mate') {
         this.relieve(MATE_RELIEF);
         this.mateLeft = MATE_SECONDS;
