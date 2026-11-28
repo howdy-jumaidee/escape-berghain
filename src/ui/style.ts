@@ -51,10 +51,10 @@ export const css = /* css */ `
 /* Title and intro: pitch black. */
 .eb-cover { position: absolute; inset: 0; z-index: 10; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }
-.eb-title { font: 400 clamp(32px, 6vw, 64px)/1.1 var(--mono); letter-spacing: 0.04em; }
-.eb-panel { min-height: 8.2em; margin-top: 32px; display: grid; place-items: center; }
+.eb-title { font: 400 clamp(22px, 3.6vw, 38px)/1.15 var(--mono); letter-spacing: 0.04em; }
+.eb-panel { min-height: 8.2em; margin-top: 24px; display: grid; place-items: center; }
 .eb-goal { max-width: 36em; }
-.eb-goal p { margin: 0 auto 10px; font: 400 clamp(15px, 2vw, 18px)/1.45 var(--mono); color: #e4e4e4; }
+.eb-goal p { margin: 0 auto 8px; font: 400 clamp(13px, 1.5vw, 15px)/1.45 var(--mono); color: #e4e4e4; }
 .eb-goal p:last-child { margin-bottom: 0; }
 .eb-controls { display: grid; grid-template-columns: auto auto; justify-content: center; column-gap: 18px; row-gap: 10px;
   text-align: left; align-items: center; }
@@ -62,12 +62,12 @@ export const css = /* css */ `
 .eb-controls kbd { justify-self: end; min-width: 2.4em; padding: 3px 8px; border: 1px solid #5a5a5a; border-radius: 3px;
   font: 400 13px/1.2 var(--mono); color: var(--paper); text-align: center; }
 .eb-controls span { font: 400 15px/1.2 var(--mono); color: #d0d0d0; }
-.eb-actions { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 24px; }
-.eb-actions button { all: unset; cursor: pointer; font: 400 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--paper); border: 1px solid #6a6a6a; padding: 9px 16px; }
+.eb-actions { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 32px; }
+.eb-actions button { all: unset; cursor: pointer; font: 400 14px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--paper); border: 1px solid #6a6a6a; padding: 14px 22px; }
 .eb-actions button:hover, .eb-actions button:focus-visible { background: var(--paper); color: #000; outline: none; }
-.eb-play { border-color: var(--paper); padding: 9px 30px; }
-.eb-sub { margin-top: 28px; font: 400 13px/1.6 var(--mono); color: #9a9a9a; }
+.eb-play { border-color: var(--paper); padding: 14px 42px; }
+.eb-sub { margin-top: 22px; font: 400 12px/1.6 var(--mono); color: #9a9a9a; }
 .eb-intro { font: 400 clamp(16px, 2.2vw, 24px)/1.4 var(--mono); color: #d8d8d8; max-width: 80vw; transition: opacity 0.25s; position: relative; }
 .eb-swirl { position: absolute; inset: 0; width: 100%; height: 100%; }
 .eb-skip { position: absolute; bottom: 20px; right: 24px; font: 400 11px var(--mono); color: #444; }
