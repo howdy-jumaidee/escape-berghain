@@ -51,7 +51,7 @@ export const css = /* css */ `
 /* Title and intro: pitch black. */
 .eb-cover { position: absolute; inset: 0; z-index: 10; background: #000; display: grid; place-items: center; text-align: center; pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }
-.eb-title { font: 400 clamp(22px, 3.6vw, 38px)/1.15 var(--mono); letter-spacing: 0.04em; }
+.eb-title { font: 400 clamp(32px, 6vw, 64px)/1.1 var(--mono); letter-spacing: 0.04em; } // ESCAPE BERGHAIN stays BIG
 .eb-panel { min-height: 8.2em; margin-top: 24px; display: grid; place-items: center; }
 .eb-goal { max-width: 36em; }
 .eb-goal p { margin: 0 auto 8px; font: 400 clamp(13px, 1.5vw, 15px)/1.45 var(--mono); color: #e4e4e4; }
