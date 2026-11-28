@@ -200,7 +200,7 @@ renderer.setAnimationLoop(() => {
     lookAt.copy(focus.face);
     // Clean portrait framing: gentle push-in with subtle lens tightening.
     focusFov = 44 - e * 5;
-    roll = Math.sin(focus.t * 0.9) * 0.012;
+    roll = Math.sin(focus.t * 0.9) * 0.022 + Math.sin(focus.t * 0.37) * 0.01 * (state.trip / 100);
   }
 
   if (snapCam) {
@@ -237,7 +237,8 @@ renderer.setAnimationLoop(() => {
   // Closing time: the house lights flicker on.
   if (houseLights) house.intensity = (Math.random() < 0.08 ? 0.2 : 1.6) * Math.min(1, (houseLights += dt * 0.5) - 1 + 0.3);
 
-  fx.setCameraBase(camBase, focus ? 0.12 : view === 'follow' ? 0.45 : 0.2);
+  // Still high in a conversation: the world keeps its wobble (the text on top stays sharp).
+  fx.setCameraBase(camBase, focus ? 0.32 : view === 'follow' ? 0.45 : 0.2);
   // Same soft spill in both views. Follow is flagged so the shafts wrap the horse instead of filling the eyes.
   fx.setSpill(focus ? 0.35 : view === 'eyes' ? 0.55 : 0.45, !focus && view === 'follow' ? 1 : 0);
   fx.update(dt);
