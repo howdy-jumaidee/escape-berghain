@@ -2,6 +2,8 @@
 // World coordinates: CELL = 6, CEILING = 19, FLOOR_HEIGHT = 9. Main hall spans x = 6..66, z = 6..54.
 import * as THREE from 'three';
 import { CELL, CEILING } from '../contracts';
+import { painterlyFromUrl } from './painterly';
+import { buildSmokeShader } from './smoke';
 
 /** Positions laid out for 4 m cells; S scales them to the current cell size (1.5 for CELL = 6). */
 const S = CELL / 4;
@@ -37,39 +39,6 @@ function makeRng(seed: number): () => number {
     s = (s * 1664525 + 1013904223) >>> 0;
     return s / 4294967296;
   };
-}
-
-/** Soft cloudy smoke puff texture for Berghain fog-machine haze plumes. */
-function makeSmokeTexture(): THREE.CanvasTexture {
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.clearRect(0, 0, size, size);
-    // Layer offset soft radial blobs so each cloud reads as organic club smoke, not a uniform circle.
-    const puffs: [number, number, number, number][] = [
-      [64, 64, 58, 0.42],
-      [48, 54, 42, 0.28],
-      [82, 60, 44, 0.26],
-      [58, 78, 40, 0.24],
-      [74, 46, 36, 0.2],
-    ];
-    for (const [cx, cy, r, a] of puffs) {
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grad.addColorStop(0.0, `rgba(185, 200, 224, ${a})`);
-      grad.addColorStop(0.5, `rgba(140, 156, 185, ${a * 0.45})`);
-      grad.addColorStop(1.0, 'rgba(90, 105, 130, 0.0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  return tex;
 }
 
 /** Soft radial dot texture for floating industrial dust motes. */
@@ -160,6 +129,8 @@ function createLightShaft(
 
 export function buildScene(): Look {
   const scene = new THREE.Scene();
+  const painterly = painterlyFromUrl();
+  let paintScanIn = 0;
   scene.background = new THREE.Color(0x020305);
   // Thick, dark Berghain smoke haze: distant concrete and pillars dissolve into heavy gloom.
   scene.fog = new THREE.FogExp2(0x04060a, 0.034); // darker and thicker: harder to read the hall
@@ -225,16 +196,10 @@ export function buildScene(): Look {
   pano.position.set(22 * S, 5.5, 43 * S);
   scene.add(pano);
 
-  // Back exit: green exit sign, morning light leaking under the door.
+  // Back exit: green exit light + morning light leaking under the steel door (EXIT lightbox sits on exit_door).
   const exit = new THREE.PointLight(0x22ff66, 300, 32, 1.55);
   exit.position.set(62 * S, 3.4, 46 * S);
   scene.add(exit);
-  const sign = new THREE.Mesh(
-    new THREE.BoxGeometry(1.6, 0.4, 0.08),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(0.2, 1.35, 0.45), toneMapped: false }),
-  );
-  sign.position.set(62 * S, 3.2, 47.8 * S);
-  scene.add(sign);
   const morning = new THREE.Mesh(
     new THREE.PlaneGeometry(2.4, 0.8),
     new THREE.MeshBasicMaterial({
@@ -333,55 +298,9 @@ export function buildScene(): Look {
     createLightShaft(new THREE.Vector3(33, 14.5, 10), new THREE.Vector3(33, 0, 38), 0.85, 6.2, clubBeamRed),
   );
 
-  // Berghain fog-machine smoke clouds rolling lazily across the dance floor and upper galleries.
-  const smokeTex = makeSmokeTexture();
-  const smokeRng = makeRng(47013);
-  interface SmokePlume {
-    sprite: THREE.Sprite;
-    mat: THREE.SpriteMaterial;
-    baseX: number;
-    baseY: number;
-    baseZ: number;
-    driftX: number;
-    driftZ: number;
-    phase: number;
-    baseOpacity: number;
-  }
-  const smokePlumes: SmokePlume[] = [];
-  const smokeTints = [0x1c2230, 0x261a2c, 0x2a1822, 0x1a202c];
-  for (let i = 0; i < 46; i++) {
-    const isMain = i < 28;
-    const bx = isMain ? 10 + smokeRng() * 52 : 12 + smokeRng() * 76;
-    const bz = isMain ? 10 + smokeRng() * 40 : 12 + smokeRng() * 58;
-    const by = i % 5 === 0 ? 9.5 + smokeRng() * 3.5 : 1.5 + smokeRng() * 4.2;
-    const baseOpacity = 0.13 + smokeRng() * 0.12;
-    const mat = new THREE.SpriteMaterial({
-      map: smokeTex,
-      color: smokeTints[i % smokeTints.length],
-      transparent: true,
-      opacity: baseOpacity,
-      depthWrite: false,
-      blending: THREE.NormalBlending,
-      fog: true,
-    });
-    const sprite = new THREE.Sprite(mat);
-    const scale = 13 + smokeRng() * 13;
-    sprite.scale.set(scale * 1.45, scale * 0.75, 1);
-    sprite.position.set(bx, by, bz);
-    sprite.renderOrder = 1;
-    scene.add(sprite);
-    smokePlumes.push({
-      sprite,
-      mat,
-      baseX: bx,
-      baseY: by,
-      baseZ: bz,
-      driftX: 0.45 + smokeRng() * 0.9,
-      driftZ: 0.35 + smokeRng() * 0.75,
-      phase: smokeRng() * Math.PI * 2,
-      baseOpacity,
-    });
-  }
+  // Volumetric smoke-machine GLSL shader (~20% thickness on dancefloors, ~5% in uncommon areas).
+  const smokeShader = buildSmokeShader();
+  scene.add(smokeShader.root);
 
   // Floating industrial dust motes drifting through the main hall haze and daylight beams.
   const rng = makeRng(13209);
@@ -465,6 +384,12 @@ export function buildScene(): Look {
   let elapsed = 0;
   function update(dt: number): void {
     elapsed += dt;
+    // Apply painterly surface shader to opaque materials, including async model replacements.
+    paintScanIn -= dt;
+    if (painterly && paintScanIn <= 0) {
+      painterly.apply(scene);
+      paintScanIn = 0.25;
+    }
 
     // Subtle pre-dawn seepage drift and pulsing club haze beams.
     northShaftMat.opacity = 0.055 + Math.sin(elapsed * 0.35) * 0.01;
@@ -472,13 +397,7 @@ export function buildScene(): Look {
     clubBeamRed.opacity = 0.062 + Math.sin(elapsed * 1.9) * 0.022;
     clubBeamViolet.opacity = 0.058 + Math.cos(elapsed * 1.5 + 0.8) * 0.02;
 
-    // Billow fog-machine smoke clouds lazily across the floor.
-    for (const s of smokePlumes) {
-      s.sprite.position.x = s.baseX + Math.sin(elapsed * 0.16 + s.phase) * s.driftX * 3.2;
-      s.sprite.position.z = s.baseZ + Math.cos(elapsed * 0.13 + s.phase * 1.3) * s.driftZ * 2.8;
-      s.sprite.position.y = s.baseY + Math.sin(elapsed * 0.22 + s.phase) * 0.35;
-      s.mat.opacity = s.baseOpacity * (0.78 + 0.22 * Math.sin(elapsed * 0.35 + s.phase));
-    }
+    smokeShader.update(dt);
 
     // Drift industrial dust motes lazily through the hall volume.
     for (let i = 0; i < DUST_COUNT; i++) {
