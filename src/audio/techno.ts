@@ -23,6 +23,8 @@ export interface Mix {
   volume: number;
   /** Panorama Bar: warmer, brighter, a pad. */
   warm: number;
+  /** Reverb send, 0 dry (back exit) to 1 (tiled toilet corridor). Default 0.35, the hall. */
+  verb?: number;
 }
 
 export class Techno {
@@ -30,10 +32,12 @@ export class Techno {
   private music: GainNode;
   private sfx: GainNode;
   private master: GainNode;
+  readonly meter: AnalyserNode;
   private wall: BiquadFilterNode;
   private tripFilter: BiquadFilterNode;
   private tripLfoGain: GainNode;
   private reverb: GainNode;
+  private verbOut: GainNode;
   private rumble: GainNode;
   private duck: GainNode;
   private delay: GainNode;
@@ -60,7 +64,10 @@ export class Techno {
     comp.attack.value = 0.003;
     comp.release.value = 0.15;
     this.master = gain(ctx, 0.9);
-    this.master.connect(comp).connect(ctx.destination);
+    this.meter = ctx.createAnalyser();
+    this.meter.fftSize = 512;
+    this.master.connect(comp);
+    comp.connect(this.meter).connect(ctx.destination);
 
     // Music goes through the trip filter, then the wall (zone) filter.
     this.music = gain(ctx, 1);
@@ -91,8 +98,8 @@ export class Techno {
     const verb = ctx.createConvolver();
     verb.buffer = impulse(ctx, 3.2, 2.4);
     this.reverb = gain(ctx, 1);
-    const verbOut = gain(ctx, 0.35);
-    this.reverb.connect(verb).connect(verbOut).connect(this.music);
+    this.verbOut = gain(ctx, 0.35);
+    this.reverb.connect(verb).connect(this.verbOut).connect(this.music);
 
     // Sidechain duck for everything that isn't the kick.
     this.duck = gain(ctx, 1);
@@ -173,12 +180,13 @@ export class Techno {
     crowdBp.type = 'bandpass';
     crowdBp.frequency.value = 520;
     crowdBp.Q.value = 0.6;
-    this.crowdGain = gain(ctx, 0.05);
+    this.crowdGain = gain(ctx, 0.038);
     const crowdLfo = ctx.createOscillator();
     crowdLfo.frequency.value = 0.07;
-    const crowdLfoGain = gain(ctx, 0.02);
+    const crowdLfoGain = gain(ctx, 0.014);
     crowdLfo.connect(crowdLfoGain).connect(this.crowdGain.gain);
-    crowd.connect(crowdBp).connect(this.crowdGain).connect(this.music);
+    // Through the duck: the kick pushes the murmur down, it sits under the music.
+    crowd.connect(crowdBp).connect(this.crowdGain).connect(this.duck);
     crowd.start();
     crowdLfo.start();
 
@@ -201,19 +209,19 @@ export class Techno {
       o.start();
     }
     vib.start();
-    this.choirGain.connect(this.music);
+    this.choirGain.connect(this.duck);
     this.choirGain.connect(this.reverb);
   }
 
   /** Standing with the leather choir. */
   setChoir(on: boolean): void {
-    this.choirGain.gain.setTargetAtTime(on ? 0.09 : 0, this.ctx.currentTime, 0.6);
+    this.choirGain.gain.setTargetAtTime(on ? 0.07 : 0, this.ctx.currentTime, 0.6);
   }
 
   /** Closing time: acid all the way up, a siren riser every four bars, the crowd roars. */
   setFinale(): void {
     this.finale = true;
-    this.crowdGain.gain.setTargetAtTime(0.12, this.ctx.currentTime, 1);
+    this.crowdGain.gain.setTargetAtTime(0.09, this.ctx.currentTime, 1);
   }
 
   /** A cheer from the crowd: a noise swell and a few whistles. */
@@ -291,7 +299,17 @@ export class Techno {
     this.wall.frequency.setTargetAtTime(mix.cutoff, t, 0.25);
     this.music.gain.setTargetAtTime(mix.volume, t, 0.25);
     this.padGain.gain.setTargetAtTime(mix.warm * 0.025, t, 0.8);
+    this.verbOut.gain.setTargetAtTime(mix.verb ?? 0.35, t, 0.4);
     this.warm = mix.warm;
+  }
+
+  /** Peak level at the master right now, 0..1. For the ?debug meter: window.ebAudio(). */
+  level(): number {
+    const buf = new Float32Array(this.meter.fftSize);
+    this.meter.getFloatTimeDomainData(buf);
+    let peak = 0;
+    for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i]));
+    return peak;
   }
 
   /** 0 to 1. Drives the filter swing, detune and the acid line. */
