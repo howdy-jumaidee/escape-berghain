@@ -253,6 +253,14 @@
   },
   "mobile": {
     "alt": "Escape Berghain vertical poster",
-    "notice": "Desktop only at the moment. Open on a computer to play."
+    "notice": "Rotate your phone horizontally to play."
+  },
+  "touch": {
+    "act": "Act",
+    "stomp": "Stomp",
+    "look": "Look",
+    "view": "View",
+    "mute": "Mute",
+    "leave": "Leave"
   }
 }
