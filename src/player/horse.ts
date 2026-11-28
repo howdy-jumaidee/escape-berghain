@@ -2,7 +2,7 @@
 // Separate parts so code can wobble them. Emma's horse_*.glb parts replace the boxes when present:
 // horse_body, horse_neck, horse_head, horse_leg (used four times). Origin at the base, facing +Z.
 import * as THREE from 'three';
-import { bus, state, TRIP_MAX, FLOOR_HEIGHT } from '../contracts';
+import { bus, state, TRIP_MAX, FLOOR_HEIGHT, BEAT_SECONDS } from '../contracts';
 import { placeModel } from '../look/models';
 
 const keys = new Set<string>();
@@ -28,6 +28,9 @@ const LEG_LENGTH = 0.8;
 /** Time in the club until the time-based part of the steering is fully drunk (trip makes it worse on top).
  *  Tune here: lower = gets hard faster. #67 wants first-timers through the hall in 90 s, veterans fighting for every turn. */
 const SOBER_UP_SECONDS = 35;
+/** A stomp within this many ms of a beat counts as clean. Same window as BeatCounter's default. */
+const ON_BEAT_MS = 150;
+const BEAT_MS = BEAT_SECONDS * 1000;
 
 // VRLabs-inspired constrained multi-body ragdoll constants.
 const RAGDOLL_GRAVITY = -18;
@@ -105,6 +108,10 @@ export class Horse {
   private stompRing: THREE.Mesh;
   private stompRingMat: THREE.MeshBasicMaterial;
   private stompPulse = 0;
+  /** 1 when the last stomp landed on the beat: brighter, wider ring. */
+  private stompOnBeat = 0;
+  /** performance.now() of the last beat from the clock, 0 before the music starts. */
+  private lastBeatAt = 0;
   /** Looking down at your own front leg. */
   private look = 0;
   private lastStepPhase = 0;
@@ -209,6 +216,7 @@ export class Horse {
       this.turnVel = 0;
     });
     bus.on('player:floor', ({ floor }) => (this.root.position.y = floor * FLOOR_HEIGHT));
+    bus.on('beat', ({ time }) => (this.lastBeatAt = time));
     bus.on('floor:wet', ({ x, z, radius, seconds }) => this.wet.push({ x, z, r: radius, left: seconds }));
   }
 
@@ -755,10 +763,12 @@ export class Horse {
       this.pitchVel -= 3;
     }
     if (free && pressed.has('KeyE')) {
-      bus.emit('player:stomp', { x: this.root.position.x, z: this.root.position.z, time: performance.now() });
+      const now = performance.now();
+      bus.emit('player:stomp', { x: this.root.position.x, z: this.root.position.z, time: now });
       bus.emit('player:step', {});
       this.stomp = 1;
       this.stompPulse = 1;
+      this.stompOnBeat = this.isOnBeat(now) ? 1 : 0;
     }
     if (free && pressed.has('KeyQ')) {
       bus.emit('player:look', {});
@@ -788,8 +798,9 @@ export class Horse {
       this.stompPulse = Math.max(0, this.stompPulse - dt * 2.8);
       const p = 1 - this.stompPulse;
       this.stompRing.visible = this.stompPulse > 0.01;
-      this.stompRing.scale.setScalar(1 + p * 2.8);
-      this.stompRingMat.opacity = this.stompPulse * 0.45;
+      // Clean on-beat stomps: about 30% wider and nearly twice as bright.
+      this.stompRing.scale.setScalar(1 + p * (2.8 + this.stompOnBeat * 1.0));
+      this.stompRingMat.opacity = this.stompPulse * (0.45 + this.stompOnBeat * 0.4);
     } else if (this.stompRing.visible) {
       this.stompRing.visible = false;
     }
@@ -818,6 +829,13 @@ export class Horse {
 
 
     bus.emit('player:moved', { x: this.root.position.x, z: this.root.position.z });
+  }
+
+  /** Does a stomp at `time` (performance.now() ms) land within ON_BEAT_MS of the nearest beat? */
+  private isOnBeat(time: number): boolean {
+    if (!this.lastBeatAt) return false;
+    const since = (((time - this.lastBeatAt) % BEAT_MS) + BEAT_MS) % BEAT_MS;
+    return Math.min(since, BEAT_MS - since) <= ON_BEAT_MS;
   }
 }
 
