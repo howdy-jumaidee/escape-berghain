@@ -6,13 +6,15 @@ import { Techno, type Mix } from './techno';
 import { Cues } from './cues';
 
 /** How the music sounds from each zone. Issue #70: hall loud and physical, toilets muffled with tile echo,
- * Panorama warm, back exit quiet and dry. `verb` is the reverb send: tiled corridor rings, the back exit is dry. */
+ * Panorama warm, back exit quiet and dry. `verb` is the reverb send: tiled corridor rings, the back exit is dry.
+ * `groove` is the beat pattern: four on the floor in the hall, half-time at the bar, a broken beat in the
+ * toilets, a warm shaker upstairs in Panorama, sparse at the back exit. */
 const ZONE_MIX: Record<ZoneId, Mix> = {
-  main_hall: { cutoff: 18000, volume: 1, warm: 0, verb: 0.45 },
-  bar_cloakroom: { cutoff: 2000, volume: 0.75, warm: 0, verb: 0.3 },
-  toilet_corridor: { cutoff: 420, volume: 0.7, warm: 0, verb: 0.8 },
-  panorama_bar: { cutoff: 15000, volume: 0.95, warm: 1, verb: 0.5 },
-  back_exit: { cutoff: 600, volume: 0.45, warm: 0, verb: 0.06 },
+  main_hall: { cutoff: 18000, volume: 1, warm: 0, verb: 0.45, groove: 'four' },
+  bar_cloakroom: { cutoff: 2000, volume: 0.75, warm: 0, verb: 0.3, groove: 'half' },
+  toilet_corridor: { cutoff: 420, volume: 0.7, warm: 0, verb: 0.8, groove: 'broken' },
+  panorama_bar: { cutoff: 15000, volume: 0.95, warm: 1, verb: 0.5, groove: 'warm' },
+  back_exit: { cutoff: 600, volume: 0.45, warm: 0, verb: 0.06, groove: 'sparse' },
 };
 
 const MUFFLED: Mix = { cutoff: 220, volume: 0.9, warm: 0 };
