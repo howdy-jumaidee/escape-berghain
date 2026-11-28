@@ -9,7 +9,7 @@ import { resolveCircle, type BuiltLevel } from './level';
 
 const WALK = 2;
 const RUN = 3.6;
-const SIGHT = 11;
+const SIGHT = 8; // detection distance, metres. Smaller = more room to hide in the crowd (#68 balance).
 /** Closing time: everyone moves faster and sees further. */
 const FINALE_SPEED = 1.5;
 const FINALE_SIGHT = 1.25;
@@ -60,7 +60,7 @@ export class Patrols {
     const cone = new THREE.MeshBasicMaterial({
       color: 0xfff1c8,
       transparent: true,
-      opacity: 0.07,
+      opacity: 0.05,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
@@ -74,12 +74,13 @@ export class Patrols {
       obj.add(model);
 
       // Torch: a real spot light plus a visible beam in the haze.
-      const torch = new THREE.SpotLight(0xfff1c8, 140, SIGHT + 2, SIGHT_ANGLE, 0.5, 1.5);
+      const torch = new THREE.SpotLight(0xfff1c8, 80, SIGHT + 2, SIGHT_ANGLE, 0.5, 1.5);
       torch.position.set(0.25, 1.4, 0.3);
       torch.target.position.set(0, 0, SIGHT);
       obj.add(torch, torch.target);
       this.torches.push(torch);
-      const beam = new THREE.Mesh(new THREE.ConeGeometry(Math.tan(SIGHT_ANGLE) * SIGHT, SIGHT, 20, 1, true), cone);
+      // Visible beam only: narrower and fainter than the real sight cone so the lamp doesn't fill the hall.
+      const beam = new THREE.Mesh(new THREE.ConeGeometry(Math.tan(SIGHT_ANGLE) * SIGHT * 0.55, SIGHT, 20, 1, true), cone);
       beam.rotation.x = -Math.PI / 2 - 0.12;
       beam.position.set(0.25, 1, SIGHT / 2 + 0.3);
       obj.add(beam);
@@ -109,7 +110,7 @@ export class Patrols {
     bus.on('game:finale', () => {
       this.finale = true;
       this.beams.color.set(0xff3030);
-      this.beams.opacity = 0.11;
+      this.beams.opacity = 0.08;
       this.torches.forEach((t) => {
         t.color.set(0xff5040);
         t.distance = (SIGHT + 2) * FINALE_SIGHT;
