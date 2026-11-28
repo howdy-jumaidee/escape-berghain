@@ -31,6 +31,8 @@ uniform float ghost;
 uniform float phase;
 uniform float spill;
 uniform float morning;
+uniform float follow;
+uniform vec2 horse;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec2 r = texelSize * (1.0 + strength * 7.0);
@@ -45,17 +47,30 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   sum += texture2D(inputBuffer, uv + vec2(-r.x, r.y) * 0.7) * 0.1;
   vec3 blurred = mix(inputColor.rgb, sum.rgb, clamp(strength * 1.5, 0.0, 1.0));
 
-  // Light falling into the eyes. Lift the shadows only, with wide soft shafts.
-  // Nothing here raises contrast, so the ketamine blur stays dreamy.
+  // Light falling into the lens. Lift the shadows only. Nothing here raises contrast.
   float luma = dot(blurred, vec3(0.2126, 0.7152, 0.0722));
   vec3 veil = mix(vec3(0.62, 0.74, 0.98), vec3(1.0, 0.78, 0.46), morning);
   float shadow = smoothstep(0.62, 0.0, luma);
   vec3 lifted = blurred + veil * shadow * (0.05 + spill * 0.2);
+  // First person: wide bands from above. Follow: the same bands aimed past the horse,
+  // plus a soft rim where the light wraps the body and haze in the air in front of the lens.
   float s1 = sin((uv.x * 1.5 + uv.y * 0.28) * 6.28318 + phase * 0.1);
   float s2 = sin((uv.x * -0.35 + uv.y * 0.9) * 6.28318 - phase * 0.06);
-  float shafts = pow(clamp(0.5 + 0.5 * s1, 0.0, 1.0), 4.0) * 0.65 + pow(clamp(0.5 + 0.5 * s2, 0.0, 1.0), 5.0) * 0.35;
-  shafts *= smoothstep(0.0, 0.4, uv.y);
+  float wide = pow(clamp(0.5 + 0.5 * s1, 0.0, 1.0), 4.0) * 0.65 + pow(clamp(0.5 + 0.5 * s2, 0.0, 1.0), 5.0) * 0.35;
+  wide *= smoothstep(0.0, 0.4, uv.y);
+  vec2 aim = horse + vec2(0.0, 0.1);
+  vec2 dir = uv - aim;
+  float ang = atan(dir.y, dir.x);
+  float beam = pow(clamp(0.5 + 0.5 * sin(ang * 2.5 + phase * 0.08), 0.0, 1.0), 3.0);
+  float aimed = beam * smoothstep(0.9, 0.02, length(dir));
+  float shafts = mix(wide, max(wide * 0.65, aimed), follow);
   lifted += veil * shafts * (0.012 + spill * 0.05);
+  vec2 hd = (uv - horse) * vec2(0.85, 1.15);
+  float hd2 = dot(hd, hd);
+  float rim = smoothstep(0.08, 0.015, hd2) * smoothstep(0.0, 0.012, hd2);
+  lifted += veil * rim * follow * spill * 0.16;
+  float front = smoothstep(0.62, 0.0, uv.y) * follow;
+  lifted += veil * front * spill * 0.045;
   blurred = mix(blurred, lifted, 0.3 + spill * 0.7);
 
   // Double vision: a drifting ghost copy of the frame.
@@ -75,15 +90,19 @@ class TripBlurEffect extends Effect {
         ['phase', new THREE.Uniform(0)],
         ['spill', new THREE.Uniform(0)],
         ['morning', new THREE.Uniform(0)],
+        ['follow', new THREE.Uniform(0)],
+        ['horse', new THREE.Uniform(new THREE.Vector2(0.5, 0.35))],
       ]),
     });
   }
-  set(strength: number, ghost: number, phase: number, spill: number, morning: number): void {
+  set(strength: number, ghost: number, phase: number, spill: number, morning: number, follow: number, horse: THREE.Vector2): void {
     this.uniforms.get('strength')!.value = strength;
     this.uniforms.get('ghost')!.value = ghost;
     this.uniforms.get('phase')!.value = phase;
     this.uniforms.get('spill')!.value = spill;
     this.uniforms.get('morning')!.value = morning;
+    this.uniforms.get('follow')!.value = follow;
+    (this.uniforms.get('horse')!.value as THREE.Vector2).copy(horse);
   }
 }
 
@@ -104,9 +123,14 @@ export class TripFx {
   private freezeLeft = 0;
   /** Eased version of the trip, so relief doesn't snap the screen sharp in one frame. */
   private shown = state.trip;
-  /** How hard the light is falling into the camera. 1 in the horse's eyes, less behind them. */
-  private spillTarget = 0.4;
-  private spill = 0.4;
+  /** How hard the light is falling into the camera. High in both views; strongest in the eyes. */
+  private spillTarget = 0.9;
+  private spill = 0.9;
+  /** 1 on the follow cam, 0 in first person. Eased so the shafts don't pop. */
+  private followTarget = 1;
+  private follow = 1;
+  /** Horse position in screen space, so follow-cam light can wrap the body. */
+  private horseUv = new THREE.Vector2(0.5, 0.35);
   /** 0 until the Panorama shutters open, then eases toward 1. */
   private morning = 0;
 
@@ -189,12 +213,13 @@ export class TripFx {
 
     this.shown += (state.trip - this.shown) * (1 - Math.exp(-1.5 * dt));
     this.spill += (this.spillTarget - this.spill) * (1 - Math.exp(-2.2 * dt));
+    this.follow += (this.followTarget - this.follow) * (1 - Math.exp(-3 * dt));
     if (this.morning > 0) this.morning = Math.min(1, this.morning + dt * 0.08);
     const k = state.brainFreezeActive ? 0 : this.shown / TRIP_MAX;
     // Blur stays gentle until about 30, then climbs. First person does not cancel it.
     const blur = Math.max(0, (k - 0.25) / 0.75) ** 1.4;
     const ghost = Math.max(0, (k - 0.5) / 0.5);
-    this.blur.set(blur, ghost, this.t, this.spill, this.morning);
+    this.blur.set(blur, ghost, this.t, this.spill, this.morning, this.follow, this.horseUv);
 
     const o = 0.0008 + k * 0.018;
     this.chroma.offset.set(o * Math.cos(this.t * 2), o * Math.sin(this.t * 1.7));
@@ -229,8 +254,14 @@ export class TripFx {
    * How much light should fall into the lens. 1 is the horse's own eyes.
    * Eased inside update so a view change doesn't flash.
    */
-  setSpill(amount: number): void {
+  setSpill(amount: number, follow = 0): void {
     this.spillTarget = amount;
+    this.followTarget = follow;
+  }
+
+  /** Horse in screen space (0 to 1). Ignored when follow is 0. Call after lookAt. */
+  setHorse(x: number, y: number): void {
+    if (Number.isFinite(x) && Number.isFinite(y)) this.horseUv.set(x, y);
   }
 
   /** Call after the camera has followed the player, before update(). */

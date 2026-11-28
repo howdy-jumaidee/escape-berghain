@@ -91,6 +91,7 @@ addEventListener('keydown', (e) => {
 });
 
 const lookAt = new THREE.Vector3();
+const horseNdc = new THREE.Vector3();
 const camBase = new THREE.Vector3();
 const follow = new THREE.Vector3();
 const eyeAnchor = new THREE.Vector3();
@@ -205,12 +206,17 @@ renderer.setAnimationLoop(() => {
   if (houseLights) house.intensity = (Math.random() < 0.08 ? 0.2 : 1.6) * Math.min(1, (houseLights += dt * 0.5) - 1 + 0.3);
 
   fx.setCameraBase(camBase, focus ? 0.12 : view === 'follow' ? 0.45 : 0.2);
-  // Light falls into the lens. Strongest in first person, still there over the shoulder.
-  fx.setSpill(focus ? 0.7 : view === 'eyes' ? 1 : 0.38);
+  // Same soft spill in both views. Follow is flagged so the shafts wrap the horse instead of filling the eyes.
+  fx.setSpill(focus ? 0.75 : view === 'eyes' ? 1 : 0.9, !focus && view === 'follow' ? 1 : 0);
   fx.update(dt);
   if (!focus) world.clipCamera(eyeAnchor, camera.position, 0.25, py);
   camera.lookAt(lookAt);
   if (roll) camera.rotateZ(roll);
+  // Where the horse sits in the frame, so follow-cam light can rim the body.
+  horseNdc.copy(horse.root.position);
+  horseNdc.y += 1.05;
+  horseNdc.project(camera);
+  fx.setHorse(horseNdc.x * 0.5 + 0.5, horseNdc.y * 0.5 + 0.5);
   fx.render(dt);
 });
 
