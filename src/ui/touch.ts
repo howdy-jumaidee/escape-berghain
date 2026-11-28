@@ -122,14 +122,57 @@ export function startTouch(root: HTMLElement): void {
     paintAct();
   });
 
-  // Top-right: View & Mute pills during play, Leave pill during conversations.
+  // Top-right: Fullscreen, View & Mute pills during play, Leave pill during conversations.
   const tools = el('div', 'eb-top-tools', wrap);
+  const fullBtn = mkBtn(tools, 'eb-tpill', t('story:touch.fullscreen'), () => toggleFullscreen());
   mkBtn(tools, 'eb-tpill', t('story:touch.view'), () => tapKey('KeyV'));
   const muteBtn = mkBtn(tools, 'eb-tpill', t('story:touch.mute'), () => {
     muteBtn.classList.toggle('active');
     tapKey('KeyM');
   });
   mkBtn(wrap, 'eb-tpill eb-leave', t('story:touch.leave'), () => tapKey('Escape'));
+
+  type FsEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+  type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> | void };
+  const fsDoc = document as FsDoc;
+  const fsRoot = document.documentElement as FsEl;
+  const isNativeFs = () => !!(document.fullscreenElement || fsDoc.webkitFullscreenElement);
+  let zenFallback = false;
+
+  const paintFs = () => {
+    const on = isNativeFs() || zenFallback;
+    fullBtn.classList.toggle('active', on);
+    fullBtn.textContent = t(on ? 'story:touch.exit_full' : 'story:touch.fullscreen');
+    root.classList.toggle('zen', zenFallback);
+  };
+
+  const toggleFullscreen = () => {
+    if (isNativeFs()) {
+      const exit = document.exitFullscreen?.bind(document) ?? fsDoc.webkitExitFullscreen?.bind(fsDoc);
+      Promise.resolve(exit?.()).catch(() => {});
+      return;
+    }
+    const req = fsRoot.requestFullscreen?.bind(fsRoot) ?? fsRoot.webkitRequestFullscreen?.bind(fsRoot);
+    if (req) {
+      Promise.resolve(req())
+        .then(() => {
+          zenFallback = false;
+          paintFs();
+        })
+        .catch(() => {
+          // iOS Safari/Chrome blocks element fullscreen: fall back to clean zen mode + nudge browser bar.
+          zenFallback = !zenFallback;
+          window.scrollTo(0, 1);
+          paintFs();
+        });
+    } else {
+      zenFallback = !zenFallback;
+      window.scrollTo(0, 1);
+      paintFs();
+    }
+  };
+  document.addEventListener('fullscreenchange', paintFs);
+  document.addEventListener('webkitfullscreenchange', paintFs);
 
   bus.on('intro:land', () => {
     if (!state.ending) wrap.classList.remove('off');
