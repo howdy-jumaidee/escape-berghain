@@ -9,3 +9,5 @@ dist
 *.blend1
 assets/
 To be deleted/
+.claude/
+.gstack/
