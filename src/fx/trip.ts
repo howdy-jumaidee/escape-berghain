@@ -19,7 +19,7 @@ import {
 } from 'postprocessing';
 import { bus, state, TRIP_MAX } from '../contracts';
 
-const TRIP_PER_SECOND = 0.45;
+const TRIP_PER_SECOND = 0.8; // the horse gets properly high in ~2 minutes
 const FRAGMENT_RELIEF = 10;
 const MATE_RELIEF = 30;
 const MATE_SECONDS = 10;
@@ -71,6 +71,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   lifted += veil * rim * follow * spill * 0.065;
   float front = smoothstep(0.62, 0.0, uv.y) * follow;
   lifted += veil * front * spill * 0.018;
+  // Drifting smoke: two slow swirling bands, denser in the shadows.
+  float smoke = pow(clamp(0.5 + 0.5 * sin(uv.x * 2.2 + phase * 0.045) + 0.35 * sin(uv.y * 3.7 - phase * 0.03 + uv.x * 1.3), 0.0, 1.0), 2.0);
+  lifted += veil * smoke * shadow * (0.012 + spill * 0.03);
   blurred = mix(blurred, lifted, 0.18 + spill * 0.38);
 
   // Double vision: a drifting ghost copy of the frame.
@@ -164,7 +167,7 @@ export class TripFx {
     this.grade = new BrightnessContrastEffect({ brightness: 0, contrast: 0.12 });
     this.hue = new HueSaturationEffect({ hue: 0, saturation: -0.22 });
     const noise = new NoiseEffect({ blendFunction: BlendFunction.OVERLAY });
-    noise.blendMode.opacity.value = 0.28;
+    noise.blendMode.opacity.value = 0.4;
     this.vignette = new VignetteEffect({ darkness: 0.62, offset: 0.32 });
     this.composer.addPass(new EffectPass(camera, this.grade, this.hue, noise, this.vignette));
     bus.on('shutters:open', () => {
@@ -217,18 +220,18 @@ export class TripFx {
     if (this.morning > 0) this.morning = Math.min(1, this.morning + dt * 0.08);
     const k = state.brainFreezeActive ? 0 : this.shown / TRIP_MAX;
     // Blur stays gentle until about 30, then climbs. First person does not cancel it.
-    const blur = Math.max(0, (k - 0.25) / 0.75) ** 1.4;
-    const ghost = Math.max(0, (k - 0.5) / 0.5);
+    const blur = Math.max(0, (k - 0.15) / 0.85) ** 1.25; // blur starts earlier and climbs harder
+    const ghost = Math.max(0, (k - 0.35) / 0.65);
     this.blur.set(blur, ghost, this.t, this.spill, this.morning, this.follow, this.horseUv);
 
-    const o = 0.0008 + k * 0.018;
+    const o = 0.001 + k * 0.03;
     this.chroma.offset.set(o * Math.cos(this.t * 2), o * Math.sin(this.t * 1.7));
-    this.hue.hue = Math.sin(this.t * 0.25) * k * 0.9;
-    this.hue.saturation = state.brainFreezeActive ? -0.32 : -0.24 + k * 0.45 - this.spill * 0.06;
+    this.hue.hue = Math.sin(this.t * 0.38) * k * 1.5 + Math.sin(this.t * 0.13) * k * 0.5; // psychedelic hue wobble
+    this.hue.saturation = state.brainFreezeActive ? -0.32 : -0.3 + k * 0.75 - this.spill * 0.06;
     // Dark hazy Berghain grade without crushing sRGB blacks; bloom catches strobes, lasers & unicorn horns.
-    this.grade.brightness = -0.012 + this.spill * 0.016 + this.morning * 0.06;
+    this.grade.brightness = -0.035 + this.spill * 0.016 + this.morning * 0.06;
     this.grade.contrast = (state.brainFreezeActive ? 0.13 : 0.11 + k * 0.04) - this.spill * 0.015;
-    this.vignette.darkness = 0.78 - this.spill * 0.1 - this.morning * 0.1;
+    this.vignette.darkness = 0.9 - this.spill * 0.08 - this.morning * 0.1;
     this.vignette.offset = 0.26 + this.spill * 0.05;
     const lum = this.bloom.luminanceMaterial;
     lum.threshold = 0.74 - this.spill * 0.08 - this.morning * 0.05;
