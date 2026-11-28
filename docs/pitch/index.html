@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escape Berghain Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fragment+Mono&display=swap" rel="stylesheet">
+<style>
+/* VOICE occasion: a club night poster that talks back, playful and mysterious
+   IDEA the Escape Berghain poster itself, pulsing at 132 BPM like the game's beat clock
+   PICTURE the landscape poster split in layers: club, moon rings, the horse in front
+   COLOUR night #2a121c, rings #5a2230, burnt orange #ed542a, maroon #441922, cream #fbf0e6
+   TYPE Fragment Mono only, like the poster and the game
+   LAYOUT full screen slides that snap sideways; text left, picture right; stacked on phones */
+:root{color-scheme:dark;--night:#2a121c;--ring:#5a2230;--orange:#ed542a;--maroon:#441922;--deep:#1f0c14;--cream:#fbf0e6;--beat:.4545s}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%;margin:0}
+body{background:var(--night);color:var(--cream);font:17px/1.5 "Fragment Mono",ui-monospace,Menlo,monospace;overflow:hidden}
+.deck{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none}
+.deck::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;height:100%;scroll-snap-align:start;position:relative;overflow:hidden;display:grid;align-items:center;padding:clamp(24px,5vw,80px) max(5vw,16px) 88px}
+.slide::before{content:"";position:absolute;inset:-40%;background:repeating-radial-gradient(circle at var(--cx,85%) var(--cy,15%),transparent 0 26px,color-mix(in srgb,var(--ring) 55%,transparent) 26px 50px);opacity:.35;pointer-events:none}
+.in{position:relative;width:100%;max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(24px,4vw,64px);align-items:center}
+h1,h2{font-weight:400;line-height:1.05;letter-spacing:-.02em;margin:0 0 .5em;text-wrap:balance}
+h1{font-size:clamp(44px,8vw,104px)}
+h2{font-size:clamp(30px,4.2vw,52px)}
+p{margin:0 0 1em;max-width:34em}
+.lead{font-size:clamp(18px,1.8vw,22px)}
+.o{color:var(--orange)}
+.small{font-size:13px;opacity:.7}
+ul{list-style:none;margin:0;padding:0}
+/* reveal: only hidden when JS is running and the slide is not active */
+.js .slide:not(.on) .rv{opacity:0}
+.slide.on .rv{animation:rise .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--d,0)*110ms + 150ms)}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+/* title slide */
+.hero{display:flex;flex-direction:column;align-items:stretch;gap:clamp(10px,2vh,24px);padding:clamp(14px,3vh,36px) max(5vw,16px)}
+.hero::before{display:none}
+.scene{position:relative;flex:1;align-self:stretch;width:100%;background:var(--night);overflow:hidden;container-type:size}
+.scene::before{content:"";position:absolute;left:0;right:0;bottom:0;height:3%;background:#1e0c14}
+.scene .art{position:absolute;left:50%;bottom:0;width:min(100cqw,calc(100cqh*1.964));aspect-ratio:1760/896;transform:translateX(-50%)}
+.scene img{position:absolute;display:block}
+.bg{inset:0;width:100%;height:100%}
+.moon{position:absolute;left:19.9%;top:21.7%;width:13.4%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 0 rgba(251,240,230,.5);animation:glow var(--beat) ease-out infinite}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(251,240,230,.35)}100%{box-shadow:0 0 0 46px rgba(251,240,230,0)}}
+.wave{position:absolute;left:19.9%;top:21.7%;width:13.4%;aspect-ratio:1;border:3px solid var(--cream);border-radius:50%;transform:translate(-50%,-50%) scale(1);opacity:0;animation:wave calc(var(--beat)*4) linear infinite}
+.wave:nth-child(3){animation-delay:calc(var(--beat)*2)}
+@keyframes wave{0%{opacity:.35;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(5)}}
+.horse{left:59%;bottom:-2%;width:27.6%;transform-origin:50% 100%;animation:bob calc(var(--beat)*2) ease-in-out infinite}
+.horsewrap{position:absolute;inset:0;transition:transform .25s ease-out}
+.slide.on .horse{animation:enter 1.2s cubic-bezier(.2,.9,.25,1.15) both,bob calc(var(--beat)*2) ease-in-out 1.2s infinite}
+@keyframes enter{from{transform:translateY(70%) rotate(-6deg)}to{transform:none}}
+@keyframes bob{0%,100%{transform:rotate(-1.2deg)}50%{transform:rotate(1.4deg) translateY(1.5%)}}
+.title{position:relative;order:-1}
+.title h1{margin:0;color:var(--deep);font-size:clamp(56px,10.5vw,168px);line-height:.95;letter-spacing:-.04em}
+.title div{padding-bottom:10px}
+.title p{margin:0}
+.title p{font-size:clamp(16px,1.7vw,21px)}
+.hint{position:absolute;left:max(5vw,16px);bottom:28px;font-size:13px;opacity:.75;z-index:2}
+.light{background:var(--cream);color:var(--deep)}
+.light:not(.hero)::before{opacity:.07}
+.bub,.sky,.bld{color:var(--cream)}
+.cloud .bub:nth-child(3n+2),.bub:nth-child(even){color:var(--deep)}
+.light .cloud .bub:nth-child(3n){background:var(--deep);color:var(--cream)}
+.light .later div{border-color:color-mix(in srgb,var(--deep) 25%,transparent)}
+.light .small{opacity:.75}
+.notes{position:fixed;left:16px;right:16px;bottom:16px;max-width:760px;margin:0 auto;background:var(--deep);color:var(--cream);border:1px solid var(--orange);border-radius:8px;padding:14px 18px;font-size:16px;line-height:1.5;z-index:9;display:none}
+.notes.show{display:block}
+/* memory tickets */
+.tickets{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5em,1fr));gap:12px}
+.tk{background:var(--cream);color:var(--maroon);padding:16px 16px 14px;border-radius:6px;position:relative;min-height:118px;display:flex;flex-direction:column;justify-content:space-between}
+.tk::before,.tk::after{content:"";position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--night);transform:translateY(-50%)}
+.tk::before{left:-8px}.tk::after{right:-8px}
+.tk b{font-weight:400;font-size:20px;line-height:1.1;color:var(--orange)}
+.slide.on .tk{animation:flip .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--d)*140ms + 300ms)}
+.js .slide:not(.on) .tk{opacity:0}
+@keyframes flip{from{opacity:0;transform:perspective(600px) rotateY(80deg)}to{opacity:1;transform:none}}
+/* needs */
+.needs li{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:16px;padding:14px 0;border-top:1px solid color-mix(in srgb,var(--cream) 22%,transparent)}
+.needs li:last-child{border-bottom:1px solid color-mix(in srgb,var(--cream) 22%,transparent)}
+.needs span{color:var(--orange)}
+/* speech bubbles */
+.talk{display:grid;gap:14px}
+.bub{background:var(--maroon);border-radius:18px 18px 18px 4px;padding:14px 18px;max-width:30em;position:relative}
+.bub:nth-child(even){justify-self:end;background:var(--orange);color:var(--deep);border-radius:18px 18px 4px 18px}
+.bub small{display:block;font-size:13px;opacity:.75;margin-top:4px}
+.slide.on .bub{animation:pop .5s cubic-bezier(.2,.9,.3,1.3) both;animation-delay:calc(var(--d)*450ms + 300ms)}
+.js .slide:not(.on) .bub{opacity:0}
+@keyframes pop{from{opacity:0;transform:scale(.6) translateY(16px)}to{opacity:1;transform:none}}
+/* figures */
+.figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;background:color-mix(in srgb,var(--cream) 18%,transparent);border-radius:8px;overflow:hidden}
+.fig{background:var(--night);padding:18px 18px 16px}
+.fig b{display:block;font-weight:400;font-size:clamp(36px,5vw,64px);line-height:1;color:var(--orange);font-variant-numeric:tabular-nums}
+/* beat clock */
+.clock{position:relative;aspect-ratio:1;max-width:440px;width:100%;justify-self:center}
+.core{position:absolute;inset:34%;border-radius:50%;background:var(--orange);color:var(--deep);display:grid;place-content:center;text-align:center;font-size:14px;line-height:1.25;animation:thump var(--beat) ease-out infinite}
+@keyframes thump{0%{transform:scale(1.08)}35%{transform:scale(1)}}
+.node{position:absolute;width:30%;aspect-ratio:1;border-radius:50%;border:2px solid var(--cream);display:grid;place-content:center;text-align:center;font-size:14px;background:var(--night);animation:hit calc(var(--beat)*4) steps(1) infinite;animation-delay:calc(var(--i)*var(--beat))}
+@keyframes hit{0%{background:var(--cream);color:var(--deep)}25%{background:var(--night);color:var(--cream)}}
+.n0{left:35%;top:0}.n1{right:0;top:35%}.n2{left:35%;bottom:0}.n3{left:0;top:35%}
+.stack li{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--cream) 18%,transparent)}
+.stack li span:last-child{opacity:.7;text-align:right}
+.sky{margin-top:8px;border:1px solid color-mix(in srgb,var(--cream) 30%,transparent);border-radius:6px;padding:16px 18px;background:color-mix(in srgb,var(--deep) 80%,transparent);max-width:30em}
+.sky .who{font-size:13px;opacity:.7;margin-bottom:6px}
+.sky ol{margin:0;padding-left:1.6em}
+.sky li{padding:3px 0;opacity:.6}
+.slide.on .sky .pick{animation:pick 2.4s steps(1) 1.2s both}
+@keyframes pick{0%{opacity:.6}40%{opacity:1;color:var(--orange)}100%{opacity:1;color:var(--orange)}}
+.sky .ans{margin-top:10px;color:var(--orange)}
+.js .slide:not(.on) .sky .ans{opacity:0}
+.slide.on .sky .ans{animation:rise .5s ease both 2.4s}
+.cloud{display:flex;flex-wrap:wrap;gap:14px;align-content:center}
+.cloud .bub{flex:1 1 15em;max-width:22em;transform:rotate(var(--rot,0deg)) translate(var(--dx,0),var(--dy,0))}
+.cloud .bub:nth-child(3n+2){background:var(--orange);color:var(--deep);border-radius:18px 18px 4px 18px}
+.cloud .bub:nth-child(3n){background:var(--cream);color:var(--maroon)}
+.slide.on .cloud .bub{animation:pop2 .55s cubic-bezier(.2,.9,.3,1.4) both;animation-delay:calc(var(--o,0)*380ms + 300ms)}
+@keyframes pop2{from{opacity:0;transform:rotate(var(--rot,0deg)) translate(var(--dx,0),var(--dy,0)) scale(.4)}to{opacity:1;transform:rotate(var(--rot,0deg)) translate(var(--dx,0),var(--dy,0))}}
+/* floors */
+.bld{position:relative;border:2px solid var(--maroon);border-radius:4px;background:var(--deep)}
+.fl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 18px;border-top:2px solid var(--maroon);position:relative}
+.fl:first-child{border-top:0}
+.fl.now{background:var(--maroon)}
+.fl em{font-style:normal;font-size:13px;padding:3px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.fl.now em{background:var(--orange);color:var(--deep);border-color:var(--orange)}
+.fl.next em{color:var(--orange)}
+.fl small{display:block;font-size:13px;opacity:.75}
+.lift{position:absolute;right:-26px;width:18px;height:18px;border-radius:50%;background:var(--orange);top:0;animation:lift 6s ease-in-out infinite}
+@keyframes lift{0%,100%{top:6%}20%{top:22%}40%{top:38%}60%{top:55%}80%{top:75%}90%{top:90%}}
+.later{margin-top:22px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.later div{border:1px solid color-mix(in srgb,var(--cream) 25%,transparent);border-radius:8px;padding:14px}
+/* close */
+.poster{justify-self:center;width:min(100%,52svh,460px);aspect-ratio:976/1387;border-radius:4px;overflow:hidden;box-shadow:0 30px 60px -20px #000;animation:float calc(var(--beat)*8) ease-in-out infinite}
+.poster img{width:100%;height:100%;display:block}
+@keyframes float{0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(1.5deg) translateY(-8px)}}
+.play{display:inline-block;margin-top:8px;padding:14px 22px;border-radius:99px;background:var(--orange);color:var(--deep);text-decoration:none;font-size:16px}
+.play:hover,.play:focus-visible{background:var(--cream);outline:none}
+@media(max-width:820px){
+ .hero{align-items:stretch;overflow:hidden}
+ body{overflow:hidden}
+ .slide{align-items:start;overflow-y:auto;padding-top:28px}
+ .in{grid-template-columns:1fr}
+ .scene .art{width:max(100cqw,calc(100cqh*1.964));transform:translateX(-62%)}
+ .hint{display:none}
+ .figs{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .later{grid-template-columns:1fr}
+ .clock{max-width:300px}
+ .poster{width:min(70%,300px)}
+ .needs li{grid-template-columns:1fr;gap:2px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.deck{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main class="deck" id="deck">
+
+<section class="slide hero light" aria-label="Title" data-note="Good morning. It's Sunday. You're a horse. Nobody told you. [Pause. Let the horse stare at them.] This is Escape Berghain.">
+  <div class="scene" id="scene">
+    <div class="art">
+      <div class="moon"></div><div class="wave"></div><div class="wave"></div>
+      <img class="bg" src="scene.webp" alt="The Berghain power plant at night, a queue of people and little horses outside, moon rings behind">
+      <div class="horsewrap" id="hw"><img class="horse" src="horse.webp" alt="A wide eyed horse head staring at you"></div>
+    </div>
+  </div>
+  <div class="title">
+    <h1 class="rv">Escape Berghain</h1>
+  </div>
+</section>
+
+<section class="slide" style="--cx:10%;--cy:90%" aria-label="Background" data-note="Berghain. The most famous club in the world, and nobody knows what's inside. They put stickers on your phone camera at the door. So we made it up. Three people, 24 hours, zero photos. [Beat.] Honestly, that's how most people remember it anyway.">
+  <div class="in">
+    <div>
+      <h2 class="rv">The most famous club in the world. Nobody has seen inside.</h2>
+      <p class="rv lead" style="--d:1">No photos allowed. Phone cameras get a sticker at the door. Most people never get past the bouncer.</p>
+      <p class="rv" style="--d:2">A myth with a door you're not allowed through. That's a perfect place for a game.</p>
+    </div>
+    <ul class="needs">
+      <li class="rv" style="--d:3"><span>24 hours</span>One hackathon, one browser game, playable start to finish.</li>
+      <li class="rv" style="--d:4"><span>Dee</span>Code, running a team of AI agents.</li>
+      <li class="rv" style="--d:5"><span>Emma</span>3D art, the look and the light.</li>
+      <li class="rv" style="--d:6"><span>Robin</span>Story, strategy and playtests.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="slide light" style="--cx:90%;--cy:85%" aria-label="Purpose" data-note="We wanted a game that feels like a story you tell on Monday. [Let them read the first two bubbles. Don't read them out.] [Deadpan.] Same.">
+  <div class="in">
+    <div>
+      <h2 class="rv">A game that feels like a story you tell on Monday.</h2>
+      <p class="rv lead" style="--d:1">Funny. Strange. A little lost.</p>
+      <p class="rv" style="--d:2">If you've been, you'll get it. If you haven't, you'll want to.</p>
+    </div>
+    <div class="talk">
+      <div class="bub" style="--d:0">So what did you do this weekend?</div>
+      <div class="bub" style="--d:1">Honestly? I was a horse.</div>
+      <div class="bub" style="--d:2">Same.<small>Every Monday, somewhere in Berlin</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" style="--cx:80%;--cy:10%" aria-label="Goal" data-note="Your goal is simple. Get home before you fall into the abyss. Find five lost memories. Your keys are in your jacket. That's where keys always are, and somehow it's still a quest. You can ride the cleaner's mop. And one ending makes you the resident DJ. As a horse. Still easier than getting on the guest list.">
+  <div class="in">
+    <div>
+      <h2 class="rv">Get home before you fall into the abyss.</h2>
+      <p class="rv lead" style="--d:1">You turned into a horse. Find your five lost memories. Sneak past security and out the back door.</p>
+      <p class="rv" style="--d:2">On the way: side quests. Escort a rubber knight to a gate. Find a glitter boy's earring. Talk the cleaner into a lap on her mop.</p>
+      <p class="rv" style="--d:3">Four ways the night can end. One of them makes you the resident horse DJ.</p>
+    </div>
+    <div class="tickets">
+      <div class="tk" style="--d:0"><b>Glasses</b>Under a speaker tower</div>
+      <div class="tk" style="--d:1"><b>Stamp</b>On your own front leg</div>
+      <div class="tk" style="--d:2"><b>Ticket 47</b>Taped to a pillar</div>
+      <div class="tk" style="--d:3"><b>Keys</b>In your jacket pocket</div>
+      <div class="tk" style="--d:4"><b>The way out</b>A riddle from a horse in the toilet queue</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide light" style="--cx:85%;--cy:20%" aria-label="Inspiration" data-note="Think Skyrim, but the dragons are bouncers. [Pause. Let it land.] Everyone has something to say, and some of them are lying. Patrick from accounting is definitely not a horse. [Flat German bouncer voice.] Heute nicht. Too many horses already. [Beat.] That's the most realistic line in the game.">
+  <div class="in">
+    <div>
+      <h2 class="rv">Skyrim, but the dragons are bouncers.</h2>
+      <p class="rv lead" style="--d:1">A wonky open world under Berlin. Everyone has a story, half of them lie, and the night goes on without you.</p>
+      <div class="sky rv" style="--d:2" aria-label="Dialogue choices, Skyrim style">
+        <div class="who">The cleaner</div>
+        <ol>
+          <li>Is the back exit really where you mop last?</li>
+          <li>Can you clean my memory up a bit?</li>
+          <li class="pick">Can I ride the mop?</li>
+        </ol>
+        <div class="ans">Absolutely not. ...One lap. Hold on.</div>
+      </div>
+    </div>
+    <div class="cloud" id="cloud">
+      <div class="bub r" style="--d:0">I used to wander like thee. Then I took a stiletto to the knee.<small>Rubber knight</small></div>
+      <div class="bub r" style="--d:1">I'm Patrick. From accounting. Definitely not a horse.<small>A horse</small></div>
+      <div class="bub r" style="--d:2">You will meet a tall dark stranger. It's a pillar.<small>Drag oracle, reading your hoof</small></div>
+      <div class="bub r" style="--d:3">The line is the club. The toilet is a rumour.<small>Philosopher, in the queue since Thursday</small></div>
+      <div class="bub r" style="--d:4">Heute nicht. Too many horses already. Try Tresor.<small>The bouncer</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" style="--cx:90%;--cy:90%" aria-label="Tech stack" data-note="One beat runs everything. Music, strobes, 250 dancers and the DJ booth all follow one 132 BPM clock. The steering gets looser as the night goes on. That's not a bug. That's realism. Dee built it with a team of AI agents. They didn't know what's inside Berghain either.">
+  <div class="in">
+    <div>
+      <h2 class="rv">One beat runs everything.</h2>
+      <p class="rv lead" style="--d:1">Music, strobes, the crowd and the DJ booth all follow the same clock. One human ran a team of AI agents, each one owning a part of the game.</p>
+      <ul class="stack">
+        <li class="rv" style="--d:2"><span>Vite, TypeScript, Three.js</span><span>the game</span></li>
+        <li class="rv" style="--d:3"><span>Rapier</span><span>collisions</span></li>
+        <li class="rv" style="--d:4"><span>postprocessing</span><span>blur, haze, light</span></li>
+        <li class="rv" style="--d:5"><span>Web Audio</span><span>techno, generated live</span></li>
+        <li class="rv" style="--d:6"><span>Vercel</span><span>a preview for every change</span></li>
+      </ul>
+    </div>
+    <div class="clock" aria-label="Beat clock diagram">
+      <div class="core">beat clock<br>132 BPM</div>
+      <div class="node n0" style="--i:0">music</div>
+      <div class="node n1" style="--i:1">strobes</div>
+      <div class="node n2" style="--i:2">crowd</div>
+      <div class="node n3" style="--i:3">DJ booth</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide light" style="--cx:10%;--cy:10%" aria-label="Future" data-note="Next we go deeper. A labyrinth where the walls shift on the beat. Then the roof. And the basement. [Long pause. Look at the room until it gets uncomfortable.] We don't talk about the basement.">
+  <div class="in">
+    <div>
+      <h2 class="rv">Next: go deeper.</h2>
+      <p class="rv lead" style="--d:1">More floors, more side quests, more things to collect.</p>
+      <div class="later">
+        <div class="rv" style="--d:2"><span class="o">Side quests</span><br>More characters with favours that pull you off the path, and lines that change as you remember more.</div>
+        <div class="rv" style="--d:3"><span class="o">Collectibles</span><br>Torn flyers, wrist stamps and a bestiary of rare sightings. So far: unicorns, a lemur, a panda, a ghoul.</div>
+        <div class="rv" style="--d:4"><span class="o">Later</span><br>Touch controls for phones. New worlds past the club. Losing your friends in the crowd together, online.</div>
+      </div>
+    </div>
+    <div class="bld rv" style="--d:2" aria-label="Floors of the club, today and planned">
+      <span class="lift"></span>
+      <div class="fl"><div>The roof<small>morning, finally</small></div><em>later</em></div>
+      <div class="fl now"><div>Panorama Bar<small>upstairs, the shutters open after ten minutes</small></div><em>today</em></div>
+      <div class="fl now"><div>The galleries<small>9 m up, more dancers, a lemur</small></div><em>today</em></div>
+      <div class="fl now"><div>Main floor<small>250 dancers, four DJs</small></div><em>today</em></div>
+      <div class="fl next"><div>The labyrinth<small>dark rooms behind the toilets, walls shift on the beat, a sixth memory or a secret way out</small></div><em>next</em></div>
+      <div class="fl"><div>The basement<small>we don't talk about the basement</small></div><em>later</em></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide light" aria-label="Close" data-note="Some nights you remember. Some nights you don't. Either way, you still have to get home. [Pause.] It's live right now at escapeberghain.dev. No queue. No bouncer. Everyone gets in. Even horses. [Say the URL once more.]">
+  <div class="in">
+    <div>
+      <h2 class="rv">Some nights you remember. Some nights you don't.</h2>
+      <p class="rv lead o" style="--d:1">Either way, you still have to get home.</p>
+      <p class="rv" style="--d:2"><a class="play" href="https://escapeberghain.dev">Play Escape Berghain</a></p>
+      <p class="rv small" style="--d:3">Team Five: Dee, Emma, Robin. 24 hour game hackathon, November 2026.</p>
+    </div>
+    <div class="poster rv" style="--d:1"><img src="poster4b.webp" alt="Escape Berghain poster: a horse in front of the club under a full moon"></div>
+  </div>
+</section>
+
+</main>
+<div class="notes" id="notes" aria-live="polite"></div>
+<script>
+{
+  document.documentElement.classList.add('js');
+  const deck = document.getElementById('deck');
+  const slides = [...deck.querySelectorAll('.slide')];
+  let cur = 0;
+  const notes = document.getElementById('notes');
+  const go = i => { i = Math.max(0, Math.min(slides.length - 1, i)); slides[i].scrollIntoView({behavior:'smooth', inline:'start', block:'nearest'}); };
+  const countUp = s => {
+    for (const b of s.querySelectorAll('[data-n]')) {
+      const end = +b.dataset.n, t0 = performance.now();
+      const step = t => { const k = Math.min(1, (t - t0) / 1100); b.textContent = Math.round(end * (1 - (1 - k) ** 3)); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    }
+  };
+  const io = new IntersectionObserver(es => {
+    for (const e of es) {
+      if (e.isIntersecting) {
+        e.target.classList.add('on');
+        cur = slides.indexOf(e.target);
+        notes.textContent = e.target.dataset.note || '';
+        countUp(e.target);
+        const cl = e.target.querySelector('#cloud');
+        if (cl) { const bs = [...cl.children]; const order = bs.map((_, i) => i).sort(() => Math.random() - .5);
+          bs.forEach((b, i) => { b.style.setProperty('--rot', (Math.random() * 10 - 5).toFixed(1) + 'deg'); b.style.setProperty('--dx', Math.round(Math.random() * 24 - 12) + 'px'); b.style.setProperty('--dy', Math.round(Math.random() * 16 - 8) + 'px'); b.style.setProperty('--o', order[i]); b.style.order = order[i]; }); }
+      } else e.target.classList.remove('on');
+    }
+  }, {root: deck, threshold: .6});
+  slides.forEach(s => io.observe(s));
+  deck.addEventListener('click', e => { if (!e.target.closest('a')) go(cur + (e.clientX < innerWidth * .25 ? -1 : 1)); });
+  addEventListener('keydown', e => {
+    if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+    if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); go(cur - 1); }
+    if (e.key === 'n' || e.key === 'N') notes.classList.toggle('show');
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End') go(slides.length - 1);
+  });
+  const hw = document.getElementById('hw'), scene = document.getElementById('scene');
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    scene.addEventListener('pointermove', e => {
+      const r = scene.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+      hw.style.transform = `translate(${x * -28}px, ${y * -14}px)`;
+    });
+  }
+}
+</script>
+</body>
+</html>
