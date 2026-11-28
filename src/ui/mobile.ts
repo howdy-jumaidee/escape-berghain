@@ -1,4 +1,4 @@
-// Phone fallback: show the vertical poster and a quiet desktop-only notice without loading Three.js.
+// Phone and small-screen fallback: show the vertical poster and a quiet desktop-only notice.
 import { t } from './text';
 
 const BASE = import.meta.env.BASE_URL;
@@ -14,20 +14,16 @@ const mobileCss = /* css */ `
   --poster-bg: #faf0e6;
   --poster-ink: #2c1010;
   --poster-line: rgba(44, 16, 16, 0.14);
-  --s-2: 8px;
   --s-3: 12px;
   --s-4: 16px;
   --s-5: 24px;
   --t-sm: 14px;
   --lh-body: 1.5;
 }
-html, body {
-  margin: 0;
-  height: 100dvh;
-  background: var(--poster-bg);
-  overflow: hidden;
-}
 .eb-mobile {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   box-sizing: border-box;
   height: 100dvh;
   width: 100%;
@@ -40,6 +36,9 @@ html, body {
   font-family: var(--mono);
   padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   -webkit-font-smoothing: antialiased;
+}
+.eb-mobile[hidden] {
+  display: none;
 }
 .eb-mobile-poster {
   flex: 1 1 auto;
@@ -64,12 +63,17 @@ html, body {
 }
 `;
 
-export function showMobilePoster(): void {
-  const style = document.createElement('style');
-  style.textContent = mobileCss;
-  document.head.appendChild(style);
+let injected = false;
+let overlay: HTMLElement | null = null;
 
-  document.getElementById('hud')?.remove();
+function ensurePoster(): HTMLElement {
+  if (!injected) {
+    injected = true;
+    const style = document.createElement('style');
+    style.textContent = mobileCss;
+    document.head.appendChild(style);
+  }
+  if (overlay) return overlay;
 
   const wrap = document.createElement('main');
   wrap.className = 'eb-mobile';
@@ -85,4 +89,20 @@ export function showMobilePoster(): void {
 
   wrap.append(img, note);
   document.body.appendChild(wrap);
+  overlay = wrap;
+  return wrap;
+}
+
+/** Standalone phone / small-screen entry: no Three.js, just the vertical poster and notice. */
+export function showMobilePoster(): void {
+  document.getElementById('hud')?.remove();
+  document.documentElement.style.background = '#faf0e6';
+  document.body.style.background = '#faf0e6';
+  ensurePoster().hidden = false;
+}
+
+/** Resize overlay when a desktop window is shrunk below the small-screen threshold. */
+export function toggleMobileOverlay(on: boolean): void {
+  if (!on && !overlay) return;
+  ensurePoster().hidden = !on;
 }

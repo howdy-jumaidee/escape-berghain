@@ -1,7 +1,7 @@
 // The crowd. Berghain is packed: a few hundred dancers drawn in one batch (instanced), thickest on the main floor.
 // They dance on the beat, push the horse around, block security torches (hide in the crowd),
 // and the higher your trip, the more of them have horse heads.
-// Real GTA Vice City low-poly character models (instanced, dark/shirtless/leather Berlin club weighting)
+// Horsey low-poly club character models (instanced, dark/shirtless/leather Berliner weighting)
 // with resilient procedural PS2 fallback, plus sculpted animal guests (horses, donkeys, and rare glowing-horn unicorns).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -44,7 +44,7 @@ const _bodyMatrix = new THREE.Matrix4();
 const _identityMatrix = new THREE.Matrix4();
 const _gltfLoader = new GLTFLoader();
 
-// Real GTA Vice City crowd archetypes (crowd_0..crowd_7), weighted for a Berlin gay techno club
+// Horsey crowd archetypes (crowd_0..crowd_7), weighted for a Berlin gay techno club
 // (~86% naked/shirtless/black leather/dark gear, ~14% dark-accented glam/color):
 // 0: Alex Shrub shirtless BDSM lingerie (22%)
 // 1: Jezz Torrent shirtless tattooed + black leather lace-up (22%)
@@ -92,7 +92,7 @@ export class Crowd {
   private skinHex: number[] = [];
   private hairHex: number[] = [];
   private scaleY: number[] = [];
-  /** Vice City archetype index 0..7 for human dancers (species === 0), -1 for animal guests. */
+  /** Berliner archetype index 0..7 for human dancers (species === 0), -1 for animal guests. */
   private vcArchetype: number[] = [];
   /** Instance slot within vcMeshes[vcArchetype[i]] for human dancers, -1 for animal guests. */
   private vcSlot: number[] = [];
@@ -358,7 +358,7 @@ export class Crowd {
     const counts = [0, 0, 0, 0];
     this.slot = this.species.map((s) => counts[s]++);
 
-    // Deterministic Vice City archetype assignment for human dancers (species === 0)
+    // Deterministic horsey archetype assignment for human dancers (species === 0)
     // using the already-shuffled `order` so archetypes are organically mixed across all rooms and galleries.
     this.vcArchetype = new Array(this.n).fill(-1);
     this.vcSlot = new Array(this.n).fill(-1);
@@ -503,13 +503,13 @@ export class Crowd {
       if (m?.instanceColor) m.instanceColor.needsUpdate = true;
     }
 
-    // Kick off async loading for the 8 real GTA Vice City crowd archetypes (crowd_0.glb .. crowd_7.glb).
+    // Kick off async loading for the 8 horsey crowd archetypes (crowd_0.glb .. crowd_7.glb).
     // Each archetype swaps seamlessly from procedural fallback to InstancedMesh as soon as its GLB loads;
     // missing or failing GLBs cleanly remain on the procedural fallback without crashing.
-    this.loadViceCityArchetypes();
+    this.loadHorseyArchetypes();
   }
 
-  private loadViceCityArchetypes(): void {
+  private loadHorseyArchetypes(): void {
     const base = import.meta.env?.BASE_URL ?? '/';
     for (let k = 0; k < VC_ARCHETYPE_COUNT; k++) {
       const count = this.vcCounts[k];
@@ -543,7 +543,7 @@ export class Crowd {
             if (mat instanceof THREE.MeshStandardMaterial) {
               mat.roughness = 0.78;
               mat.metalness = Math.min(mat.metalness, 0.12);
-              // Keep embedded Vice City textures subtly readable in Berghain's dark club lighting.
+              // Keep embedded horsey textures subtly readable in Berghain's dark club lighting.
               if (!mat.emissiveMap && mat.map) mat.emissiveMap = mat.map;
               mat.emissive.setRGB(
                 Math.max(mat.emissive.r, 0.08),
@@ -680,7 +680,7 @@ export class Crowd {
       const useVc = sp === 0 && !horseTrip && vcMesh !== null;
 
       if (useVc) {
-        // Real GTA Vice City instanced dancer: energetic beat bounce, hip sway, forward/back groove,
+        // Horsey instanced dancer: energetic beat bounce, hip sway, forward/back groove,
         // twist, side-steps, kick squash-and-stretch, and subtle natural height variation.
         const vcPitch = queue ? Math.sin(this.t * 2.4 + ph) * 0.025 : Math.sin(this.t * 6.2 + ph) * 0.08 * frenzy;
         const b = queue ? 0 : Math.min(1.5, pulse * frenzy);
@@ -704,7 +704,7 @@ export class Crowd {
         this.hair?.setMatrixAt(s, this.hidden);
         this.tripHead?.setMatrixAt(s, this.hidden);
       } else {
-        // Hide Vice City human instance when hallucinating horse-head on trip.
+        // Hide horsey human instance when hallucinating horse-head on trip.
         if (vcMesh) vcMesh.setMatrixAt(this.vcSlot[i], this.hidden);
 
         const stride = Math.sin(this.t * (queue ? 2.4 : 6.2) + ph) * (queue ? 0.16 : 0.52 + pulse * 0.22);
@@ -1074,7 +1074,7 @@ function legGeo(): THREE.BufferGeometry {
   return mergeGeometries([trouser, shoeHeel, shoeToe, shoeSole], false)!;
 }
 
-/** Faceted chiseled GTA Vice City PS2 human head with neck, nose, and low-poly ears. */
+/** Faceted chiseled horsey PS2-style human head with neck, nose, and low-poly ears. */
 function headGeo(): THREE.BufferGeometry {
   const cranium = ringGeo(
     [
