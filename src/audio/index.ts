@@ -3,6 +3,7 @@
 import { bus, state, TRIP_MAX, BEAT_SECONDS, type ZoneId } from '../contracts';
 import { debug } from '../data';
 import { Techno, type Mix } from './techno';
+import { Cues } from './cues';
 
 /** How the music sounds from each zone. Issue #70: hall loud and physical, toilets muffled with tile echo,
  * Panorama warm, back exit quiet and dry. `verb` is the reverb send: tiled corridor rings, the back exit is dry. */
@@ -25,6 +26,14 @@ export function startAudio(): void {
   let music: Techno | null = null;
   let muted = false;
   let fallback = 0;
+  // Ear cues: track fragment spots from the start, so the world's game:start positions aren't missed.
+  const cues = new Cues();
+  bus.on('fragment:spot', ({ id, x, z, floor }) => cues.spot(id, x, z, floor));
+  bus.on('fragment:found', ({ id }) => cues.found(id));
+  bus.on('player:moved', ({ x, z }) => cues.player(x, z));
+  bus.on('unicorn:near', ({ near }) => {
+    if (near) cues.unicorn();
+  });
 
   // ?debug: peak meter on the master, so clipping is measurable in the console: ebAudio()
   if (debug.on) (window as unknown as { ebAudio: () => number }).ebAudio = () => music?.level() ?? 0;
@@ -35,6 +44,7 @@ export function startAudio(): void {
       music = new Techno();
       const m = music;
       m.onBeat = (n, audioTime) => {
+        cues.beat(audioTime);
         // Turn audio time into page time so the herd can compare it with key presses.
         const delayMs = (audioTime - m.ctx.currentTime) * 1000;
         const time = performance.now() + delayMs;
@@ -43,6 +53,7 @@ export function startAudio(): void {
       // Intro: the kick through a concrete wall until the horse lands.
       m.setMix(state.started ? ZONE_MIX[state.zone] : MUFFLED);
       m.start();
+      cues.attach(m.ctx, m.sfxIn, m.verbIn);
       // If the browser keeps audio suspended, keep a silent beat going and retry on the next real input.
       const retry = () => void m.ctx.resume();
       const watch = () => {
