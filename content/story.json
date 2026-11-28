@@ -204,6 +204,8 @@
     "label": "Help",
     "label_mission": "Memories",
     "tab": "H help",
+    "tab_touch": "Memories",
+    "hide": "Hide",
     "tips": [
       "WASD to walk. Go slow, you are a horse on drugs.",
       "Space next to someone to talk. Space next to something shiny to grab it.",
@@ -261,6 +263,8 @@
     "look": "Look",
     "view": "View",
     "mute": "Mute",
+    "fullscreen": "Full",
+    "exit_full": "Exit",
     "leave": "Leave"
   }
 }

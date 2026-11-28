@@ -37,13 +37,24 @@ export function startHelp(root: HTMLElement): void {
   const head = el('div', 'eb-help-head', panel);
   const label = el('div', 'eb-help-label', head);
   const count = el('div', 'eb-help-count', head);
+  const hideBtn = document.createElement('button');
+  hideBtn.type = 'button';
+  hideBtn.className = 'eb-help-hide';
+  hideBtn.textContent = t('story:help.hide');
+  head.appendChild(hideBtn);
   const tip = el('p', 'eb-help-tip', panel);
   const kicker = el('div', 'eb-help-kicker', panel);
   kicker.textContent = t('story:help.find_next');
   const mission = el('p', 'eb-help-mission', panel);
   const listEl = el('div', 'eb-help-list', panel);
-  const tab = el('div', 'eb-help-tab', wrap);
-  tab.textContent = t('story:help.tab');
+  const tab = document.createElement('button');
+  tab.type = 'button';
+  tab.className = 'eb-help-tab';
+  const isTouch =
+    /iPhone|iPod|Android.*Mobile|Windows Phone|webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent) ||
+    window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  tab.textContent = t(isTouch ? 'story:help.tab_touch' : 'story:help.tab');
+  wrap.appendChild(tab);
 
   const tips = list('story:help.tips');
   const hints = list('story:help.hints');
@@ -152,8 +163,11 @@ export function startHelp(root: HTMLElement): void {
     pulseTimer = window.setTimeout(() => wrap.classList.remove('live'), PULSE_MS);
   }, 1000);
 
-  // H toggles the box at any time; tapping the header or collapsed tab also toggles on touch screens.
-  head.addEventListener('click', () => setOpen(!open));
+  // H toggles the box at any time; the Hide button and collapsed tab toggle it with a click or tap.
+  hideBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setOpen(false);
+  });
   tab.addEventListener('click', () => setOpen(true));
   addEventListener('keydown', (e) => {
     if (e.repeat || e.code !== 'KeyH') return;
