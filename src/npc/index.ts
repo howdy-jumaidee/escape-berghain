@@ -195,6 +195,7 @@ export class Npcs {
   /** Regulars pushed aside for a conversation, so the ones that never wander can be put back. */
   private madeRoom = new Set<Npc>();
   private wasNear = false;
+  private wasTalk = false;
   private wasNearUnicorn = false;
   private talking: Npc | null = null;
   private riddleSolved = false;
@@ -1096,6 +1097,7 @@ export class Npcs {
   private announceNear(): void {
     const p = this.player;
     let near = false;
+    let talk = false;
     if (state.floor === 0 && !state.ending && !this.convo) {
       for (const npc of this.npcs) {
         const h = npc.holders[this.closestHolder(npc, p)];
@@ -1103,14 +1105,15 @@ export class Npcs {
         const d = Math.min(dHolder, npc.pos.distanceTo(p) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
         if (d < TALK_RANGE) {
           near = true;
-          break;
+          if (!AUTO_TALK.has(npc.id)) talk = true;
         }
       }
       if (!near) near = this.crowd.nearUnicorn(p.x, p.z, 0, TALK_RANGE);
     }
-    if (near !== this.wasNear) {
+    if (near !== this.wasNear || talk !== this.wasTalk) {
       this.wasNear = near;
-      bus.emit('player:near', { by: 'npc', near });
+      this.wasTalk = talk;
+      bus.emit('player:near', { by: 'npc', near, kind: talk ? 'talk' : undefined });
     }
     const uni = state.floor === 0 && this.crowd.nearUnicorn(p.x, p.z, 0, UNICORN_HEAR_RANGE);
     if (uni !== this.wasNearUnicorn) {

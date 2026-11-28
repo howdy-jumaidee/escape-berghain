@@ -157,6 +157,11 @@
   ],
   "talk_hint": "Space to continue. Esc to leave.",
   "view_hint": "V to change view",
+  "interact": {
+    "key": "Space",
+    "talk": "Talk",
+    "grab": "Grab"
+  },
   "talk_outcomes": {
     "sober": "Your head clears a little.",
     "trip_up": "That was not water. The floor starts breathing.",

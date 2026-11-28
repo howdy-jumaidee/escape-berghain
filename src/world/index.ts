@@ -380,7 +380,7 @@ export class World {
     }
     if (near !== this.wasNear) {
       this.wasNear = near;
-      bus.emit('player:near', { by: 'world', near });
+      bus.emit('player:near', { by: 'world', near, kind: near ? 'grab' : undefined });
     }
   }
 

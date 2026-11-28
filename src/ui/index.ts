@@ -251,6 +251,20 @@ export function startUi(): void {
     if (e.code === 'KeyV' && state.started) hideViewHint();
   });
 
+  // Interact prompt: a discreet glass keycap row, bottom centre. "Talk" for an optional NPC, "Grab" for a pickup.
+  const prompt = el('div', 'eb-prompt', root);
+  el('kbd', '', prompt).textContent = t('story:interact.key');
+  const promptLabel = el('span', '', prompt);
+  promptLabel.textContent = t('story:interact.grab');
+  let npcTalk = false;
+  let worldGrab = false;
+  bus.on('player:near', ({ by, near, kind }) => {
+    if (by === 'npc') npcTalk = near && kind === 'talk';
+    else worldGrab = near && kind === 'grab';
+    promptLabel.textContent = t(npcTalk ? 'story:interact.talk' : 'story:interact.grab');
+    prompt.classList.toggle('on', npcTalk || worldGrab);
+  });
+
   // Pass out: let the horse buckle & ragdoll on the floor before fading to black.
   // Keep it black on the 3rd pass-out while the herd ending fades in.
   const fade = el('div', 'eb-fade', root);
