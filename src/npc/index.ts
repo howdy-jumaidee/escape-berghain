@@ -10,6 +10,8 @@ import { animateCharacter, bindRig, type DanceArchetype } from './motion';
 import { SpecialCreatures } from './specials';
 
 const TALK_RANGE = 2.4;
+/** How close a unicorn has to be before audio plays its shimmer. */
+const UNICORN_HEAR_RANGE = 6;
 const WALK_AWAY = 4.5;
 const HERD_STOMPS = 4;
 const SELFIE_RANGE = 3.4;
@@ -155,6 +157,9 @@ export class Npcs {
   private specials = new SpecialCreatures();
   private npcs: Npc[] = [];
   private player = new THREE.Vector3();
+  private nearCheck = 0;
+  private wasNear = false;
+  private wasNearUnicorn = false;
   private talking: Npc | null = null;
   private riddleSolved = false;
   private riddleMateSpawned = false;
@@ -245,10 +250,7 @@ export class Npcs {
         this.endConvo(false);
       }
     });
-    window.addEventListener('eb:choice-picked', (ev) => {
-      const detail = (ev as CustomEvent<{ npc: NpcId; choiceId: string; index: number }>).detail;
-      if (detail) this.handleChoicePicked(detail.npc, detail.choiceId, detail.index);
-    });
+    bus.on('npc:choice-picked', ({ npc, choiceId, index }) => this.handleChoicePicked(npc, choiceId, index));
     bus.on('player:grab', ({ x, z }) => this.talk(new THREE.Vector3(x, 0, z)));
     bus.on('player:stomp', ({ x, z, time }) => this.stomp(x, z, time));
     bus.on('beat', ({ n, time }) => {
@@ -357,6 +359,11 @@ export class Npcs {
 
   update(dt: number): void {
     this.t += dt;
+    this.nearCheck -= dt;
+    if (this.nearCheck <= 0) {
+      this.nearCheck = 0.2;
+      this.announceNear();
+    }
     this.updateGuide(dt);
     this.checkSelfie();
     this.mop(dt);
@@ -831,7 +838,10 @@ export class Npcs {
       if (choices.length) {
         const first = !this.heard.has(npc.id);
         this.heard.add(npc.id);
-        const keys = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        const tier = this.fragmentTier(npc.id);
+        const base = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        // Repeat visits swap the last intro line for the fragment-tier lines, if the NPC has them.
+        const keys = tier.length ? (first ? [...base, ...tier] : tier) : base;
         return {
           keys,
           keepFocus: true,
@@ -851,8 +861,16 @@ export class Npcs {
         if (state.fragments.includes(4)) return { keys: ['empty'] };
         // Ticket in, jacket out, keys in the pocket.
         return { keys: ['jacket'], after: () => bus.emit('fragment:claim', { id: 4 }) };
-      default:
+      default: {
+        // Optional `by_fragments` in content: lines keyed by the fewest fragments needed. Repeat visits get only these.
+        const tier = this.fragmentTier(npc.id);
+        if (tier.length) {
+          const first = !this.heard.has(npc.id);
+          this.heard.add(npc.id);
+          return { keys: first ? [...full, ...tier] : tier };
+        }
         return { keys: once(full.length ? full : ['lines.0']) };
+      }
     }
   }
 
@@ -874,7 +892,7 @@ export class Npcs {
       id: c.id,
       textKey: `npcs:${npc.id}.choices.${i}.text` as TextKey,
     }));
-    window.dispatchEvent(new CustomEvent('eb:choices', { detail: { npc: npc.id, choices } }));
+    bus.emit('npc:choices', { npc: npc.id, choices });
   }
 
   private handleChoicePicked(npcId: NpcId, choiceId: string, index: number): void {
@@ -942,6 +960,43 @@ export class Npcs {
     unlock('talk');
     bus.emit('npc:unfocus', {});
     bus.emit('npc:silent', {});
+  }
+
+  /** Tell the bus when a talkable NPC or a unicorn comes into or leaves range. Only sends on change. */
+  private announceNear(): void {
+    const p = this.player;
+    let near = false;
+    if (state.floor === 0 && !state.ending && !this.convo) {
+      for (const npc of this.npcs) {
+        const h = npc.holders[this.closestHolder(npc, p)];
+        const dHolder = h ? Math.hypot(h.position.x - p.x, h.position.z - p.z) : npc.pos.distanceTo(p);
+        const d = Math.min(dHolder, npc.pos.distanceTo(p) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
+        if (d < TALK_RANGE) {
+          near = true;
+          break;
+        }
+      }
+      if (!near) near = this.crowd.nearUnicorn(p.x, p.z, 0, TALK_RANGE);
+    }
+    if (near !== this.wasNear) {
+      this.wasNear = near;
+      bus.emit('player:near', { by: 'npc', near });
+    }
+    const uni = state.floor === 0 && this.crowd.nearUnicorn(p.x, p.z, 0, UNICORN_HEAR_RANGE);
+    if (uni !== this.wasNearUnicorn) {
+      this.wasNearUnicorn = uni;
+      bus.emit('unicorn:near', { near: uni });
+    }
+  }
+
+  /** Keys for the highest `by_fragments` tier the player has reached, or none. */
+  private fragmentTier(id: NpcId): string[] {
+    const tiers = npcText[id]?.by_fragments as Record<string, string[]> | undefined;
+    if (!tiers) return [];
+    const have = state.fragments.length;
+    const min = Object.keys(tiers).map(Number).filter((n) => n <= have).sort((a, b) => b - a)[0];
+    if (min === undefined) return [];
+    return tiers[String(min)].map((_, i) => `by_fragments.${min}.${i}`);
   }
 
   private sayLine(): void {
