@@ -86,7 +86,11 @@ export function startGame(): void {
   bus.on('door:refused', () => bus.emit('ui:say', { key: 'story:door', seconds: 3 }));
   // Playtest flags.
   if (debug.trip !== null && Number.isFinite(debug.trip)) state.trip = Math.max(0, Math.min(99, debug.trip));
-  bus.on('intro:land', () => debug.fragments.forEach((id) => found(id)));
+  bus.on('intro:land', () => {
+    debug.fragments.forEach((id) => found(id));
+    // No HUD. One line, then it goes. The title already said the goal; this is step one.
+    if (state.fragments.length === 0) bus.emit('ui:say', { key: 'story:spirit_guide.first', seconds: 6 });
+  });
 
   if (level.markers.dj_booth) startDjBooth(level.markers.dj_booth);
 
