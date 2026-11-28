@@ -67,6 +67,7 @@ export class World {
   private iceCreamAt = -99;
   private t = 0;
   private player = new THREE.Vector3();
+  private wasNear = false;
   private beam: THREE.Mesh | null = null;
   private patrols: Patrols;
   private playTime = debug.time;
@@ -144,6 +145,10 @@ export class World {
     });
 
     bus.on('player:moved', ({ x, z }) => this.player.set(x, 0, z));
+    // Fragment pickups all lie on the ground floor (floor 0).
+    bus.on('game:start', () => {
+      for (const pu of this.pickups) this.announceSpot(pu);
+    });
     bus.on('player:grab', ({ x, z }) => this.grab(x, z));
     bus.on('player:respawn', ({ zone }) => {
       if (state.floor !== 0) {
@@ -215,6 +220,7 @@ export class World {
   update(dt: number, cameraPos: THREE.Vector3, useCutaway = false): void {
     this.t += dt;
     const p = this.player;
+    this.announceNear();
 
     // Zones. Upstairs in the Panorama room the zone is panorama_bar (warm mix), anywhere else on
     // floor 1 the hall zone below still applies.
@@ -340,6 +346,28 @@ export class World {
     this.pickups.push({ ...base, object, baseY, hinted: false });
   }
 
+  private announceSpot(pu: Pickup): void {
+    if (pu.kind !== 'fragment' || !pu.fragment) return;
+    bus.emit('fragment:spot', { id: pu.fragment, x: pu.object.position.x, z: pu.object.position.z, floor: 0 });
+  }
+
+  /** Tell the bus when a pickup comes into or leaves grab range. Only sends on change. */
+  private announceNear(): void {
+    let near = false;
+    if (state.floor === 0 && !state.ending) {
+      for (const pu of this.pickups) {
+        if (Math.hypot(pu.object.position.x - this.player.x, pu.object.position.z - this.player.z) < GRAB_RANGE) {
+          near = true;
+          break;
+        }
+      }
+    }
+    if (near !== this.wasNear) {
+      this.wasNear = near;
+      bus.emit('player:near', { by: 'world', near });
+    }
+  }
+
   private grab(x: number, z: number): void {
     if (state.ending || state.floor !== 0) return;
     const here = new THREE.Vector3(x, 0, z);
@@ -380,6 +408,7 @@ export class World {
       this.resolve(pos, 0.4);
       best.object.position.x = pos.x;
       best.object.position.z = pos.z;
+      this.announceSpot(best);
       return;
     }
 

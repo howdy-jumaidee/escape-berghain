@@ -230,6 +230,17 @@ export interface GameEvents {
   'crowd:cheer': Record<string, never>;
   /** You bumped into a dancer. */
   'crowd:bump': Record<string, never>;
+
+  /** Where an uncollected fragment pickup lies. The world sends it on game:start and whenever one moves (the glasses slip). */
+  'fragment:spot': { id: FragmentId; x: number; z: number; floor: number };
+  /** A rare unicorn came within ~6 m of the player (near: true) or left that range (near: false). Sent by npc on change. */
+  'unicorn:near': { near: boolean };
+  /** Something you can Space is in range (near: true) or no longer is. `by` says which system, so two sources don't fight. */
+  'player:near': { by: 'npc' | 'world'; near: boolean };
+  /** An NPC offers talk-back choices. The UI shows them as 1/2/3 and answers with npc:choice-picked. */
+  'npc:choices': { npc: NpcId; choices: { id: string; textKey: TextKey }[] };
+  /** The player picked a talk-back choice. */
+  'npc:choice-picked': { npc: NpcId; choiceId: string; index: number };
 }
 
 type Handler<T> = (payload: T) => void;
