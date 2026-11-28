@@ -76,7 +76,7 @@ Only after Gate 4 is safe. Each one is an issue for one model, in its own folder
 
 - [x] **Different views.** V cycles follow and eyes. Top down is gone (#87)
 - [x] **Multiple floors.** The 9 m galleries are walkable with dancers (#85) and Panorama Bar sits on the 9 m south gallery (#101)
-- [x] **Vice City dark club cast, rare unicorns & Berghain haze.** Real shirtless/leather Vice City NPCs and crowd, horses/donkeys/rare unicorns with Space clarity blessing, fog-machine smoke clouds, hoof stomp shockwave, and comedy dialogue pass (#102, #105)
+- [x] **Berliner dark club cast, rare unicorns & Berghain haze.** Real shirtless/leather Berliner NPCs and crowd, horses/donkeys/rare unicorns with Space clarity blessing, fog-machine smoke clouds, hoof stomp shockwave, and comedy dialogue pass (#102, #105)
 - [x] **Interactive talk-back NPCs, rare creatures, GPU crowd & live DJs.** Talk-back choices with real gameplay help (`friday_guy`, `bartender_bear`, `philosopher`, `leather_daddy`, `drag_oracle`), Lemur/Chimp/Panda/Ghoul sightings, 11-bone NPC techno dance + GPU vertex-shader crowd, horse ragdoll collapse on loss, brutalist concrete textures, overcrowded toilets, and 4 live DJs
 - [ ] **Custom donkey & unicorn 3D assets.** Swap procedural equine heads for downloaded donkey and unicorn models once dropped in `~/Downloads`
 - [ ] **Spatial sound cues ("follow your ears").** Faint shimmering ping when within ~12 m of an uncollected memory fragment and a crystalline shimmer when passing a rare unicorn
