@@ -258,7 +258,13 @@ export function startUi(): void {
   promptLabel.textContent = t('story:interact.grab');
   let npcTalk = false;
   let worldGrab = false;
+  const hidePrompt = () => {
+    npcTalk = false;
+    worldGrab = false;
+    prompt.classList.remove('on');
+  };
   bus.on('player:near', ({ by, near, kind }) => {
+    if (!state.started || state.ending) return hidePrompt();
     if (by === 'npc') npcTalk = near && kind === 'talk';
     else worldGrab = near && kind === 'grab';
     promptLabel.textContent = t(npcTalk ? 'story:interact.talk' : 'story:interact.grab');
@@ -275,6 +281,7 @@ export function startUi(): void {
     closeRiddle();
     closeChoice(false);
     resetConversationUi();
+    hidePrompt();
     lock('fade');
     clearTimeout(fadeDelayTimer);
     clearTimeout(fadeTimer);
@@ -319,6 +326,7 @@ export function startUi(): void {
     closeRiddle();
     closeChoice(false);
     resetConversationUi();
+    hidePrompt();
     lock('van');
     clearTimeout(vanDelayTimer);
     clearTimeout(vanTimer);
@@ -359,6 +367,7 @@ export function startUi(): void {
     closeRiddle();
     closeChoice(false);
     resetConversationUi();
+    hidePrompt();
     hideViewHint();
     showEnd(end, ending);
   });
