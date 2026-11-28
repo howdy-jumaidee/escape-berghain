@@ -162,71 +162,71 @@ export function buildScene(): Look {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x020305);
   // Thick, dark Berghain smoke haze: distant concrete and pillars dissolve into heavy gloom.
-  scene.fog = new THREE.FogExp2(0x07090f, 0.0215);
+  scene.fog = new THREE.FogExp2(0x04060a, 0.034); // darker and thicker: harder to read the hall
 
   // Very low brutalist base fill so shadows stay deep while close silhouettes and textures still read.
-  scene.add(new THREE.AmbientLight(0x131722, 0.25));
-  scene.add(new THREE.HemisphereLight(0x2a364c, 0x050608, 0.36));
+  scene.add(new THREE.AmbientLight(0x131722, 0.1));
+  scene.add(new THREE.HemisphereLight(0x2a364c, 0x050608, 0.2));
 
   // Faint 06:12 Berlin pre-dawn seepage from the high north-west glass blocks.
-  const nwDaylight = new THREE.DirectionalLight(0x7c98be, 0.32);
+  const nwDaylight = new THREE.DirectionalLight(0x7c98be, 0.18);
   nwDaylight.position.set(-24, 32, -20);
   nwDaylight.target.position.set(36, 4, 30);
   scene.add(nwDaylight, nwDaylight.target);
 
   // Dim upward cool bounce so 19 m coal hoppers and flared concrete capitals loom out of the smoke.
-  const ceilingBounce = new THREE.DirectionalLight(0x30425c, 0.2);
+  const ceilingBounce = new THREE.DirectionalLight(0x30425c, 0.12);
   ceilingBounce.position.set(36, -6, 36);
   ceilingBounce.target.position.set(36, CEILING, 26);
   scene.add(ceilingBounce, ceilingBounce.target);
 
   // Subtle cold spotlights raking down from the high window bays through the dark haze.
-  const westWindowSpot = new THREE.SpotLight(0xa8c4e8, 720, 95, Math.PI / 5.4, 0.72, 1.6);
+  const westWindowSpot = new THREE.SpotLight(0xa8c4e8, 480, 95, Math.PI / 5.4, 0.72, 1.6);
   westWindowSpot.position.set(7.2, 15.5, 32);
   westWindowSpot.target.position.set(30, 0, 34);
   scene.add(westWindowSpot, westWindowSpot.target);
 
-  const northWindowSpot = new THREE.SpotLight(0x9cb8df, 650, 90, Math.PI / 5.4, 0.72, 1.6);
+  const northWindowSpot = new THREE.SpotLight(0x9cb8df, 420, 90, Math.PI / 5.4, 0.72, 1.6);
   northWindowSpot.position.set(28, 15.5, 7.2);
   northWindowSpot.target.position.set(34, 0, 30);
   scene.add(northWindowSpot, northWindowSpot.target);
 
   // Dim architectural uplights grazing the 9 m catwalk underside and 19 m coal hoppers.
-  const uplightWest = new THREE.SpotLight(0x6480aa, 480, 56, Math.PI / 2.5, 0.88, 1.5);
+  const uplightWest = new THREE.SpotLight(0x6480aa, 300, 56, Math.PI / 2.5, 0.88, 1.5);
   uplightWest.position.set(21, 5.2, 27);
   uplightWest.target.position.set(24, CEILING, 24);
   scene.add(uplightWest, uplightWest.target);
 
-  const uplightEast = new THREE.SpotLight(0x5a749e, 480, 56, Math.PI / 2.5, 0.88, 1.5);
+  const uplightEast = new THREE.SpotLight(0x5a749e, 300, 56, Math.PI / 2.5, 0.88, 1.5);
   uplightEast.position.set(45, 5.2, 33);
   uplightEast.target.position.set(42, CEILING, 30);
   scene.add(uplightEast, uplightEast.target);
 
   // Red and deep-violet strobes near the DJ booth (pulsed hard on the beat by game-boot).
   const strobes = [0xff1744, 0x8e24ff].map((c, i) => {
-    const l = new THREE.PointLight(c, 820, 78, 1.55);
+    const l = new THREE.PointLight(c, 640, 78, 1.55);
     l.position.set((i === 0 ? 15 : 31) * S, 10.5, 11.5 * S);
     scene.add(l);
     return l;
   });
 
   // Bar: smoky dirty amber.
-  const bar = new THREE.PointLight(0xff7e2e, 560, 40, 1.6);
+  const bar = new THREE.PointLight(0xff7e2e, 380, 40, 1.6);
   bar.position.set(54 * S, 4.5, 9 * S);
   scene.add(bar);
 
   // Toilet corridor: sick green fluorescent flicker (intensity driven by game-boot).
-  const flicker = new THREE.PointLight(0x9affbe, 360, 34, 1.5);
+  const flicker = new THREE.PointLight(0x9affbe, 240, 34, 1.5);
   flicker.position.set(54 * S, 3.6, 28 * S);
   scene.add(flicker);
 
   // Panorama Bar: hazy rose-magenta.
-  const pano = new THREE.PointLight(0xff3e92, 740, 54, 1.6);
+  const pano = new THREE.PointLight(0xff3e92, 520, 54, 1.6);
   pano.position.set(22 * S, 5.5, 43 * S);
   scene.add(pano);
 
   // Back exit: green exit sign, morning light leaking under the door.
-  const exit = new THREE.PointLight(0x22ff66, 420, 32, 1.55);
+  const exit = new THREE.PointLight(0x22ff66, 300, 32, 1.55);
   exit.position.set(62 * S, 3.4, 46 * S);
   scene.add(exit);
   const sign = new THREE.Mesh(
@@ -349,12 +349,12 @@ export function buildScene(): Look {
   }
   const smokePlumes: SmokePlume[] = [];
   const smokeTints = [0x1c2230, 0x261a2c, 0x2a1822, 0x1a202c];
-  for (let i = 0; i < 38; i++) {
+  for (let i = 0; i < 46; i++) {
     const isMain = i < 28;
     const bx = isMain ? 10 + smokeRng() * 52 : 12 + smokeRng() * 76;
     const bz = isMain ? 10 + smokeRng() * 40 : 12 + smokeRng() * 58;
     const by = i % 5 === 0 ? 9.5 + smokeRng() * 3.5 : 1.5 + smokeRng() * 4.2;
-    const baseOpacity = 0.08 + smokeRng() * 0.085;
+    const baseOpacity = 0.13 + smokeRng() * 0.12;
     const mat = new THREE.SpriteMaterial({
       map: smokeTex,
       color: smokeTints[i % smokeTints.length],
@@ -365,7 +365,7 @@ export function buildScene(): Look {
       fog: true,
     });
     const sprite = new THREE.Sprite(mat);
-    const scale = 11 + smokeRng() * 11;
+    const scale = 13 + smokeRng() * 13;
     sprite.scale.set(scale * 1.45, scale * 0.75, 1);
     sprite.position.set(bx, by, bz);
     sprite.renderOrder = 1;
