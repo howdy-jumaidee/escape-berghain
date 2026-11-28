@@ -291,6 +291,8 @@ export class Horse {
     } else if (this.stompRing.visible) {
       this.stompRing.visible = false;
     }
+    // Squash on stomp, recovers as stomp decays.
+    this.rig.scale.set(1 + this.stomp * 0.07, 1 - this.stomp * 0.14, 1 + this.stomp * 0.07);
     this.look = Math.max(0, this.look - dt * 0.8);
     this.rig.rotation.z = this.sway;
     this.rig.rotation.x = this.pitch * 0.2 - this.stomp * 0.15;
