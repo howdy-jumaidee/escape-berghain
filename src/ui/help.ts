@@ -1,7 +1,7 @@
 // The glass help box: a small frosted-glass panel, top left. Teaches the basics right after
-// the intro lands, then keeps the mission and the five memories in view, quietly.
+// the intro lands, then keeps one next-memory hint and the five memories in view, quietly.
 // All player-facing words come from content/story.json under `help`.
-import { bus, state } from '../contracts';
+import { bus, state, type FragmentId } from '../contracts';
 import { t, list } from './text';
 
 const TIP_MS = 6000;
@@ -9,6 +9,10 @@ const FLASH_MS = 4000;
 const PULSE_MS = 3000;
 const REMIND_AFTER_MS = 90000;
 const STORE_KEY = 'eb-help-open';
+
+// Fragment Mono includes both (U+2713 CHECK MARK, U+25CB WHITE CIRCLE), so the list can use them directly.
+const MARK_FOUND = '\u2713';
+const MARK_OPEN = '\u25CB';
 
 /** The open/closed choice lives in localStorage. Private mode can throw, so wrap it. */
 function readStoredOpen(): boolean {
@@ -30,24 +34,30 @@ function storeOpen(open: boolean): void {
 export function startHelp(root: HTMLElement): void {
   const wrap = el('div', 'eb-help off', root);
   const panel = el('div', 'eb-help-panel', wrap);
-  const label = el('div', 'eb-help-label', panel);
+  const head = el('div', 'eb-help-head', panel);
+  const label = el('div', 'eb-help-label', head);
+  const count = el('div', 'eb-help-count', head);
   const tip = el('p', 'eb-help-tip', panel);
+  const kicker = el('div', 'eb-help-kicker', panel);
+  kicker.textContent = t('story:help.find_next');
   const mission = el('p', 'eb-help-mission', panel);
   const listEl = el('div', 'eb-help-list', panel);
-  const hint = el('p', 'eb-help-hint', panel);
   const tab = el('div', 'eb-help-tab', wrap);
   tab.textContent = t('story:help.tab');
 
   const tips = list('story:help.tips');
   const hints = list('story:help.hints');
-  const nexts = list('story:help.next');
+  const foundTag = t('story:help.found');
+  const recoveredWord = t('story:help.recovered');
   // Checklist rows in order; row i is fragment i + 1.
   const rows = list('story:help.memories').map((name) => {
     const row = el('div', 'eb-help-item', listEl);
-    el('span', 'tick', row).textContent = '✓';
-    el('span', '', row).textContent = name;
-    return row;
+    const mark = el('span', 'tick', row);
+    const nameEl = el('span', 'name', row);
+    nameEl.textContent = name;
+    return { row, mark, nameEl, name };
   });
+  const total = rows.length;
 
   let open = readStoredOpen();
   let tipsActive = false;
@@ -57,17 +67,21 @@ export function startHelp(root: HTMLElement): void {
   let pulseTimer = 0;
   let lastFoundAt = 0;
 
-  const allFound = () =>
-    state.finale || state.fragments.length >= 5 || (rows.length > 0 && rows.every((r) => r.classList.contains('done')));
+  const allFound = () => state.finale || (total > 0 && state.fragments.length >= total);
 
-  /** The mission line is always the one next step: the first memory not ticked yet. */
-  const paintMission = () => {
-    if (allFound()) {
-      mission.textContent = t('story:help.mission_done');
-      return;
-    }
-    const next = rows.findIndex((r) => !r.classList.contains('done'));
-    mission.textContent = nexts[next] ?? t('story:help.mission');
+  /** Header count, one hint for the first memory still missing, and a mark on every row. */
+  const paint = () => {
+    const found = new Set(state.fragments);
+    let next = -1;
+    rows.forEach((r, i) => {
+      const isFound = found.has((i + 1) as FragmentId);
+      r.row.classList.toggle('done', isFound);
+      r.mark.textContent = isFound ? MARK_FOUND : MARK_OPEN;
+      r.nameEl.textContent = isFound ? `${r.name} ${foundTag}` : r.name;
+      if (!isFound && next < 0) next = i;
+    });
+    count.textContent = `${Math.min(state.fragments.length, total)} / ${total} ${recoveredWord}`;
+    mission.textContent = next < 0 || allFound() ? t('story:help.mission_done') : (hints[next] ?? t('story:help.mission'));
   };
 
   const setOpen = (v: boolean) => {
@@ -76,6 +90,7 @@ export function startHelp(root: HTMLElement): void {
     storeOpen(v);
   };
   setOpen(open);
+  paint();
 
   /** Tips done: switch the box to the standing mission view. */
   const toMission = () => {
@@ -83,7 +98,7 @@ export function startHelp(root: HTMLElement): void {
     window.clearTimeout(tipTimer);
     wrap.classList.remove('tips');
     label.textContent = t('story:help.label_mission');
-    paintMission();
+    paint();
     wrap.classList.remove('live');
   };
 
@@ -106,11 +121,9 @@ export function startHelp(root: HTMLElement): void {
     showTip(0);
   });
 
-  bus.on('fragment:found', ({ id }) => {
+  bus.on('fragment:found', () => {
     lastFoundAt = performance.now();
-    hint.classList.remove('on');
-    rows[id - 1]?.classList.add('done');
-    paintMission();
+    paint();
     wrap.classList.add('live');
     window.clearTimeout(flashTimer);
     flashTimer = window.setTimeout(() => {
@@ -118,7 +131,7 @@ export function startHelp(root: HTMLElement): void {
     }, FLASH_MS);
   });
 
-  bus.on('game:finale', () => paintMission());
+  bus.on('game:finale', () => paint());
 
   bus.on('ending:show', () => {
     ended = true;
@@ -128,15 +141,12 @@ export function startHelp(root: HTMLElement): void {
     window.clearTimeout(pulseTimer);
   });
 
-  // Reminder: nothing found for a while. Pulse the box and hint the next memory.
+  // Reminder: nothing found for a while. Pulse the box so the one FIND NEXT line gets another look.
   window.setInterval(() => {
     if (ended || !open || tipsActive || state.ending || root.classList.contains('talking')) return;
     if (performance.now() - lastFoundAt < REMIND_AFTER_MS) return;
-    const next = rows.findIndex((r) => !r.classList.contains('done'));
-    if (next < 0) return;
+    if (allFound()) return;
     lastFoundAt = performance.now();
-    hint.textContent = hints[next] ?? '';
-    hint.classList.add('on');
     wrap.classList.add('live');
     window.clearTimeout(pulseTimer);
     pulseTimer = window.setTimeout(() => wrap.classList.remove('live'), PULSE_MS);
