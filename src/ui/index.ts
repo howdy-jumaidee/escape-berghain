@@ -6,6 +6,7 @@ import { debug } from '../data';
 import { css } from './style';
 import { t, list, lookup } from './text';
 import { playIntro } from './intro';
+import { startHelp } from './help';
 
 export function startUi(): void {
   const style = document.createElement('style');
@@ -223,6 +224,9 @@ export function startUi(): void {
     }
   });
 
+  // Glass help box: tips after landing, then the mission and the five memories.
+  startHelp(root);
+
   // View toggle hint: slowly fades in 2.8 s after landing, holds 9 s, then fades out (or immediately on V).
   const viewHint = el('div', 'eb-view-hint', root);
   viewHint.textContent = t('story:view_hint');
@@ -245,6 +249,20 @@ export function startUi(): void {
   });
   addEventListener('keydown', (e) => {
     if (e.code === 'KeyV' && state.started) hideViewHint();
+  });
+
+  // Interact prompt: a discreet glass keycap row, bottom centre. "Talk" for an optional NPC, "Grab" for a pickup.
+  const prompt = el('div', 'eb-prompt', root);
+  el('kbd', '', prompt).textContent = t('story:interact.key');
+  const promptLabel = el('span', '', prompt);
+  promptLabel.textContent = t('story:interact.grab');
+  let npcTalk = false;
+  let worldGrab = false;
+  bus.on('player:near', ({ by, near, kind }) => {
+    if (by === 'npc') npcTalk = near && kind === 'talk';
+    else worldGrab = near && kind === 'grab';
+    promptLabel.textContent = t(npcTalk ? 'story:interact.talk' : 'story:interact.grab');
+    prompt.classList.toggle('on', npcTalk || worldGrab);
   });
 
   // Pass out: let the horse buckle & ragdoll on the floor before fading to black.

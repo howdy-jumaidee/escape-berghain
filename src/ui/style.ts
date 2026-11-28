@@ -74,6 +74,52 @@ export const css = /* css */ `
   color: var(--text-3); text-shadow: var(--legible); opacity: 0; transition: opacity 2.2s ease; }
 .eb-view-hint.on { opacity: 1; }
 
+/* Interact prompt: a small frosted-glass keycap row, bottom centre. Fade in fast, out slow. */
+.eb-prompt { position: absolute; left: 50%; bottom: var(--s-6); transform: translateX(-50%); display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3); border-radius: 6px; background: rgba(20, 20, 24, 0.38); border: 1px solid rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2);
+  opacity: 0; transition: opacity 0.25s ease-out; z-index: 4; }
+.eb-prompt.on { opacity: 1; transition-duration: 0.15s; }
+.eb-ui.talking .eb-prompt { display: none; }
+.eb-prompt kbd { border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; font: 400 var(--t-xs)/1.4 var(--mono); color: var(--text-1); }
+.eb-prompt span { font: 400 var(--t-sm)/var(--lh-tight) var(--mono); color: var(--text-2); }
+
+/* Help box: one small, quiet frosted-glass panel, top left (200 px, all text at the 12 px minimum). Dim when idle, full when it has news.
+   Off on the title (until intro:land), hidden in face to face talks and endings. */
+.eb-help { position: absolute; left: var(--s-4); top: var(--s-4); width: 200px;
+  max-width: calc(100vw - 2 * var(--s-4)); z-index: 3; }
+.eb-help.off { display: none; }
+.eb-ui.talking .eb-help { display: none; }
+.eb-help-panel { background: rgba(20, 20, 24, 0.38); border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px; padding: var(--s-2) var(--s-3); opacity: 0.45; transition: opacity 0.6s;
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
+.eb-help.live .eb-help-panel { opacity: 1; }
+.eb-help.closed .eb-help-panel { display: none; }
+.eb-help-label { margin-bottom: var(--s-1); font: 400 var(--t-xs)/var(--lh-tight) var(--mono);
+  letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-3); text-shadow: var(--legible); }
+.eb-help-tip, .eb-help-mission { margin: 0; font: 400 var(--t-xs)/1.4 var(--mono);
+  color: var(--text-2); text-shadow: var(--legible); }
+.eb-help-mission { margin-bottom: var(--s-1); color: var(--text-2); }
+.eb-help-list { display: grid; gap: 0; }
+.eb-help-item { display: flex; gap: var(--s-1); font: 400 var(--t-xs)/1.45 var(--mono);
+  color: var(--text-2); text-shadow: var(--legible); }
+.eb-help-item .tick { visibility: hidden; }
+.eb-help-item.done { color: var(--text-1); }
+.eb-help-item.done .tick { visibility: visible; }
+.eb-help-hint { display: none; margin: var(--s-1) 0 0; font: 400 var(--t-xs)/var(--lh-body) var(--mono);
+  color: var(--text-3); text-shadow: var(--legible); }
+.eb-help-hint.on { display: block; }
+.eb-help.tips .eb-help-mission, .eb-help.tips .eb-help-list, .eb-help.tips .eb-help-hint { display: none; }
+.eb-help:not(.tips) .eb-help-tip { display: none; }
+/* Closed: only a tiny tab in the same corner. */
+.eb-help-tab { display: none; padding: var(--s-1) var(--s-2); background: rgba(20, 20, 24, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 6px;
+  font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-3); text-shadow: var(--legible);
+  opacity: 0.55; transition: opacity 0.6s;
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
+.eb-help.closed .eb-help-tab { display: inline-block; }
+.eb-help.live .eb-help-tab { opacity: 1; }
+
 /* Dialogue in passing: a name and a line, bottom left. */
 .eb-talk { position: absolute; left: var(--s-6); bottom: var(--s-6); max-width: min(520px, calc(100vw - 2 * var(--s-4)));
   opacity: 0; transition: opacity 0.2s; text-shadow: var(--legible); }
@@ -151,7 +197,8 @@ export const css = /* css */ `
 /* Security: the screen edges go red while a torch is on you. No text. */
 .eb-seen { position: absolute; inset: 0; opacity: 0; transition: opacity 0.15s; box-shadow: inset 0 0 140px 30px rgba(255, 42, 26, 0.55); }
 
-.eb-van { position: absolute; inset: 0; background: #000; display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 0.35s; }
+/* Full-screen story cards sit above the help box (z 3) and captions (z 4). */
+.eb-van { position: absolute; inset: 0; z-index: 6; background: #000; display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 0.35s; }
 .eb-van.on { opacity: 1; }
 .eb-van h2 { margin: 0 0 var(--s-3); font: 400 var(--t-xl)/var(--lh-tight) var(--mono); letter-spacing: 0.15em; }
 .eb-van p { margin: var(--s-1); font: 400 var(--t-md)/var(--lh-body) var(--mono); color: var(--text-2); }

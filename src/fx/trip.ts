@@ -20,7 +20,10 @@ import {
 import { bus, state, TRIP_MAX } from '../contracts';
 import { ProximityGlowEffect } from './glow';
 
-const TRIP_PER_SECOND = 0.8; // the horse gets properly high in ~2 minutes
+// Playtests: 0.8 (blackout in ~2 min) was far too hard. Now a grace period, then a slow climb:
+// 45 s clear-headed, then 100 trip in about 8 more minutes. Mate, fragments and talk-back sober you up on top.
+const TRIP_PER_SECOND = 0.21;
+const TRIP_GRACE_SECONDS = 45;
 const FRAGMENT_RELIEF = 10;
 const MATE_RELIEF = 30;
 const MATE_SECONDS = 10;
@@ -84,6 +87,22 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `;
 
+/**
+ * Clamp negative colour channels to 0. HueSaturationEffect rotates hue with a matrix that has negative
+ * entries and only clamps the top (min(color, 1.0)). On near-black pixels a channel can go below zero,
+ * and the final sRGB encode (a pow) turns that into NaN, which the GPU draws as solid white. That was
+ * the "big white spots when it's really dark" bug: dark scene + higher trip + the hue wobble at the wrong moment.
+ */
+class NoNegativeColourEffect extends Effect {
+  constructor() {
+    super('NoNegativeColourEffect', /* glsl */ `
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  outputColor = vec4(max(inputColor.rgb, vec3(0.0)), inputColor.a);
+}
+`);
+  }
+}
+
 class TripBlurEffect extends Effect {
   constructor() {
     super('TripBlurEffect', blurShader, {
@@ -118,12 +137,16 @@ export class TripFx {
   private chroma: ChromaticAberrationEffect;
   private blur: TripBlurEffect;
   private hue: HueSaturationEffect;
+  /** Keeps the hue wobble from pushing dark pixels below zero (which renders as white). See the class above. */
+  private noNegative: NoNegativeColourEffect;
   private glow: ProximityGlowEffect;
   private camera: THREE.Camera;
   private baseCamPos = new THREE.Vector3();
   private camWobbleScale = 1;
   private hasCameraBase = false;
   private t = 0;
+  /** Seconds of free play, for the grace period at the start. */
+  private playTime = 0;
   private mateLeft = 0;
   private freezeLeft = 0;
   /** Eased version of the trip, so relief doesn't snap the screen sharp in one frame. */
@@ -173,7 +196,8 @@ export class TripFx {
     this.vignette = new VignetteEffect({ darkness: 0.62, offset: 0.32 });
     // Interaction cue rides after the vignette so its warm edge lift reads in the dark.
     this.glow = new ProximityGlowEffect();
-    this.composer.addPass(new EffectPass(camera, this.grade, this.hue, noise, this.vignette, this.glow));
+    this.noNegative = new NoNegativeColourEffect();
+    this.composer.addPass(new EffectPass(camera, this.grade, this.hue, this.noNegative, noise, this.vignette, this.glow));
     bus.on('shutters:open', () => {
       this.morning = Math.max(this.morning, 0.01);
     });
@@ -181,9 +205,9 @@ export class TripFx {
     bus.on('fragment:found', () => this.relieve(FRAGMENT_RELIEF));
     bus.on('item:consumed', ({ item }) => {
       if (item === 'bag') {
-        // Hooved: a hard trip spike plus a window where the steering gets much looser.
-        state.trip = Math.min(TRIP_MAX, state.trip + 30);
-        state.hoovedUntil = performance.now() + 20000;
+        // Hooved: a mild trip bump plus a short window where the steering gets looser.
+        state.trip = Math.min(TRIP_MAX, state.trip + 12);
+        state.hoovedUntil = performance.now() + 6000;
         bus.emit('trip:changed', { trip: state.trip });
         return;
       }
@@ -207,8 +231,10 @@ export class TripFx {
     this.t += dt;
 
     if (state.started && !state.ending && !state.inputLocked) {
+      this.playTime += dt;
       const prev = state.trip;
-      state.trip = Math.min(TRIP_MAX, state.trip + TRIP_PER_SECOND * dt);
+      const rise = this.playTime < TRIP_GRACE_SECONDS ? 0 : TRIP_PER_SECOND;
+      state.trip = Math.min(TRIP_MAX, state.trip + rise * dt);
       if (Math.floor(prev) !== Math.floor(state.trip)) bus.emit('trip:changed', { trip: state.trip });
       if (state.trip >= TRIP_MAX && prev < TRIP_MAX) bus.emit('trip:max', {});
     }

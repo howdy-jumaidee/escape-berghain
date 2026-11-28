@@ -26,8 +26,14 @@ const BACK_SPEED = 2.8;
 const TURN_SPEED = 2.4;
 const LEG_LENGTH = 0.8;
 /** Time in the club until the time-based part of the steering is fully drunk (trip makes it worse on top).
- *  Tune here: lower = gets hard faster. #67 wants first-timers through the hall in 90 s, veterans fighting for every turn. */
-const SOBER_UP_SECONDS = 35;
+ *  Tune here: lower = gets hard faster. Playtests: 35 s was far too hard, nobody got to explore the rooms.
+ *  Now the time part creeps in over 5 minutes and only adds a little; the trip does most of the work. */
+const SOBER_UP_SECONDS = 300;
+/** How much the time in the club alone can make steering drunk (0..1). The trip adds TRIP_DRUNK on top. */
+const TIME_DRUNK = 0.35;
+const TRIP_DRUNK = 0.6;
+/** No sideways lurches below this. They're the hardest part, so they wait until you're properly gone. */
+const LURCH_FROM = 0.4;
 /** A stomp within this many ms of a beat counts as clean. Same window as BeatCounter's default. */
 const ON_BEAT_MS = 150;
 const BEAT_MS = BEAT_SECONDS * 1000;
@@ -702,7 +708,7 @@ export class Horse {
     // you're in the club and the higher your trip: `drunk` goes from 0 to 1.
     if (state.started && !state.ending) this.playTime += dt;
     const hooved = performance.now() < state.hoovedUntil ? 0.3 : 0;
-    const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.7 + k * 0.7 + hooved);
+    const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * TIME_DRUNK + k * TRIP_DRUNK + hooved);
 
     // Follow and first person: W/S move, A/D steer. Drunk drift stays bounded.
     const forward = free
@@ -728,7 +734,7 @@ export class Horse {
     // Lurch: a sideways stumble now and then. None at first; more often and harder as you get drunker.
     if (free) {
       this.lurchIn -= dt;
-      if (this.lurchIn <= 0 && drunk > 0.2) {
+      if (this.lurchIn <= 0 && drunk > LURCH_FROM) {
         this.lurchIn = 0.9 + Math.random() * (3.2 - drunk * 2.1);
         const side = Math.random() < 0.5 ? -1 : 1;
         const power = drunk * 3.8;

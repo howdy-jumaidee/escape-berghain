@@ -8,14 +8,16 @@ import { placeModel } from '../look/models';
 import { resolveCircle, type BuiltLevel } from './level';
 
 const WALK = 2;
-const RUN = 3.6;
-const SIGHT = 8; // detection distance, metres. Smaller = more room to hide in the crowd (#68 balance).
+const RUN = 3.1;
+const SIGHT = 6.5; // detection distance, metres. Smaller = more room to hide in the crowd (#68 balance). Playtests: 8 was too punishing.
 /** Closing time: everyone moves faster and sees further. */
 const FINALE_SPEED = 1.5;
 const FINALE_SIGHT = 1.25;
 const SIGHT_ANGLE = 0.5; // radians either side
-const CATCH_SECONDS = 1.1;
+const CATCH_SECONDS = 2; // seconds of torchlight before you're caught. Playtests: 1.1 left no time to react.
 const GRACE = 4;
+/** No torchlight for the first 40 s after landing, so the opening minute is safe to explore. */
+const START_GRACE = 40;
 const LOOK_AROUND = 4;
 
 interface GuardRig {
@@ -74,9 +76,21 @@ export class Patrols {
       side: THREE.DoubleSide,
     });
 
+    // Guards start at the route point farthest from the player spawn, so nobody is near you when you land.
+    const spawn = this.level.spawn('main_hall');
+
     for (const r of routes) {
       const route = r.map(([c, row]) => cellCenter(c, row));
       if (!route.length) continue;
+      let start = 0;
+      let startD = -1;
+      route.forEach((pt, i) => {
+        const d = Math.hypot(pt.x - spawn.x, pt.z - spawn.z);
+        if (d > startD) {
+          startD = d;
+          start = i;
+        }
+      });
       const obj = new THREE.Group();
       const model = placeModel('npc_security', { x: 0.6, y: 1.85, z: 0.4 }, mat);
       obj.add(model);
@@ -94,13 +108,13 @@ export class Patrols {
       obj.add(beam);
       this.beamMeshes.push(beam);
 
-      obj.position.set(route[0].x, 0, route[0].z);
+      obj.position.set(route[start].x, 0, route[start].z);
       this.root.add(obj);
       this.guards.push({
         obj,
         model,
         route,
-        next: 1 % route.length,
+        next: (start + 1) % route.length,
         heading: 0,
         alert: null,
         seen: 0,
@@ -131,6 +145,14 @@ export class Patrols {
     });
     bus.on('player:respawn', () => {
       this.grace = GRACE;
+      this.guards.forEach((g) => {
+        g.seen = 0;
+        g.spotted = false;
+      });
+    });
+    // The respawn grace only fires on player:respawn; the game start needs its own, longer one.
+    bus.on('intro:land', () => {
+      this.grace = START_GRACE;
       this.guards.forEach((g) => {
         g.seen = 0;
         g.spotted = false;

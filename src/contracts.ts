@@ -238,8 +238,9 @@ export interface GameEvents {
   'fragment:spot': { id: FragmentId; x: number; z: number; floor: number };
   /** A rare unicorn came within ~6 m of the player (near: true) or left that range (near: false). Sent by npc on change. */
   'unicorn:near': { near: boolean };
-  /** Something you can Space is in range (near: true) or no longer is. `by` says which system, so two sources don't fight. */
-  'player:near': { by: 'npc' | 'world'; near: boolean };
+  /** Something you can Space is in range (near: true) or no longer is. `by` says which system, so two sources don't fight.
+   * `kind` labels the prompt: 'talk' for an optional NPC, 'grab' for a pickup. Omitted when the near thing grabs you itself. */
+  'player:near': { by: 'npc' | 'world'; near: boolean; kind?: 'talk' | 'grab' };
   /** An NPC offers talk-back choices. The UI shows them as 1/2/3 and answers with npc:choice-picked. */
   'npc:choices': { npc: NpcId; choices: { id: string; textKey: TextKey; used?: boolean }[] };
   /** The player picked a talk-back choice. */

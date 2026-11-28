@@ -79,13 +79,16 @@ Only after Gate 4 is safe. Each one is an issue for one model, in its own folder
 - [x] **Vice City dark club cast, rare unicorns & Berghain haze.** Real shirtless/leather Vice City NPCs and crowd, horses/donkeys/rare unicorns with Space clarity blessing, fog-machine smoke clouds, hoof stomp shockwave, and comedy dialogue pass (#102, #105)
 - [x] **Interactive talk-back NPCs, rare creatures, GPU crowd & live DJs.** Talk-back choices with real gameplay help (`friday_guy`, `bartender_bear`, `philosopher`, `leather_daddy`, `drag_oracle`), Lemur/Chimp/Panda/Ghoul sightings, 11-bone NPC techno dance + GPU vertex-shader crowd, horse ragdoll collapse on loss, brutalist concrete textures, overcrowded toilets, and 4 live DJs
 - [ ] **Custom donkey & unicorn 3D assets.** Swap procedural equine heads for downloaded donkey and unicorn models once dropped in `~/Downloads`
-- [ ] **Spatial sound cues ("follow your ears").** Faint shimmering ping when within ~12 m of an uncollected memory fragment and a crystalline shimmer when passing a rare unicorn
-- [ ] **Interaction proximity pulse & beat-sync stomp feedback.** Subtle visual glow when within Space grab/talk range and a brighter shockwave ring when E lands cleanly on the beat
-- [ ] **Dynamic Toilet Queue Philosopher.** Scale his lines live with how many memories you hold (`0` to `5`) so backtracking rewards repeat talks
-- [ ] **Softer first-30s steering curve for cold playtests.** Keep turning slightly crisper during the opening 30 seconds before drunk sway kicks in hard, so first-time judges learn WASD + V smoothly
-- [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out
+- [x] **Spatial sound cues ("follow your ears").** Faint shimmering ping when within ~12 m of an uncollected memory fragment and a crystalline shimmer when passing a rare unicorn (#128, #133)
+- [x] **Interaction proximity pulse & beat-sync stomp feedback.** Subtle visual glow when within Space grab/talk range and a brighter shockwave ring when E lands cleanly on the beat (#124, #132)
+- [x] **Dynamic Toilet Queue Philosopher.** Scale his lines live with how many memories you hold (`0` to `5`) so backtracking rewards repeat talks (#125)
+- [x] **Softer start for cold playtests.** 45 s trip grace, trip about 4x slower, steering ramps over 5 minutes, gentler guards, plus a glass help box with tips and a memory checklist (#160, #161)
+- [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out. In progress: Claude agent, branch `labyrinth-darkroom`
 - [ ] Convert fonts to woff2 (smaller download)
 - [ ] Mobile touch controls
+- [ ] **Save and continue.** Persist the run to localStorage (memories found, trip, story flags, zone, position), autosaved on each memory and each zone change, with a Continue button on the title screen next to Play and a small reset-save line. So people can stop and come back to explore more.
+- [ ] **Unlockable skins for the horse.** Beat an ending or find a secret to unlock a look (unicorn horn after the blessing, donkey ears, etc.), picked on the title screen and stored in the same save.
+- [ ] **DJ battle.** A beat-matching stomp-off against a live DJ at the booth: land E on the beat to take rounds, miss and the crowd boos. Survive three rounds for a secret reward or a new ending.
 
 ## Pitch (Saturday 14:00 to 16:00)
 
