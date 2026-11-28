@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Level board · Escape Berghain</title>
+<style>
+:root {
+  --bg: #121318;
+  --panel: #1c1e25;
+  --card: #262a33;
+  --line: #3a3f4b;
+  --text: #eceae4;
+  --dim: #9aa0aa;
+  --green: #5fd35a;
+  --gold: #ffd23f;
+  --cyan: #39d0ff;
+  --red: #ff4b3e;
+  --blue: #3a7dff;
+  --ink: #0c0d10;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text);
+  font: 13px/1.4 "Segoe UI", Arial, sans-serif;
+}
+button, input, select, textarea { font: inherit; color: var(--text); }
+.bar {
+  display: flex; align-items: center; gap: 18px; min-height: 48px; padding: 0 16px;
+  background: #0e0f13; border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; flex-direction: column; line-height: 1.15; }
+.brand strong { letter-spacing: 0.04em; }
+.brand span { color: var(--dim); font-size: 11px; }
+.bar nav { display: flex; gap: 12px; }
+.bar nav a { color: var(--dim); text-decoration: none; }
+.bar nav a[aria-current] { color: var(--text); }
+.actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+#status { color: var(--dim); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#status.dirty { color: var(--gold); }
+.bar button, .file {
+  background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer;
+}
+.bar button.primary { background: #1f4d2a; border-color: #2f7a40; }
+.bar button:hover, .file:hover { border-color: var(--cyan); }
+.file { display: inline-flex; align-items: center; }
+.file input { display: none; }
+.work { flex: 1; display: flex; min-height: 0; }
+#stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
+#stage:active { cursor: grabbing; }
+#graph { width: 100%; height: 100%; display: block; touch-action: none; }
+#hint { position: absolute; left: 16px; bottom: 12px; color: var(--dim); pointer-events: none; max-width: 60%; }
+#legend {
+  position: absolute; left: 16px; top: 12px; display: flex; gap: 14px; color: var(--dim);
+  background: rgba(14, 15, 19, 0.8); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; pointer-events: none;
+}
+#legend b { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+#panel { width: 340px; overflow: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 16px 16px 28px; }
+#issues {
+  min-height: 36px; padding: 8px 16px; background: #0e0f13; border-top: 1px solid var(--line);
+  color: var(--dim); display: flex; flex-wrap: wrap; gap: 8px 16px;
+}
+#issues .error { color: var(--red); }
+#issues .warn { color: var(--gold); }
+#issues .ok { color: var(--green); }
+#panel h2 { margin: 0 0 10px; font-size: 18px; }
+.kicker { color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; margin-bottom: 6px; }
+.note { color: var(--dim); margin: 0 0 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin: 0 0 10px; }
+.field span { color: var(--dim); font-size: 11px; }
+.field input, .field select, .field textarea {
+  background: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; width: 100%;
+}
+.field textarea { min-height: 64px; resize: vertical; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; }
+.block { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 0 0 10px; background: #17191f; }
+.block header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.block header .tiny { margin-left: auto; }
+.letter {
+  display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center;
+  border-radius: 4px; font-weight: 700; font-size: 11px; color: #111;
+}
+.letter.path { background: var(--red); }
+.letter.detour { background: var(--gold); }
+.letter.loss { background: var(--blue); color: #fff; }
+.buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.tiny {
+  background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px;
+}
+.tiny:hover { border-color: var(--cyan); }
+.danger { color: var(--red); }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+.pills i { font-style: normal; background: var(--card); border-radius: 999px; padding: 3px 8px; color: var(--dim); }
+.keys { color: var(--dim); margin: 0; padding-left: 18px; }
+.keys li { margin: 2px 0; }
+.node { cursor: pointer; }
+.node .body { fill: #232733; stroke: #4a5060; stroke-width: 1.4; }
+.node .band { fill: #4a5060; }
+.node.path .band { fill: var(--red); }
+.node.detour .band { fill: var(--gold); }
+.node.start .body { fill: #1a2430; stroke: var(--cyan); }
+.node.outside .body { fill: #1c2830; }
+.node.ending.win .body { fill: #1c2a1d; stroke: #3d7a40; }
+.node.ending.partial .body { fill: #2a2418; stroke: #8a6a20; }
+.node.ending.loss .body { fill: #2a1c1c; stroke: #7a3d3d; }
+.node.selected .body { stroke: var(--cyan); stroke-width: 2.4; }
+.node.drop .body { stroke: var(--green); stroke-width: 2.4; }
+.node text { fill: var(--text); pointer-events: none; }
+.node .sub, .node .exit { fill: var(--dim); }
+.node .divider { stroke: #343947; }
+.port { cursor: crosshair; }
+.port.add { fill: #0c0d10; stroke: var(--dim); stroke-dasharray: 2 2; }
+.port.add:hover { stroke: var(--cyan); }
+.edge { fill: none; cursor: pointer; }
+.edge .hit { stroke: transparent; stroke-width: 16; fill: none; }
+.edge .line { stroke-width: 2; fill: none; }
+.edge.path .line { stroke: var(--red); }
+.edge.detour .line { stroke: var(--gold); stroke-dasharray: 8 5; }
+.edge.loss .line { stroke: var(--blue); }
+.edge.start .line { stroke: var(--cyan); }
+.edge.selected .line { stroke-width: 3.6; }
+.edge.insert .line { stroke-width: 4.6; stroke-dasharray: 3 4; }
+.edge text { fill: var(--text); font-size: 12px; paint-order: stroke; stroke: #121318; stroke-width: 4; }
+.ghost-link { fill: none; stroke: var(--cyan); stroke-dasharray: 5 4; stroke-width: 2; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <strong>Escape Berghain</strong>
+    <span>Level board</span>
+  </div>
+  <nav>
+    <a href="/">Play</a>
+    <a href="/editor.html" aria-current="page">Level board</a>
+  </nav>
+  <div class="actions">
+    <span id="status"></span>
+    <button type="button" id="fit">Fit</button>
+    <button type="button" id="addRoom">Add room</button>
+    <button type="button" id="addEnding">Add ending</button>
+    <button type="button" id="revert">Reset</button>
+    <label class="file">Load<input type="file" id="upload" accept="application/json,.json"></label>
+    <button type="button" id="download">Download</button>
+    <button type="button" id="save" class="primary">Save</button>
+  </div>
+</header>
+<div class="work">
+  <div id="stage">
+    <svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="legend">
+      <span><b style="background:#ff4b3e"></b>Path</span>
+      <span><b style="background:#ffd23f"></b>D-tour</span>
+      <span><b style="background:#3a7dff"></b>Loss</span>
+      <span><b style="background:#39d0ff"></b>Start</span>
+    </div>
+    <div id="hint">Drag a room to move it. Drag a coloured dot onto a room to wire it, or onto empty grid to cut it. Drag the dashed + dot to add a D-tour. Drop a room on a wire to put it in between. Double-click the grid for a new room. Wheel zooms, drag the grid to pan.</div>
+  </div>
+  <aside id="panel"></aside>
+</div>
+<footer id="issues"></footer>
+<script>
+/* Level board.
+   D.start.to                     first room
+   D.rooms[id]                    a room. role: 'path' (the main route) or 'detour'
+   D.rooms[id].exits[]            wires out: { kind: 'path' | 'detour' | 'loss', label, to }
+   D.endings[id]                  a way the night stops. kind: 'win' | 'partial' | 'loss'
+   Save keeps it in this browser. Download writes a JSON file. The 3D game does not read it. */
+(function () {
+  const KINDS = ['path', 'detour', 'loss'];
+  const KIND_NAME = { path: 'Path', detour: 'D-tour', loss: 'Loss' };
+  const COLORS = { path: '#ff4b3e', detour: '#ffd23f', loss: '#3a7dff', start: '#39d0ff' };
+  const ZONES = ['', 'main_hall', 'bar_cloakroom', 'toilet_corridor', 'panorama_bar', 'back_exit'];
+  const NS = 'http://www.w3.org/2000/svg';
+  const KEY = 'escape-berghain-level-board';
+  const ROOM_W = 240, ROW0 = 62, ROW = 24;
+  const END = { w: 200, h: 70 };
+  const START = { w: 150, h: 54 };
+
+  const SEED = {
+    version: 1,
+    title: 'Escape Berghain',
+    action: 'Grab with your hooves. They slip.',
+    goal: 'Reach your bike by the river before you pass out.',
+    environments: {
+      club: { name: 'The club', note: 'Concrete, haze, red and purple light. The horse is small.' },
+      outside: { name: 'Outside at dawn', note: 'The queue, the street, the river. Morning light.' }
+    },
+    start: { x: 40, y: 233, to: 'dancefloor' },
+    rooms: {
+      dancefloor: {
+        x: 220, y: 200, title: 'Main dancefloor', environment: 'club', role: 'path', zone: 'main_hall',
+        happens: 'You hit the floor as a horse. The crowd does not care. Your glasses are under a speaker.',
+        grab: 'Glasses. They slip twice.',
+        assets: 'hall_floor\nhall_wall\nhall_pillar\nhall_speaker\nhall_dj_booth\nprop_glasses',
+        exits: [
+          { kind: 'path', label: 'Steel door, green sign', to: 'backdoor' },
+          { kind: 'detour', label: 'The toilet queue', to: 'toilets' },
+          { kind: 'loss', label: 'Trip hits max', to: 'passout' }
+        ]
+      },
+      toilets: {
+        x: 520, y: 400, title: 'Toilets', environment: 'club', role: 'detour', zone: 'toilet_corridor',
+        happens: 'No mirrors. The riddle horse has been here since Friday. The philosopher asks who you are.',
+        grab: 'Nothing. You answer the riddle.',
+        assets: 'toilet_cubicle\nnpc_riddle_horse\nnpc_philosopher',
+        exits: [
+          { kind: 'path', label: 'Back to the floor', to: 'dancefloor' },
+          { kind: 'detour', label: 'Right answer: shortcut', to: 'backdoor' },
+          { kind: 'loss', label: 'Security in the queue', to: 'caught' }
+        ]
+      },
+      backdoor: {
+        x: 820, y: 200, title: 'Back door', environment: 'club', role: 'detour', zone: 'back_exit',
+        happens: 'Steel door. Green exit sign. Morning light leaks under the gap.',
+        grab: 'The door handle. It slips.',
+        assets: 'exit_door\ndecal_exit_sign',
+        exits: [
+          { kind: 'path', label: 'Push it open', to: 'outside' },
+          { kind: 'detour', label: 'Heute nicht. Back in', to: 'dancefloor' }
+        ]
+      },
+      outside: {
+        x: 1120, y: 200, title: 'Outside', environment: 'outside', role: 'detour', zone: '',
+        happens: 'Dawn. The queue is still there. The river is down the street. So is a bike.',
+        grab: 'The bike, if you remember it is yours.',
+        assets: 'outside_ground\noutside_street\noutside_river\nprop_bike',
+        exits: [
+          { kind: 'path', label: 'You remember', to: 'bike' },
+          { kind: 'detour', label: 'You do not', to: 'still' }
+        ]
+      }
+    },
+    endings: {
+      bike: { x: 1420, y: 150, kind: 'win', title: 'The bike', line: 'It is yours. You ride home.' },
+      still: { x: 1420, y: 290, kind: 'partial', title: 'Still a horse', line: 'Monday light. You do not know the way home.' },
+      passout: { x: 520, y: 60, kind: 'loss', title: 'Pass out', line: 'You wake up in the toilet queue.' },
+      caught: { x: 820, y: 460, kind: 'loss', title: 'Caught', line: 'Animal control takes you back to the last checkpoint.' }
+    }
+  };
+
+  const stage = document.getElementById('stage');
+  const svg = document.getElementById('graph');
+  const panel = document.getElementById('panel');
+  const issuesEl = document.getElementById('issues');
+  const statusEl = document.getElementById('status');
+
+  let D = load() || clone(SEED);
+  let saved = JSON.stringify(D);
+  let selected = { kind: 'board' };
+  let view = { x: 24, y: 24, k: 0.8 };
+  let dragging = null, linking = null, panning = null, insertHover = null, lastGridDown = null;
+
+  function clone(v) { return JSON.parse(JSON.stringify(v)); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function el(name, attrs, text) {
+    const n = document.createElementNS(NS, name);
+    Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function clip(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  function linesOf(text) { return String(text || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean); }
+  function isDirty() { return JSON.stringify(D) !== saved; }
+  function allIds() { return Object.keys(D.rooms).concat(Object.keys(D.endings)); }
+  function slug(title) {
+    const base = String(title || 'room').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'room';
+    const taken = allIds().concat(['start']);
+    let id = base, n = 2;
+    while (taken.indexOf(id) !== -1) { id = base + '_' + n; n += 1; }
+    return id;
+  }
+  function titleOf(id) {
+    if (D.rooms[id]) return D.rooms[id].title || id;
+    if (D.endings[id]) return D.endings[id].title || id;
+    return id;
+  }
+
+  /* Accepts this board, or the older places/Go/Side/Loss board. */
+  function normalize(data) {
+    if (!data || typeof data !== 'object') return null;
+    const d = clone(data);
+    if (!d.rooms && d.places) {
+      d.rooms = {};
+      Object.keys(d.places).forEach(function (id) {
+        const p = d.places[id];
+        d.rooms[id] = Object.assign({}, p, {
+          role: 'path',
+          zone: '',
+          exits: (p.exits || []).map(function (ex, i) { return { kind: KINDS[i] || 'detour', label: ex.label || '', to: ex.to || '' }; })
+            .filter(function (ex) { return ex.to; })
+        });
+      });
+      delete d.places;
+    }
+    if (!d.rooms || !d.start) return null;
+    d.title = d.title || SEED.title;
+    d.action = d.action || '';
+    d.goal = d.goal || '';
+    d.environments = Object.assign(clone(SEED.environments), d.environments || {});
+    d.endings = d.endings || {};
+    Object.keys(d.rooms).forEach(function (id) {
+      const r = d.rooms[id];
+      r.x = Number(r.x) || 0; r.y = Number(r.y) || 0;
+      r.title = r.title || id;
+      r.environment = r.environment === 'outside' ? 'outside' : 'club';
+      r.role = r.role === 'detour' ? 'detour' : 'path';
+      r.zone = ZONES.indexOf(r.zone) === -1 ? '' : r.zone;
+      ['happens', 'grab', 'assets'].forEach(function (k) { r[k] = r[k] || ''; });
+      r.exits = (r.exits || []).map(function (ex) {
+        return { kind: KINDS.indexOf(ex.kind) === -1 ? 'detour' : ex.kind, label: ex.label || '', to: ex.to || '' };
+      });
+    });
+    Object.keys(d.endings).forEach(function (id) {
+      const e = d.endings[id];
+      e.x = Number(e.x) || 0; e.y = Number(e.y) || 0;
+      e.kind = ['win', 'partial', 'loss'].indexOf(e.kind) === -1 ? 'loss' : e.kind;
+      e.title = e.title || id;
+      e.line = e.line || '';
+    });
+    d.version = 1;
+    return d;
+  }
+
+  function boxOf(id) {
+    if (id === 'start') return { id: 'start', kind: 'start', x: D.start.x, y: D.start.y, w: START.w, h: START.h };
+    const r = D.rooms[id];
+    if (r) return { id: id, kind: 'room', x: r.x, y: r.y, w: ROOM_W, h: ROW0 + r.exits.length * ROW + 20, data: r };
+    const e = D.endings[id];
+    if (e) return { id: id, kind: 'ending', x: e.x, y: e.y, w: END.w, h: END.h, data: e };
+    return null;
+  }
+  function portY(box, i) { return box.kind === 'start' ? box.h / 2 : ROW0 + i * ROW; }
+  function addPortY(box) { return ROW0 + box.data.exits.length * ROW; }
+
+  function edges() {
+    const list = [];
+    if (D.start.to) list.push({ id: 'start:0', from: 'start', to: D.start.to, i: 0, kind: 'start', label: 'Hooves down' });
+    Object.keys(D.rooms).forEach(function (id) {
+      D.rooms[id].exits.forEach(function (ex, i) {
+        if (ex.to) list.push({ id: id + ':' + i, from: id, to: ex.to, i: i, kind: ex.kind, label: ex.label });
+      });
+    });
+    return list;
+  }
+
+  function cubicAt(p0, p1, p2, p3, t) {
+    const u = 1 - t;
+    return {
+      x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+      y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y
+    };
+  }
+  function curve(a, b, i) {
+    const s = { x: a.x + a.w, y: a.y + portY(a, i) };
+    const e = { x: b.x, y: b.y + 22 };
+    let p1, p2;
+    if (e.x >= s.x) {
+      const dx = Math.max(60, (e.x - s.x) / 2);
+      p1 = { x: s.x + dx, y: s.y };
+      p2 = { x: e.x - dx, y: e.y };
+    } else {
+      const lift = Math.max(a.y + a.h, b.y + b.h) + 50 + i * 14;
+      const dx = 120 + i * 20;
+      p1 = { x: s.x + dx, y: lift };
+      p2 = { x: e.x - dx, y: lift };
+    }
+    return {
+      d: 'M ' + s.x + ' ' + s.y + ' C ' + p1.x + ' ' + p1.y + ', ' + p2.x + ' ' + p2.y + ', ' + e.x + ' ' + e.y,
+      p0: s, p1: p1, p2: p2, p3: e, mid: cubicAt(s, p1, p2, e, 0.5)
+    };
+  }
+  function laid() {
+    return edges().map(function (e) {
+      const a = boxOf(e.from), b = boxOf(e.to);
+      return a && b ? { e: e, a: a, b: b, geom: curve(a, b, e.i) } : null;
+    }).filter(Boolean);
+  }
+  function inside(p, box, pad) {
+    const g = pad || 0;
+    return p.x >= box.x - g && p.x <= box.x + box.w + g && p.y >= box.y - g && p.y <= box.y + box.h + g;
+  }
+  function pickInsert(box) {
+    if (!box || box.kind !== 'room') return null;
+    let best = null, score = 0;
+    laid().forEach(function (row) {
+      if (row.e.from === box.id || row.e.to === box.id) return;
+      let hits = 0;
+      for (let t = 0; t <= 24; t++) {
+        const p = cubicAt(row.geom.p0, row.geom.p1, row.geom.p2, row.geom.p3, t / 24);
+        if (inside(p, row.a, 8) || inside(p, row.b, 8)) continue;
+        if (inside(p, box, 8)) hits += 1;
+      }
+      if (hits > score) { score = hits; best = row; }
+    });
+    return score >= 2 ? best : null;
+  }
+  function insertOn(roomId, row) {
+    const oldTo = row.e.to;
+    if (row.e.from === 'start') D.start.to = roomId;
+    else D.rooms[row.e.from].exits[row.e.i].to = roomId;
+    const exits = D.rooms[roomId].exits;
+    const free = exits.filter(function (ex) { return ex.kind === 'path' && !ex.to; })[0];
+    if (free) free.to = oldTo;
+    else exits.push({ kind: 'path', label: 'Onward', to: oldTo });
+  }
+
+  function reachable() {
+    const seen = {};
+    const stack = D.start.to ? [D.start.to] : [];
+    while (stack.length) {
+      const id = stack.pop();
+      if (seen[id]) continue;
+      seen[id] = true;
+      if (D.rooms[id]) D.rooms[id].exits.forEach(function (ex) { if (ex.to) stack.push(ex.to); });
+    }
+    return seen;
+  }
+  function issues() {
+    const list = [];
+    if (!String(D.action).trim()) list.push(['error', 'The main action is empty.']);
+    if (!String(D.goal).trim()) list.push(['error', 'The goal is empty.']);
+    if (!D.start.to) list.push(['error', 'Start is not wired to a room.']);
+    const seen = reachable();
+    let club = 0, outside = 0, door = false, win = false;
+    Object.keys(D.rooms).forEach(function (id) {
+      const r = D.rooms[id];
+      if (r.environment === 'club') club += 1; else outside += 1;
+      if (!seen[id]) list.push(['warn', r.title + ' is not reachable from the start.']);
+      if (!r.exits.some(function (ex) { return ex.to; })) list.push(['warn', r.title + ' is a dead end.']);
+      r.exits.forEach(function (ex) {
+        if (ex.to && !D.rooms[ex.to] && !D.endings[ex.to]) list.push(['error', r.title + ' points at a missing room: ' + ex.to]);
+        const dest = D.rooms[ex.to];
+        if (r.environment === 'club' && dest && dest.environment === 'outside') door = true;
+      });
+    });
+    Object.keys(D.endings).forEach(function (id) {
+      if (D.endings[id].kind === 'win' && seen[id]) win = true;
+    });
+    if (!club) list.push(['error', 'The club has no rooms.']);
+    if (!outside) list.push(['warn', 'Outside has no rooms.']);
+    if (club && outside && !door) list.push(['error', 'No door from the club to outside.']);
+    if (!win) list.push(['error', 'No route from the start reaches a win ending.']);
+    if (!list.length) list.push(['ok', 'The path runs from the dancefloor to outside and a win.']);
+    return list;
+  }
+
+  function paint() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const defs = el('defs');
+    Object.keys(COLORS).forEach(function (k) {
+      const m = el('marker', { id: 'arrow-' + k, viewBox: '0 0 10 7', refX: '9', refY: '3.5', markerWidth: '8', markerHeight: '7', orient: 'auto' });
+      m.appendChild(el('path', { d: 'M 0 0 L 10 3.5 L 0 7 z', fill: COLORS[k] }));
+      defs.appendChild(m);
+    });
+    const grid = el('pattern', { id: 'grid', width: '40', height: '40', patternUnits: 'userSpaceOnUse' });
+    grid.appendChild(el('path', { d: 'M 40 0 L 0 0 0 40', fill: 'none', stroke: '#1b1d24', 'stroke-width': '1' }));
+    defs.appendChild(grid);
+    svg.appendChild(defs);
+
+    const world = el('g', { transform: 'translate(' + view.x + ' ' + view.y + ') scale(' + view.k + ')' });
+    world.appendChild(el('rect', { x: -5000, y: -5000, width: 10000, height: 10000, fill: 'url(#grid)' }));
+
+    const hoverId = insertHover ? insertHover.e.id : '';
+    laid().forEach(function (row) {
+      const e = row.e;
+      const on = selected.kind === 'edge' && selected.id === e.id;
+      const g = el('g', { class: 'edge ' + e.kind + (on ? ' selected' : '') + (hoverId === e.id ? ' insert' : ''), 'data-edge': e.id });
+      g.appendChild(el('path', { class: 'hit', d: row.geom.d }));
+      g.appendChild(el('path', { class: 'line', d: row.geom.d, 'marker-end': 'url(#arrow-' + e.kind + ')' }));
+      if (on) g.appendChild(el('text', { x: row.geom.mid.x, y: row.geom.mid.y - 8, 'text-anchor': 'middle' }, e.label || KIND_NAME[e.kind] || 'Start'));
+      world.appendChild(g);
+    });
+
+    if (linking) {
+      const a = boxOf(linking.from);
+      const y = a.y + (linking.i < 0 ? addPortY(a) : portY(a, linking.i));
+      world.appendChild(el('path', { class: 'ghost-link', d: 'M ' + (a.x + a.w) + ' ' + y + ' L ' + linking.x + ' ' + linking.y }));
+    }
+
+    const dropId = linking && linking.over ? linking.over : '';
+    function node(box, cls, title, sub) {
+      const on = selected.id === box.id && selected.kind !== 'edge';
+      const g = el('g', { class: 'node ' + cls + (on ? ' selected' : '') + (dropId === box.id ? ' drop' : ''), 'data-node': box.id, role: 'button', 'aria-label': title, transform: 'translate(' + box.x + ' ' + box.y + ')' });
+      g.appendChild(el('rect', { class: 'body', width: box.w, height: box.h, rx: 10 }));
+      if (box.kind === 'room') g.appendChild(el('rect', { class: 'band', x: 0, y: 10, width: 4, height: 28, rx: 2 }));
+      g.appendChild(el('text', { x: 14, y: 24, 'font-size': '14', 'font-weight': '700' }, clip(title, 26)));
+      g.appendChild(el('text', { class: 'sub', x: 14, y: 42, 'font-size': '11' }, clip(sub, 36)));
+      world.appendChild(g);
+      return g;
+    }
+
+    const s = boxOf('start');
+    const sg = node(s, 'start', 'START', 'Hooves on the floor');
+    sg.appendChild(el('circle', { class: 'port', cx: s.w, cy: s.h / 2, r: 7, fill: COLORS.start, stroke: '#0c0d10', 'stroke-width': '2', 'data-port': 'start:0', role: 'button', 'aria-label': 'Start wire' }));
+
+    Object.keys(D.rooms).forEach(function (id) {
+      const r = D.rooms[id];
+      const box = boxOf(id);
+      const sub = (r.role === 'path' ? 'Main path' : 'D-tour') + ' · ' + (D.environments[r.environment] || {}).name + (r.zone ? ' · ' + r.zone : '');
+      const g = node(box, 'room ' + r.role + ' ' + r.environment, r.title, sub);
+      g.appendChild(el('line', { class: 'divider', x1: 10, x2: box.w - 10, y1: 50, y2: 50 }));
+      r.exits.forEach(function (ex, i) {
+        const y = portY(box, i);
+        g.appendChild(el('text', { class: 'exit', x: box.w - 16, y: y + 4, 'font-size': '11', 'text-anchor': 'end' },
+          clip((ex.label || KIND_NAME[ex.kind]) + (ex.to ? '' : ' (open)'), 32)));
+        g.appendChild(el('circle', { class: 'port', cx: box.w, cy: y, r: 7, fill: COLORS[ex.kind], stroke: '#0c0d10', 'stroke-width': '2', 'data-port': id + ':' + i, role: 'button', 'aria-label': r.title + ' ' + KIND_NAME[ex.kind] + ' wire ' + (i + 1) }));
+      });
+      const ay = addPortY(box);
+      g.appendChild(el('text', { class: 'exit', x: box.w - 16, y: ay + 4, 'font-size': '11', 'text-anchor': 'end' }, '+ D-tour'));
+      g.appendChild(el('circle', { class: 'port add', cx: box.w, cy: ay, r: 6, 'data-port': id + ':-1', role: 'button', 'aria-label': r.title + ' new D-tour' }));
+    });
+
+    Object.keys(D.endings).forEach(function (id) {
+      const e = D.endings[id];
+      node(boxOf(id), 'ending ' + e.kind, e.title, e.line);
+    });
+
+    svg.appendChild(world);
+    issuesEl.innerHTML = issues().map(function (r) { return '<span class="' + r[0] + '">' + esc(r[1]) + '</span>'; }).join('');
+    statusEl.textContent = isDirty() ? 'Unsaved changes' : 'Saved in this browser';
+    statusEl.className = isDirty() ? 'dirty' : '';
+  }
+
+  function localPoint(ev) {
+    const r = svg.getBoundingClientRect();
+    return { x: (ev.clientX - r.left - view.x) / view.k, y: (ev.clientY - r.top - view.y) / view.k };
+  }
+  function hitNode(pt) {
+    const ids = ['start'].concat(allIds());
+    for (let i = ids.length - 1; i >= 0; i--) {
+      const b = boxOf(ids[i]);
+      if (b && inside(pt, b, 0)) return b;
+    }
+    return null;
+  }
+  function select(next) { selected = next; paint(); show(); }
+  function capture(ev) { try { svg.setPointerCapture(ev.pointerId); } catch (e) { return; } }
+
+  svg.addEventListener('pointerdown', function (ev) {
+    if (ev.button !== 0) return;
+    const t = ev.target;
+    const port = t.getAttribute && t.getAttribute('data-port');
+    const nodeEl = t.closest && t.closest('[data-node]');
+    const edgeEl = t.closest && t.closest('[data-edge]');
+    const pt = localPoint(ev);
+    if (port) {
+      const parts = port.split(':');
+      linking = { from: parts[0], i: Number(parts[1]), x: pt.x, y: pt.y, over: '' };
+      capture(ev);
+      ev.preventDefault();
+      return;
+    }
+    if (nodeEl) {
+      const id = nodeEl.getAttribute('data-node');
+      const box = boxOf(id);
+      dragging = { id: id, dx: pt.x - box.x, dy: pt.y - box.y, moved: false };
+      capture(ev);
+      select({ kind: id === 'start' ? 'start' : D.rooms[id] ? 'room' : 'ending', id: id });
+      return;
+    }
+    if (edgeEl) {
+      select({ kind: 'edge', id: edgeEl.getAttribute('data-edge') });
+      return;
+    }
+    const now = performance.now();
+    if (lastGridDown && now - lastGridDown.t < 400 && Math.abs(ev.clientX - lastGridDown.x) < 6 && Math.abs(ev.clientY - lastGridDown.y) < 6) {
+      lastGridDown = null;
+      addRoom(pt.x - ROOM_W / 2, pt.y - 30);
+      return;
+    }
+    lastGridDown = { t: now, x: ev.clientX, y: ev.clientY };
+    panning = { x: ev.clientX - view.x, y: ev.clientY - view.y, moved: false };
+    capture(ev);
+  });
+
+  svg.addEventListener('pointermove', function (ev) {
+    const pt = localPoint(ev);
+    if (linking) {
+      linking.x = pt.x; linking.y = pt.y;
+      const hit = hitNode(pt);
+      linking.over = hit && hit.id !== linking.from && hit.id !== 'start' ? hit.id : '';
+      paint();
+    } else if (dragging) {
+      const n = dragging.id === 'start' ? D.start : D.rooms[dragging.id] || D.endings[dragging.id];
+      n.x = Math.round(pt.x - dragging.dx);
+      n.y = Math.round(pt.y - dragging.dy);
+      dragging.moved = true;
+      insertHover = pickInsert(boxOf(dragging.id));
+      paint();
+    } else if (panning) {
+      view.x = ev.clientX - panning.x;
+      view.y = ev.clientY - panning.y;
+      panning.moved = true;
+      paint();
+    }
+  });
+
+  svg.addEventListener('pointerup', function () {
+    if (linking) {
+      const to = linking.over;
+      const from = linking.from;
+      if (from === 'start') {
+        if (D.rooms[to]) D.start.to = to;
+        else if (!to) D.start.to = '';
+      } else if (D.rooms[from]) {
+        const exits = D.rooms[from].exits;
+        if (linking.i < 0) {
+          if (to) {
+            exits.push({ kind: 'detour', label: 'D-tour to ' + titleOf(to), to: to });
+            selected = { kind: 'edge', id: from + ':' + (exits.length - 1) };
+          }
+        } else {
+          exits[linking.i].to = to;
+        }
+      }
+    } else if (dragging && dragging.moved) {
+      const hit = pickInsert(boxOf(dragging.id));
+      if (hit) insertOn(dragging.id, hit);
+    } else if (panning && !panning.moved) {
+      selected = { kind: 'board' };
+    }
+    linking = dragging = panning = insertHover = null;
+    paint();
+    show();
+  });
+
+  stage.addEventListener('wheel', function (ev) {
+    ev.preventDefault();
+    const r = svg.getBoundingClientRect();
+    const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+    const k = Math.min(2.2, Math.max(0.25, view.k * (ev.deltaY < 0 ? 1.1 : 0.9)));
+    view.x = mx - (mx - view.x) * (k / view.k);
+    view.y = my - (my - view.y) * (k / view.k);
+    view.k = k;
+    paint();
+  }, { passive: false });
+
+  function fit() {
+    const boxes = ['start'].concat(allIds()).map(boxOf).filter(Boolean);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    boxes.forEach(function (b) {
+      x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
+      x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h + 60);
+    });
+    const r = svg.getBoundingClientRect();
+    const pad = 60;
+    view.k = Math.max(0.25, Math.min((r.width - pad * 2) / (x1 - x0 || 1), (r.height - pad * 2) / (y1 - y0 || 1), 1.15));
+    view.x = (r.width - (x1 - x0) * view.k) / 2 - x0 * view.k;
+    view.y = (r.height - (y1 - y0) * view.k) / 2 - y0 * view.k;
+    paint();
+  }
+
+  function options(value, roomsOnly) {
+    const opt = function (id) { return '<option value="' + esc(id) + '"' + (id === value ? ' selected' : '') + '>' + esc(titleOf(id)) + '</option>'; };
+    let html = '<option value=""' + (value ? '' : ' selected') + '>(not wired)</option>';
+    html += '<optgroup label="Rooms">' + Object.keys(D.rooms).map(opt).join('') + '</optgroup>';
+    if (!roomsOnly) html += '<optgroup label="Endings">' + Object.keys(D.endings).map(opt).join('') + '</optgroup>';
+    return html;
+  }
+  function choice(label, value, bind, list, rebuild) {
+    return '<label class="field"><span>' + esc(label) + '</span><select data-bind="' + bind + '"' + (rebuild ? ' data-rebuild="1"' : '') + '>' +
+      list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === value ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+      '</select></label>';
+  }
+  function input(label, value, bind) {
+    return '<label class="field"><span>' + esc(label) + '</span><input data-bind="' + bind + '" value="' + esc(value) + '"></label>';
+  }
+  function area(label, value, bind) {
+    return '<label class="field"><span>' + esc(label) + '</span><textarea data-bind="' + bind + '">' + esc(value) + '</textarea></label>';
+  }
+  const KIND_OPTS = KINDS.map(function (k) { return [k, KIND_NAME[k]]; });
+  const ZONE_OPTS = ZONES.map(function (z) { return [z, z || 'Not in the 3D build yet']; });
+
+  function assetRollup() {
+    const groups = { club: [], outside: [] };
+    Object.keys(D.rooms).forEach(function (id) {
+      const r = D.rooms[id];
+      linesOf(r.assets).forEach(function (n) { if (groups[r.environment].indexOf(n) === -1) groups[r.environment].push(n); });
+    });
+    return '<div class="kicker">Assets, from the rooms</div>' + ['club', 'outside'].map(function (env) {
+      return '<div class="block"><header><b>' + esc(D.environments[env].name) + '</b><span class="note" style="margin:0 0 0 auto">' + groups[env].length + '</span></header>' +
+        '<div class="pills">' + (groups[env].map(function (n) { return '<i>' + esc(n) + '</i>'; }).join('') || '<i>none yet</i>') + '</div></div>';
+    }).join('');
+  }
+
+  function show() {
+    let html = '';
+    if (selected.kind === 'room' && D.rooms[selected.id]) {
+      const id = selected.id, r = D.rooms[id], p = 'rooms.' + id + '.';
+      html += '<div class="kicker">' + (r.role === 'path' ? 'Main path' : 'D-tour') + ' · ' + esc(id) + '</div><h2>' + esc(r.title) + '</h2>';
+      html += input('Name', r.title, p + 'title');
+      html += '<div class="row">' +
+        choice('Role', r.role, p + 'role', [['path', 'Main path'], ['detour', 'D-tour']], true) +
+        choice('Environment', r.environment, p + 'environment', [['club', D.environments.club.name], ['outside', D.environments.outside.name]], true) +
+        '</div>';
+      html += choice('Zone in the 3D build', r.zone, p + 'zone', ZONE_OPTS);
+      html += area('What happens here', r.happens, p + 'happens');
+      html += input('What the hooves grab', r.grab, p + 'grab');
+      html += area('Assets, one per line', r.assets, p + 'assets');
+      html += '<div class="kicker">Wires out</div>';
+      r.exits.forEach(function (ex, i) {
+        html += '<div class="block"><header><span class="letter ' + ex.kind + '">' + KIND_NAME[ex.kind][0] + '</span><b>' + esc(KIND_NAME[ex.kind]) + '</b>' +
+          '<button type="button" class="tiny danger" data-remove="' + i + '">Remove</button></header>';
+        html += '<div class="row">' + choice('Kind', ex.kind, p + 'exits.' + i + '.kind', KIND_OPTS, true) +
+          '<label class="field"><span>Goes to</span><select data-bind="' + p + 'exits.' + i + '.to">' + options(ex.to) + '</select></label></div>';
+        html += input('Label on the wire', ex.label, p + 'exits.' + i + '.label');
+        html += '</div>';
+      });
+      html += '<div class="buttons">' + KINDS.map(function (k) { return '<button type="button" class="tiny" data-add="' + k + '">+ ' + KIND_NAME[k] + ' wire</button>'; }).join('') + '</div>';
+      html += '<button type="button" class="tiny danger" id="del">Delete room</button>';
+    } else if (selected.kind === 'ending' && D.endings[selected.id]) {
+      const id = selected.id, e = D.endings[id], p = 'endings.' + id + '.';
+      html += '<div class="kicker">Ending · ' + esc(id) + '</div><h2>' + esc(e.title) + '</h2>';
+      html += input('Name', e.title, p + 'title');
+      html += choice('Kind', e.kind, p + 'kind', [['win', 'Win'], ['partial', 'Partial'], ['loss', 'Loss']]);
+      html += area('The line', e.line, p + 'line');
+      html += '<button type="button" class="tiny danger" id="del">Delete ending</button>';
+    } else if (selected.kind === 'edge') {
+      const parts = selected.id.split(':');
+      if (parts[0] === 'start') {
+        html += '<div class="kicker">Wire · Start</div><h2>Start → ' + esc(titleOf(D.start.to)) + '</h2>';
+        html += '<label class="field"><span>First room</span><select data-bind="start.to" data-rebuild="1">' + options(D.start.to, true) + '</select></label>';
+      } else if (D.rooms[parts[0]] && D.rooms[parts[0]].exits[Number(parts[1])]) {
+        const i = Number(parts[1]), ex = D.rooms[parts[0]].exits[i], p = 'rooms.' + parts[0] + '.exits.' + i + '.';
+        html += '<div class="kicker">Wire · ' + esc(KIND_NAME[ex.kind]) + '</div><h2>' + esc(titleOf(parts[0])) + ' → ' + esc(titleOf(ex.to)) + '</h2>';
+        html += input('Label on the wire', ex.label, p + 'label');
+        html += '<div class="row">' + choice('Kind', ex.kind, p + 'kind', KIND_OPTS, true) +
+          '<label class="field"><span>Goes to</span><select data-bind="' + p + 'to" data-rebuild="1">' + options(ex.to) + '</select></label></div>';
+        html += '<button type="button" class="tiny danger" id="del">Delete wire</button>';
+      }
+    } else {
+      html += '<div class="kicker">Design lock</div><h2>' + esc(D.title) + '</h2>';
+      html += input('Title', D.title, 'title');
+      html += area('Main action', D.action, 'action');
+      html += area('Goal', D.goal, 'goal');
+      ['club', 'outside'].forEach(function (env) {
+        html += '<div class="block"><header><b>' + esc(D.environments[env].name) + '</b></header>' +
+          input('Name', D.environments[env].name, 'environments.' + env + '.name') +
+          area('What it feels like', D.environments[env].note, 'environments.' + env + '.note') + '</div>';
+      });
+      if (selected.kind === 'start') {
+        html += '<label class="field"><span>First room</span><select data-bind="start.to">' + options(D.start.to, true) + '</select></label>';
+      }
+      html += assetRollup();
+      html += '<div class="kicker">Keys</div><ul class="keys">' +
+        '<li>Ctrl+S saves in this browser</li><li>Delete removes the selected room, ending or wire</li><li>F fits the board</li><li>Esc clears the selection</li></ul>';
+    }
+    panel.innerHTML = html;
+    panel.querySelectorAll('[data-bind]').forEach(function (field) {
+      field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', function () {
+        setPath(field.getAttribute('data-bind'), field.value);
+        paint();
+        if (field.hasAttribute('data-rebuild')) show();
+      });
+    });
+    panel.querySelectorAll('[data-add]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        D.rooms[selected.id].exits.push({ kind: b.getAttribute('data-add'), label: '', to: '' });
+        paint(); show();
+      });
+    });
+    panel.querySelectorAll('[data-remove]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        D.rooms[selected.id].exits.splice(Number(b.getAttribute('data-remove')), 1);
+        paint(); show();
+      });
+    });
+    const del = document.getElementById('del');
+    if (del) del.addEventListener('click', removeSelected);
+  }
+
+  function setPath(path, value) {
+    const parts = path.split('.');
+    let obj = D;
+    for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+    obj[parts[parts.length - 1]] = value;
+  }
+  function unwire(id) {
+    if (D.start.to === id) D.start.to = '';
+    Object.keys(D.rooms).forEach(function (rid) {
+      D.rooms[rid].exits.forEach(function (ex) { if (ex.to === id) ex.to = ''; });
+    });
+  }
+  function removeSelected() {
+    const id = selected.id;
+    if (selected.kind === 'room' && D.rooms[id]) { delete D.rooms[id]; unwire(id); }
+    else if (selected.kind === 'ending' && D.endings[id]) { delete D.endings[id]; unwire(id); }
+    else if (selected.kind === 'edge') {
+      const parts = id.split(':');
+      if (parts[0] === 'start') D.start.to = '';
+      else if (D.rooms[parts[0]]) D.rooms[parts[0]].exits.splice(Number(parts[1]), 1);
+    } else return;
+    select({ kind: 'board' });
+  }
+
+  function centre() {
+    const r = svg.getBoundingClientRect();
+    return { x: (r.width / 2 - view.x) / view.k, y: (r.height / 2 - view.y) / view.k };
+  }
+  function addRoom(x, y) {
+    const id = slug('room');
+    const c = centre();
+    D.rooms[id] = {
+      x: Math.round(x == null ? c.x - ROOM_W / 2 : x), y: Math.round(y == null ? c.y - 40 : y),
+      title: 'New room', environment: 'club', role: 'detour', zone: '',
+      happens: '', grab: '', assets: '',
+      exits: [{ kind: 'path', label: 'Back to the floor', to: D.rooms.dancefloor ? 'dancefloor' : '' }]
+    };
+    select({ kind: 'room', id: id });
+  }
+  function addEnding() {
+    const id = slug('ending');
+    const c = centre();
+    D.endings[id] = { x: Math.round(c.x - END.w / 2), y: Math.round(c.y - END.h / 2), kind: 'loss', title: 'New ending', line: '' };
+    select({ kind: 'ending', id: id });
+  }
+
+  function save() {
+    localStorage.setItem(KEY, JSON.stringify(D));
+    saved = JSON.stringify(D);
+    paint();
+  }
+  function load() {
+    try { return normalize(JSON.parse(localStorage.getItem(KEY) || 'null')); } catch (e) { return null; }
+  }
+  function download() {
+    const blob = new Blob([JSON.stringify(D, null, 2) + '\n'], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'level-board.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 0);
+  }
+
+  document.getElementById('fit').addEventListener('click', fit);
+  document.getElementById('addRoom').addEventListener('click', function () { addRoom(); });
+  document.getElementById('addEnding').addEventListener('click', addEnding);
+  document.getElementById('save').addEventListener('click', save);
+  document.getElementById('download').addEventListener('click', download);
+  document.getElementById('revert').addEventListener('click', function () {
+    if (!confirm('Reset the board to the starting layout? Your saved board in this browser is cleared.')) return;
+    localStorage.removeItem(KEY);
+    D = clone(SEED);
+    saved = JSON.stringify(D);
+    selected = { kind: 'board' };
+    fit(); show();
+  });
+  document.getElementById('upload').addEventListener('change', function (ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      let data = null;
+      try { data = normalize(JSON.parse(String(reader.result))); } catch (e) { data = null; }
+      if (!data) { issuesEl.innerHTML = '<span class="error">That file is not a level board.</span>'; return; }
+      D = data;
+      selected = { kind: 'board' };
+      fit(); show();
+    };
+    reader.readAsText(file);
+    ev.target.value = '';
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); save(); return; }
+    if (typing) return;
+    if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); removeSelected(); }
+    else if (ev.key === 'Escape') select({ kind: 'board' });
+    else if (ev.key === 'f' || ev.key === 'F') fit();
+  });
+  window.addEventListener('beforeunload', function (ev) {
+    if (isDirty()) { ev.preventDefault(); ev.returnValue = ''; }
+  });
+  window.addEventListener('resize', paint);
+
+  show();
+  requestAnimationFrame(fit);
+})();
+</script>
+</body>
+</html>
