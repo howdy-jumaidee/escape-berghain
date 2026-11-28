@@ -9,6 +9,8 @@ import { Djs } from './djs';
 import { animateCharacter, bindRig, type DanceArchetype } from './motion';
 
 const TALK_RANGE = 2.4;
+/** Room the crowd gives a conversation. The camera sits 2.25 m from the face, so this covers the whole line. */
+const CONVO_CLEAR_RADIUS = 2.7;
 /** How close a unicorn has to be before audio plays its shimmer. */
 const UNICORN_HEAR_RANGE = 6;
 const WALK_AWAY = 4.5;
@@ -399,6 +401,11 @@ export class Npcs {
     this.mop(dt);
     this.beatPulse = Math.max(0, this.beatPulse - dt * 4);
     this.cheerLeft = Math.max(0, this.cheerLeft - dt);
+    // While you talk to someone, the crowd gives you room: nobody walks through the conversation camera.
+    // Conversations only happen on the ground floor. Clear around the figure the camera actually frames.
+    const talk = this.convo ?? this.focused;
+    const figure = talk ? (talk.npc.holders[talk.holderIndex]?.position ?? talk.npc.pos) : this.replyActive ? this.talking?.pos : null;
+    if (figure) this.crowd.clearRing(figure.x, figure.z, CONVO_CLEAR_RADIUS, 0);
     this.crowd.update(dt, this.beatPulse, this.beatN);
     this.djs.update(dt, this.beatPulse, this.beatN);
     const bounce = this.beatPulse * this.beatPulse;
