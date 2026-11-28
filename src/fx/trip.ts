@@ -186,9 +186,9 @@ export class TripFx {
     bus.on('fragment:found', () => this.relieve(FRAGMENT_RELIEF));
     bus.on('item:consumed', ({ item }) => {
       if (item === 'bag') {
-        // Hooved: a hard trip spike plus a window where the steering gets much looser.
-        state.trip = Math.min(TRIP_MAX, state.trip + 30);
-        state.hoovedUntil = performance.now() + 20000;
+        // Hooved: a mild trip bump plus a short window where the steering gets looser.
+        state.trip = Math.min(TRIP_MAX, state.trip + 12);
+        state.hoovedUntil = performance.now() + 6000;
         bus.emit('trip:changed', { trip: state.trip });
         return;
       }

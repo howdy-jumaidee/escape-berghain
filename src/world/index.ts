@@ -240,12 +240,13 @@ export class World {
       }
     }
 
-    // Items (mate, hoof bags) are picked up by walking into them; no Space needed. Fragments still need Space.
+    // Club Mate is picked up by walking into it. Hoof bags are Space-only (grab), like fragments:
+    // they punish you, so they should never fire by accident on the crowded floor.
     if (state.floor === 0 && !state.ending && state.started && !state.inputLocked) {
       let nearest: Pickup | null = null;
       let nearestD = 1.15;
       for (const pu of this.pickups) {
-        if (pu.kind !== 'item') continue;
+        if (pu.kind !== 'item' || pu.item !== 'mate') continue;
         const d = dist(pu.object.position, p);
         if (d < nearestD) {
           nearest = pu;
