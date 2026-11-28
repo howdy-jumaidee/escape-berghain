@@ -7,3 +7,5 @@ dist
 .vercel
 *.log
 *.blend1
+assets/
+To be deleted/
