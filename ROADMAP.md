@@ -86,6 +86,9 @@ Only after Gate 4 is safe. Each one is an issue for one model, in its own folder
 - [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out. In progress: Claude agent, branch `labyrinth-darkroom`
 - [ ] Convert fonts to woff2 (smaller download)
 - [ ] Mobile touch controls
+- [ ] **Save and continue.** Persist the run to localStorage (memories found, trip, story flags, zone, position), autosaved on each memory and each zone change, with a Continue button on the title screen next to Play and a small reset-save line. So people can stop and come back to explore more.
+- [ ] **Unlockable skins for the horse.** Beat an ending or find a secret to unlock a look (unicorn horn after the blessing, donkey ears, etc.), picked on the title screen and stored in the same save.
+- [ ] **DJ battle.** A beat-matching stomp-off against a live DJ at the booth: land E on the beat to take rounds, miss and the crowd boos. Survive three rounds for a secret reward or a new ending.
 
 ## Pitch (Saturday 14:00 to 16:00)
 
