@@ -1,9 +1,10 @@
 // The crowd. Berghain is packed: a few hundred dancers drawn in one batch (instanced), thickest on the main floor.
 // They dance on the beat, push the horse around, block security torches (hide in the crowd),
 // and the higher your trip, the more of them have horse heads.
-// Model names for Emma: npc_dancer_body, npc_dancer_head, npc_dancer_horse_head are not loaded yet;
-// instanced boxes keep this fast. Swap for real meshes in instanced form later.
+// Shared low-poly body, colour variants, and a few animal guests (horse, unicorn, donkey).
+// Named characters are separate glTFs loaded through placeModel(). Instancing keeps this crowd cheap.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { state, cellCenter, CELL, TRIP_MAX, type ZoneId } from '../contracts';
 import type { LevelData } from '../data';
 
@@ -45,9 +46,23 @@ export class Crowd {
   private drift: number[] = [];
   /** 0 bob, 1 side step, 2 twist, 3 big jumper. */
   private style: number[] = [];
-  private bodies: THREE.InstancedMesh;
-  private heads: THREE.InstancedMesh;
-  private horseHeads: THREE.InstancedMesh;
+  /** 0 human, 1 horse, 2 unicorn, 3 donkey. Animals are guests, not the trip effect. */
+  private species: number[] = [];
+  private slot: number[] = [];
+  /** Floor height. 0 is the dance floor. Gallery guests stand at 9. */
+  private baseY: number[] = [];
+  private outfit: number[] = [];
+  private skinHex: number[] = [];
+  private hairHex: number[] = [];
+  private clothes: THREE.InstancedMesh;
+  private skin: THREE.InstancedMesh;
+  private humanHead: THREE.InstancedMesh | null = null;
+  private hair: THREE.InstancedMesh | null = null;
+  private eyes: THREE.InstancedMesh | null = null;
+  private tripHead: THREE.InstancedMesh | null = null;
+  private guestHorse: THREE.InstancedMesh | null = null;
+  private guestUni: THREE.InstancedMesh | null = null;
+  private guestDonkey: THREE.InstancedMesh | null = null;
   private hash = new Map<number, number[]>();
   private dummy = new THREE.Object3D();
   private hidden = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -66,14 +81,26 @@ export class Crowd {
     const booth = level.markers.dj_booth;
     this.faceTarget = booth ? cellCenter(booth[0], booth[1]) : null;
 
-    const add = (x: number, z: number, queue = false) => {
+    const add = (x: number, z: number, queue = false, y = 0) => {
       if (avoid.some((a) => (a.x - x) ** 2 + (a.z - z) ** 2 < a.r * a.r)) return;
       this.home.push(x, z);
       this.origin.push(x, z);
       this.drift.push(x, z);
       this.pos.push(x, z);
+      this.baseY.push(y);
       const r = rand();
       this.style.push(queue ? 0 : r < 0.4 ? 0 : r < 0.7 ? 1 : r < 0.9 ? 2 : 3);
+      const roll = rand();
+      const cut = queue ? 0.16 : 0.1;
+      this.species.push(roll < cut ? (roll < cut * 0.34 ? 1 : roll < cut * 0.67 ? 2 : 3) : 0);
+      const oc = rand();
+      this.outfit.push(
+        oc < 0.62 ? 0x121216 : oc < 0.74 ? 0xc4476a : oc < 0.84 ? 0x1f8f86 : oc < 0.92 ? 0xd7a441 : oc < 0.96 ? 0x3a4e72 : 0xd8d4cc,
+      );
+      const skins = [0xf0c7a8, 0xe0b08a, 0xc68642, 0x8d5524, 0x6b3e26, 0x4a2c1a, 0xf3d2b5];
+      const hairs = [0x14110e, 0x2a2118, 0x6b4a32, 0xc4a05a, 0x8a8a8a, 0x1a1a1a];
+      this.skinHex.push(skins[Math.floor(rand() * skins.length)] ?? skins[0]);
+      this.hairHex.push(hairs[Math.floor(rand() * hairs.length)] ?? hairs[0]);
       this.vel.push(0, 0);
       this.phase.push(rand() * Math.PI * 2);
       this.yaw.push(rand() * Math.PI * 2);
@@ -113,26 +140,39 @@ export class Crowd {
       for (let x = (q[0][0] + 1) * CELL + 1; x < q[0][0] * CELL + 11.5; x += 1.05) add(x, z + (rand() - 0.5) * 0.3, true);
     }
 
-    // Dark bodies so they read as silhouettes against the haze and strobes. A few pale shirts catch the light.
-    const body = new THREE.BoxGeometry(0.5, 1.5, 0.3);
-    body.translate(0, 0.75, 0);
-    const head = new THREE.BoxGeometry(0.26, 0.3, 0.28);
-    head.translate(0, 1.68, 0);
-    const horseHead = new THREE.BoxGeometry(0.24, 0.3, 0.6);
-    horseHead.translate(0, 1.72, 0.14);
-    this.bodies = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), this.n);
-    this.heads = new THREE.InstancedMesh(head, new THREE.MeshStandardMaterial({ color: 0x2a211d, roughness: 0.8 }), this.n);
-    this.horseHeads = new THREE.InstancedMesh(horseHead, new THREE.MeshStandardMaterial({ color: 0x4a2f1a, roughness: 0.8 }), this.n);
-    const shirt = new THREE.Color();
+    const counts = [0, 0, 0, 0];
+    this.slot = this.species.map((s) => counts[s]++);
+    const clothMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.62, metalness: 0.12 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.82 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.4 });
+    const coatMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, vertexColors: true });
+    this.clothes = makeMesh(clothesGeo(), clothMat, Math.max(this.n, 1));
+    this.skin = makeMesh(skinGeo(), skinMat, Math.max(this.n, 1));
+    this.root.add(this.clothes, this.skin);
+    const white = new THREE.Color(0xffffff);
     for (let i = 0; i < this.n; i++) {
-      const r = rand();
-      shirt.set(r < 0.7 ? 0x0c0c0e : r < 0.9 ? 0x26262a : 0x7a7a7a);
-      this.bodies.setColorAt(i, shirt);
+      this.clothes.setColorAt(i, new THREE.Color(this.outfit[i]));
+      this.skin.setColorAt(i, new THREE.Color(this.skinHex[i]));
     }
-    for (const m of [this.bodies, this.heads, this.horseHeads]) {
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      m.frustumCulled = false;
-      this.root.add(m);
+    const paintHumans = (m: THREE.InstancedMesh, hexes: number[]) => {
+      for (let i = 0; i < this.n; i++) if (this.species[i] === 0) m.setColorAt(this.slot[i], new THREE.Color(hexes[i]));
+    };
+    this.humanHead = addSpecies(this, headGeo(), skinMat, counts[0]);
+    this.hair = addSpecies(this, hairGeo(), hairMat, counts[0]);
+    this.eyes = addSpecies(this, eyesGeo(), eyeMat, counts[0]);
+    this.tripHead = addSpecies(this, equineGeo('horse'), coatMat, counts[0]);
+    this.guestHorse = addSpecies(this, equineGeo('horse'), coatMat, counts[1]);
+    this.guestUni = addSpecies(this, equineGeo('unicorn'), coatMat, counts[2]);
+    this.guestDonkey = addSpecies(this, equineGeo('donkey'), coatMat, counts[3]);
+    if (this.humanHead) paintHumans(this.humanHead, this.skinHex);
+    if (this.hair) paintHumans(this.hair, this.hairHex);
+    for (const m of [this.tripHead, this.guestHorse, this.guestUni, this.guestDonkey]) {
+      if (!m) continue;
+      for (let s = 0; s < m.count; s++) m.setColorAt(s, white);
+    }
+    for (const m of [this.clothes, this.skin, this.humanHead, this.hair, this.eyes, this.tripHead, this.guestHorse, this.guestUni, this.guestDonkey]) {
+      if (m?.instanceColor) m.instanceColor.needsUpdate = true;
     }
   }
 
@@ -203,24 +243,34 @@ export class Crowd {
       const stepOut = style === 1 ? side * 0.16 * (1 - pulse * 0.5) : 0;
       if (style === 2) yaw += Math.sin(beatN * Math.PI * 0.5 + ph) * 0.5;
 
-      d.position.set(x + Math.cos(yaw) * stepOut, jump, z - Math.sin(yaw) * stepOut);
+      d.position.set(x + Math.cos(yaw) * stepOut, this.baseY[i] + jump, z - Math.sin(yaw) * stepOut);
       d.rotation.set(0, yaw, sway);
       d.updateMatrix();
-      this.bodies.setMatrixAt(i, d.matrix);
-      const horse = this.horseRank[i] < horseShare;
-      this.heads.setMatrixAt(i, horse ? this.hidden : d.matrix);
-      this.horseHeads.setMatrixAt(i, horse ? d.matrix : this.hidden);
+      this.clothes.setMatrixAt(i, d.matrix);
+      this.skin.setMatrixAt(i, d.matrix);
+      const sp = this.species[i];
+      const s = this.slot[i];
+      if (sp === 0) {
+        const horse = this.horseRank[i] < horseShare;
+        this.humanHead?.setMatrixAt(s, horse ? this.hidden : d.matrix);
+        this.hair?.setMatrixAt(s, horse ? this.hidden : d.matrix);
+        this.eyes?.setMatrixAt(s, horse ? this.hidden : d.matrix);
+        this.tripHead?.setMatrixAt(s, horse ? d.matrix : this.hidden);
+      } else if (sp === 1) this.guestHorse?.setMatrixAt(s, d.matrix);
+      else if (sp === 2) this.guestUni?.setMatrixAt(s, d.matrix);
+      else this.guestDonkey?.setMatrixAt(s, d.matrix);
     }
-    this.bodies.instanceMatrix.needsUpdate = true;
-    this.heads.instanceMatrix.needsUpdate = true;
-    this.horseHeads.instanceMatrix.needsUpdate = true;
+    for (const m of [this.clothes, this.skin, this.humanHead, this.hair, this.eyes, this.tripHead, this.guestHorse, this.guestUni, this.guestDonkey]) {
+      if (m) m.instanceMatrix.needsUpdate = true;
+    }
   }
 
   /** Push the horse out of dancers and shove them a little. Returns true on a real bump. Mutates pos. */
-  push(pos: THREE.Vector3, radius: number): boolean {
+  push(pos: THREE.Vector3, radius: number, playerY = 0): boolean {
     let bumped = false;
     const min = radius + RADIUS;
     this.near(pos.x, pos.z, (i) => {
+      if (Math.abs(this.baseY[i] - playerY) > 2.2) return;
       const ix = i * 2;
       const dx = pos.x - this.pos[ix];
       const dz = pos.z - this.pos[ix + 1];
@@ -243,6 +293,7 @@ export class Crowd {
   blocks(x: number, z: number): boolean {
     let hit = false;
     this.near(x, z, (i) => {
+      if (this.baseY[i] > 3) return;
       if (!hit && (this.pos[i * 2] - x) ** 2 + (this.pos[i * 2 + 1] - z) ** 2 < 0.38 * 0.38) hit = true;
     });
     return hit;
@@ -258,6 +309,116 @@ export class Crowd {
       }
     }
   }
+}
+
+function makeMesh(geo: THREE.BufferGeometry, mat: THREE.Material, count: number): THREE.InstancedMesh {
+  const m = new THREE.InstancedMesh(geo, mat, count);
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  m.frustumCulled = false;
+  return m;
+}
+
+function addSpecies(crowd: Crowd, geo: THREE.BufferGeometry, mat: THREE.Material, count: number): THREE.InstancedMesh | null {
+  if (count <= 0) {
+    geo.dispose();
+    return null;
+  }
+  const m = makeMesh(geo, mat, count);
+  crowd.root.add(m);
+  return m;
+}
+
+function box(w: number, h: number, d: number, x: number, y: number, z: number): THREE.BoxGeometry {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(x, y, z);
+  return g;
+}
+
+function cyl(r: number, h: number, x: number, y: number, z: number): THREE.CylinderGeometry {
+  const g = new THREE.CylinderGeometry(r, r * 0.9, h, 6);
+  g.translate(x, y, z);
+  return g;
+}
+
+function sphere(r: number, x: number, y: number, z: number): THREE.SphereGeometry {
+  const g = new THREE.SphereGeometry(r, 7, 5);
+  g.translate(x, y, z);
+  return g;
+}
+
+function clothesGeo(): THREE.BufferGeometry {
+  return mergeGeometries([
+    cyl(0.07, 0.74, -0.09, 0.4, 0),
+    cyl(0.07, 0.74, 0.09, 0.4, 0),
+    box(0.12, 0.06, 0.18, -0.09, 0.03, 0.03),
+    box(0.12, 0.06, 0.18, 0.09, 0.03, 0.03),
+    box(0.3, 0.16, 0.16, 0, 0.82, 0),
+    box(0.34, 0.4, 0.18, 0, 1.1, 0),
+    box(0.44, 0.1, 0.16, 0, 1.32, 0),
+  ])!;
+}
+
+function skinGeo(): THREE.BufferGeometry {
+  return mergeGeometries([
+    cyl(0.045, 0.46, -0.24, 1.08, 0),
+    cyl(0.045, 0.46, 0.24, 1.08, 0),
+  ])!;
+}
+
+function headGeo(): THREE.BufferGeometry {
+  return mergeGeometries([
+    cyl(0.055, 0.1, 0, 1.4, 0.02),
+    sphere(0.115, 0, 1.56, 0.02),
+    box(0.04, 0.045, 0.04, 0, 1.5, 0.12),
+  ])!;
+}
+
+function hairGeo(): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(0.12, 7, 5);
+  g.scale(1, 0.55, 1);
+  g.translate(0, 1.66, 0);
+  return g;
+}
+
+function eyesGeo(): THREE.BufferGeometry {
+  return mergeGeometries([
+    sphere(0.02, -0.045, 1.58, 0.12),
+    sphere(0.02, 0.045, 1.58, 0.12),
+  ])!;
+}
+
+function paint(g: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
+  const c = new THREE.Color(hex);
+  const n = g.attributes.position.count;
+  const arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    arr[i * 3] = c.r;
+    arr[i * 3 + 1] = c.g;
+    arr[i * 3 + 2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return g;
+}
+
+function equineGeo(kind: 'horse' | 'unicorn' | 'donkey'): THREE.BufferGeometry {
+  const coat = kind === 'unicorn' ? 0xf3f0ea : kind === 'donkey' ? 0x8e8e94 : 0x6a4324;
+  const mane = 0x1a120e;
+  const earH = kind === 'donkey' ? 0.28 : 0.13;
+  const parts = [
+    paint(cyl(0.07, 0.16, 0, 1.42, 0.02), coat),
+    paint(box(0.2, 0.18, 0.2, 0, 1.58, 0.04), coat),
+    paint(box(kind === 'donkey' ? 0.12 : 0.1, 0.08, kind === 'donkey' ? 0.12 : 0.18, 0, 1.52, 0.18), coat),
+    paint(box(0.04, earH, 0.04, -0.07, 1.74, 0.02), mane),
+    paint(box(0.04, earH, 0.04, 0.07, 1.74, 0.02), mane),
+    paint(box(0.07, 0.1, 0.06, 0, 1.66, -0.02), mane),
+    paint(sphere(0.018, -0.045, 1.6, 0.14), 0x111111),
+    paint(sphere(0.018, 0.045, 1.6, 0.14), 0x111111),
+  ];
+  if (kind === 'unicorn') {
+    parts.push(paint(box(0.04, 0.14, 0.04, 0, 1.8, 0.06), 0xf6e7a8));
+    parts.push(paint(box(0.02, 0.12, 0.02, 0, 1.92, 0.06), 0xfff4c8));
+  }
+  return mergeGeometries(parts, false)!;
 }
 
 function hashKey(x: number, z: number): number {

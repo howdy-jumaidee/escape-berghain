@@ -139,7 +139,6 @@ export class Npcs {
   private disarmed = new Set<Npc>();
   /** Has this NPC done their full conversation once? After that, they just say one line. */
   private heard = new Set<NpcId>();
-  private eyes: THREE.Object3D[] = [];
 
   constructor() {
     for (const { id, cell } of level.npcs) this.spawn(id, cell[0], cell[1]);
@@ -256,7 +255,6 @@ export class Npcs {
     this.updateGuide(dt);
     this.checkSelfie();
     this.mop(dt);
-    this.blink(dt);
     this.beatPulse = Math.max(0, this.beatPulse - dt * 4);
     this.crowd.update(dt, this.beatPulse, this.beatN);
     const bounce = this.beatPulse * this.beatPulse;
@@ -334,8 +332,9 @@ export class Npcs {
     const holders: THREE.Object3D[] = [];
     for (let i = 0; i < count; i++) {
       const o = new THREE.Group();
-      o.add(placeModel(`npc_${id}`, size, mat));
-      if (FOCUS.has(id)) o.add(this.makeEyes(size));
+      // Herd and the tourist pair use a second and third figure. Missing files stay grey boxes.
+      const variant = id === 'tourists' ? ['npc_tourists', 'npc_tourists_1'] : id === 'herd' ? ['npc_herd', 'npc_herd_1', 'npc_herd_2'] : null;
+      o.add(placeModel(variant?.[i] ?? `npc_${id}`, size, mat));
       const holder = new THREE.Group();
       if (id === 'leather_choir') {
         // A tight circle.
@@ -554,32 +553,6 @@ export class Npcs {
     bus.emit('npc:unfocus', {});
     bus.emit('npc:silent', {});
     if (finished) c.after?.();
-  }
-
-  /** Two eyes that blink. When you're face to face, they're looking right at you. */
-  private makeEyes(size: { x: number; y: number; z: number }): THREE.Object3D {
-    const eyes = new THREE.Group();
-    eyes.position.set(0, size.y - 0.32, size.z / 2 + 0.01);
-    const white = new THREE.MeshBasicMaterial({ color: 0xf2f2f2 });
-    const black = new THREE.MeshBasicMaterial({ color: 0x050505 });
-    for (const x of [-0.09, 0.09]) {
-      const eye = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.01), white);
-      eye.position.x = x;
-      const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.045, 0.01), black);
-      pupil.position.set(x, -0.005, 0.008);
-      eyes.add(eye, pupil);
-    }
-    eyes.userData.blinkIn = 1 + Math.random() * 4;
-    this.eyes.push(eyes);
-    return eyes;
-  }
-
-  private blink(dt: number): void {
-    for (const e of this.eyes) {
-      e.userData.blinkIn -= dt;
-      if (e.userData.blinkIn < 0) e.userData.blinkIn = 2 + Math.random() * 4;
-      e.scale.y = e.userData.blinkIn < 0.12 ? 0.1 : 1;
-    }
   }
 
   private riddleAnswered(correct: boolean): void {
