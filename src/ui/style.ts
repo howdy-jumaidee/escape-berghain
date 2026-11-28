@@ -221,5 +221,80 @@ export const css = /* css */ `
 .eb-end p { max-width: min(var(--measure), 100%); margin: var(--s-5) auto 0; font: 400 var(--t-md)/var(--lh-body) var(--mono); color: var(--text-2);
   text-wrap: balance; }
 .eb-credits { margin-top: var(--s-7); font: 400 var(--t-xs)/2 var(--mono); color: var(--text-3); }
-.eb-retry { margin-top: var(--s-6); font: 400 var(--t-sm) var(--mono); color: var(--text-1); }
+.eb-retry { margin-top: var(--s-6); font: 400 var(--t-sm) var(--mono); color: var(--text-1); cursor: pointer; pointer-events: auto; }
+
+/* Interactive targets for touch tapping. */
+.eb-help-head, .eb-help-tab { pointer-events: auto; cursor: pointer; }
+.eb-talk.focus { pointer-events: auto; }
+
+/* Touch controls for phones in landscape: frosted glass matching the help box. */
+.eb-ui.touch .eb-prompt, .eb-ui.touch .eb-view-hint { display: none; }
+.eb-touch { position: fixed; inset: 0; z-index: 5; pointer-events: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.eb-touch.off { display: none; }
+.eb-ui.talking .eb-stick, .eb-ui.talking .eb-pad, .eb-ui.talking .eb-top-tools { display: none; }
+.eb-leave { display: none; position: absolute; top: max(var(--s-3), env(safe-area-inset-top));
+  right: max(var(--s-4), env(safe-area-inset-right)); pointer-events: auto; }
+.eb-ui.talking .eb-leave { display: inline-flex; }
+
+.eb-stick { position: absolute; left: max(var(--s-5), env(safe-area-inset-left));
+  bottom: max(var(--s-4), env(safe-area-inset-bottom));
+  width: 112px; height: 112px; border-radius: 50%; pointer-events: auto; touch-action: none;
+  display: grid; place-items: center;
+  background: rgba(20, 20, 24, 0.36); border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
+.eb-stick.active { border-color: rgba(255, 255, 255, 0.38); }
+.eb-stick-knob { width: 44px; height: 44px; border-radius: 50%; pointer-events: none;
+  background: rgba(236, 236, 236, 0.22); border: 1px solid rgba(236, 236, 236, 0.55); }
+
+.eb-pad { position: absolute; right: max(var(--s-5), env(safe-area-inset-right));
+  bottom: max(var(--s-4), env(safe-area-inset-bottom));
+  display: flex; align-items: flex-end; gap: var(--s-2); pointer-events: none; }
+.eb-tbtn { all: unset; box-sizing: border-box; pointer-events: auto; touch-action: none; cursor: pointer;
+  width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; text-align: center;
+  background: rgba(20, 20, 24, 0.42); border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2);
+  font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-2); text-shadow: var(--legible);
+  transition: transform 0.08s, border-color 0.15s, background 0.15s, color 0.15s; }
+.eb-tbtn.primary { width: 68px; height: 68px; color: var(--text-1); border-color: rgba(255, 255, 255, 0.32); }
+.eb-tbtn.hot { border-color: var(--text-1); background: rgba(236, 236, 236, 0.18); color: #fff; }
+.eb-tbtn.down { transform: scale(0.92); background: rgba(236, 236, 236, 0.24); color: #fff; }
+
+.eb-top-tools { position: absolute; top: max(var(--s-3), env(safe-area-inset-top));
+  right: max(var(--s-4), env(safe-area-inset-right)); display: flex; gap: var(--s-2); pointer-events: none; }
+.eb-tpill { all: unset; box-sizing: border-box; pointer-events: auto; touch-action: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: var(--s-2) var(--s-3); border-radius: 6px;
+  background: rgba(20, 20, 24, 0.42); border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2);
+  font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-2); text-shadow: var(--legible); }
+.eb-tpill.active, .eb-tpill.down { border-color: var(--text-1); color: #fff; background: rgba(236, 236, 236, 0.18); }
+
+/* Short landscape viewports (phones turned sideways): keep title, memories, dialogue and endings inside 375-430 px height. */
+@media (max-height: 500px) {
+  .eb-cover { padding: var(--s-3) max(var(--s-4), env(safe-area-inset-right)) var(--s-3) max(var(--s-4), env(safe-area-inset-left)); }
+  .eb-title { font-size: clamp(28px, 6vw, 48px); }
+  .eb-panel { min-height: 0; margin-top: var(--s-4); }
+  .eb-goal { gap: var(--s-1); }
+  .eb-goal p { font-size: var(--t-sm); }
+  .eb-controls { row-gap: var(--s-1); }
+  .eb-controls span { font-size: var(--t-sm); }
+  .eb-actions { margin-top: var(--s-4); gap: var(--s-3); }
+  .eb-actions button { padding: var(--s-3) var(--s-5); }
+  .eb-play { padding: var(--s-3) var(--s-6); }
+  .eb-sub { margin-top: var(--s-3); }
+  .eb-help { left: max(var(--s-3), env(safe-area-inset-left)); top: max(var(--s-3), env(safe-area-inset-top)); width: 236px; }
+  .eb-say { bottom: 26%; font-size: var(--t-sm); }
+  .eb-bar-top, .eb-bar-bottom { height: 6vh; }
+  .eb-talk.focus { padding: var(--s-5) max(var(--s-4), env(safe-area-inset-right)) var(--s-3) max(var(--s-4), env(safe-area-inset-left)); }
+  .eb-talk.focus p { font-size: var(--t-md); }
+  .eb-talk.focus .eb-answers { margin-top: var(--s-3); padding-top: var(--s-2); }
+  .eb-answers button { padding: var(--s-1) var(--s-2); font-size: var(--t-sm); }
+  .eb-talk-hint, .eb-talk.focus.choosing .eb-choose-hint { margin-top: var(--s-2); }
+  .eb-end { padding: var(--s-3) var(--s-4); overflow-y: auto; }
+  .eb-end h1 { font-size: clamp(28px, 6vw, 44px); }
+  .eb-end p { margin-top: var(--s-3); font-size: var(--t-sm); }
+  .eb-credits { margin-top: var(--s-4); line-height: 1.5; }
+  .eb-retry { margin-top: var(--s-3); }
+}
 `;

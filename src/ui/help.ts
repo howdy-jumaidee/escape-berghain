@@ -152,7 +152,9 @@ export function startHelp(root: HTMLElement): void {
     pulseTimer = window.setTimeout(() => wrap.classList.remove('live'), PULSE_MS);
   }, 1000);
 
-  // H toggles the box at any time.
+  // H toggles the box at any time; tapping the header or collapsed tab also toggles on touch screens.
+  head.addEventListener('click', () => setOpen(!open));
+  tab.addEventListener('click', () => setOpen(true));
   addEventListener('keydown', (e) => {
     if (e.repeat || e.code !== 'KeyH') return;
     setOpen(!open);

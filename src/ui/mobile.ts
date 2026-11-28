@@ -1,4 +1,4 @@
-// Phone and small-screen fallback: show the vertical poster and a quiet desktop-only notice.
+// Phone portrait and small-screen poster overlay: vertical poster with a prompt to rotate horizontally to play.
 import { t } from './text';
 
 const BASE = import.meta.env.BASE_URL;
@@ -93,7 +93,7 @@ function ensurePoster(): HTMLElement {
   return wrap;
 }
 
-/** Standalone phone / small-screen entry: no Three.js, just the vertical poster and notice. */
+/** Portrait phone entry: no Three.js yet, just the vertical poster and rotate notice. */
 export function showMobilePoster(): void {
   document.getElementById('hud')?.remove();
   document.documentElement.style.background = '#faf0e6';
@@ -101,8 +101,11 @@ export function showMobilePoster(): void {
   ensurePoster().hidden = false;
 }
 
-/** Resize overlay when a desktop window is shrunk below the small-screen threshold. */
+/** Toggle poster overlay on orientation change or desktop window resize. */
 export function toggleMobileOverlay(on: boolean): void {
   if (!on && !overlay) return;
+  const bg = on ? '#faf0e6' : '#000';
+  document.documentElement.style.background = bg;
+  document.body.style.background = bg;
   ensurePoster().hidden = !on;
 }
