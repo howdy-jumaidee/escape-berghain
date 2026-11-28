@@ -14,6 +14,7 @@ import {
   FLOOR_TILE_SIZE,
   floorConcreteTextures,
 } from './architecture';
+import { buildClubSignage, buildFamiliarModule } from './props';
 
 export type { LevelData } from '../data';
 import type { LevelData } from '../data';
@@ -192,7 +193,12 @@ export function buildLevel(data: LevelData): BuiltLevel {
       const ox = spec.offset?.x ?? 0;
       const oz = spec.offset?.z ?? 0;
 
-      if (name === 'hall_wall' || name === 'hall_pillar') {
+      // Replace plain fallback boxes for doors, counters, speakers, booths, cubicles, and shutters with familiar shapes.
+      const familiar = buildFamiliarModule(name);
+      if (familiar) {
+        obj.clear();
+        obj.add(familiar);
+      } else if (name === 'hall_wall' || name === 'hall_pillar') {
         applyWorldUVsToPlaceholder(obj, CONCRETE_TILE_SIZE, c.x + ox, spec.size.y / 2, c.z + oz);
       }
 
@@ -228,6 +234,8 @@ export function buildLevel(data: LevelData): BuiltLevel {
 
   // Monumental Berghain hall architecture: flared pillar capitals, hanging coal hoppers, beams, 19 m ceiling, tall tiled windows.
   root.add(buildArchitecture(data));
+  // Backlit club wayfinding & zone signs (EXIT, BAR, COAT CHECK, WC, PANORAMA BAR, DARKROOM).
+  root.add(buildClubSignage());
 
   // The floor under the walls, so the fog has something to sit on at the edges.
   const rows = data.grid.length;
