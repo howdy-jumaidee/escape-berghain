@@ -6,6 +6,7 @@ import { level as levelData, story, debug } from '../data';
 import { placeModel } from '../look/models';
 import { buildLevel, resolveCircle, type BuiltLevel } from './level';
 import { buildGalleries, type Galleries } from './galleries';
+import { buildPanorama, type Panorama } from './panorama';
 import { Patrols } from './patrols';
 
 /** Panorama Bar shutters open after this much play time. */
@@ -33,6 +34,7 @@ export class World {
   readonly level: BuiltLevel;
   readonly root: THREE.Group;
   private galleries: Galleries;
+  private pano: Panorama;
   private pickups: Pickup[] = [];
   private exitPos: { x: number; z: number } | null = null;
   private exitDone = false;
@@ -57,6 +59,10 @@ export class World {
     // Walkable 9 m mezzanine galleries, catwalk bridge, and monumental steel staircase.
     this.galleries = buildGalleries(levelData);
     this.root.add(this.galleries.root);
+
+    // Panorama Bar: a real room on the 9 m south gallery (floor 1), grid in levels/level1_floor1.json.
+    this.pano = buildPanorama();
+    this.root.add(this.pano.root);
 
     for (const [col, row] of this.level.cells.get('fragment_1') ?? []) {
       this.addPickup({ kind: 'fragment', fragment: 1, slips: 2 }, 'prop_glasses', { x: 0.45, y: 0.12, z: 0.18 }, 0x9fe8ff, col, row);
@@ -135,6 +141,8 @@ export class World {
       resolveCircle(this.level.colliders, pos, radius);
     }
     this.galleries.resolve(pos, radius, floor, y);
+    // Upstairs room walls (Panorama Bar) only block on floor 1.
+    if (floor >= 1 || y >= 9 - 0.3) resolveCircle(this.pano.colliders, pos, radius);
   }
 
   /** Smoothly ramps elevation up/down the monumental steel stairs and across the 9 m mezzanine galleries. */
@@ -173,8 +181,9 @@ export class World {
     this.t += dt;
     const p = this.player;
 
-    // Zones.
-    const zone = this.level.zoneAt(p.x, p.z);
+    // Zones. Upstairs in the Panorama room the zone is panorama_bar (warm mix), anywhere else on
+    // floor 1 the hall zone below still applies.
+    const zone = state.floor >= 1 && this.pano.contains(p.x, p.z) ? 'panorama_bar' : this.level.zoneAt(p.x, p.z);
     if (zone && zone !== state.zone && !state.ending) {
       state.zone = zone;
       bus.emit('zone:entered', { zone });
