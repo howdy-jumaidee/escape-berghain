@@ -119,11 +119,15 @@ const STYLES: Partial<Record<NpcId, DanceStyle>> = {
   pup: { hop: 0.06, step: 0.1, twist: 0.5, wander: 0.8 },
 };
 const WANDER_SPEED = 0.6;
-/** Special NPCs: walk into them and you're pulled into a face to face conversation. */
+/** Special NPCs: press Space next to them and you get a face to face conversation. */
 const FOCUS = new Set<NpcId>([
   'friday_guy', 'patrick', 'philosopher', 'tourists', 'ice_cream_horse', 'bouncer', 'cleaner', 'leather_choir', 'riddle_horse', 'coat_check',
   'leather_daddy', 'bartender_bear', 'drag_oracle', 'rubber_knight', 'old_raver', 'glitter_boy', 'darkroom_keeper', 'lighting_tech',
   'toilet_junkie', 'toilet_dealer', 'pup',
+]);
+/** The strangest and the story-important few: stumble into one of these and they pull you into a conversation themselves. */
+const AUTO_TALK = new Set<NpcId>([
+  'riddle_horse', 'coat_check', 'drag_oracle', 'ice_cream_horse', 'pup', 'leather_choir',
 ]);
 /** Figures that aren't the standard 1.8 m box. */
 const SIZES: Partial<Record<NpcId, { x: number; y: number; z: number }>> = {
@@ -164,6 +168,8 @@ interface TalkChoiceEntry {
   /** Chance (0..1) that `effect` happens; otherwise `otherwise` does. Liars use it. */
   chance?: number;
   otherwise?: TalkEffect;
+  /** Story flag added the first time this choice's effect fires. NPCs with `by_flag` lines react to it. */
+  sets?: string;
 }
 
 interface Convo {
@@ -221,6 +227,8 @@ export class Npcs {
   private replyTimer = 0;
   private talkCooldownUntil = 0;
   private usedChoices = new Set<string>();
+  /** Story flags earned by talk-back answers (choice `sets` in content/npcs.json). Drives `by_flag` lines. */
+  private storyFlags = new Set<string>();
   /** The outcome of the last talk-back pick. It lands when the reply closes. */
   private pendingOutcome: { effect: TalkEffect; npc: Npc } | null = null;
   /** Currently focused NPC figure (covers active convo plus keepFocus riddle state until npc:unfocus). */
@@ -862,11 +870,11 @@ export class Npcs {
 
   // ---------- Conversations: forced, face to face, like an old RPG ----------
 
-  /** Stumble into a special NPC and they pull you into a conversation. */
+  /** Stumble into an auto-talk NPC and they pull you into a conversation. Everyone else waits for Space. */
   private bumpInto(): void {
     if (state.floor !== 0) return;
     for (const npc of this.npcs) {
-      if (!FOCUS.has(npc.id)) continue;
+      if (!AUTO_TALK.has(npc.id)) continue;
       const holderIndex = this.closestHolder(npc, this.player);
       const h = npc.holders[holderIndex];
       const d = h ? Math.hypot(h.position.x - this.player.x, h.position.z - this.player.z) : npc.pos.distanceTo(this.player);
@@ -921,7 +929,9 @@ export class Npcs {
       if (choices.length) {
         const first = !this.heard.has(npc.id);
         this.heard.add(npc.id);
-        const tier = this.fragmentTier(npc.id);
+        // Story flags beat fragment tiers: if the player holds a flag this NPC has `by_flag` lines for, those win.
+        const flagged = this.flagLines(npc.id);
+        const tier = flagged.length ? flagged : this.fragmentTier(npc.id);
         const base = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
         // Repeat visits swap the last intro line for the fragment-tier lines, if the NPC has them.
         const keys = tier.length ? (first ? [...base, ...tier] : tier) : base;
@@ -945,8 +955,10 @@ export class Npcs {
         // Ticket in, jacket out, keys in the pocket.
         return { keys: ['jacket'], after: () => bus.emit('fragment:claim', { id: 4 }) };
       default: {
+        // Optional `by_flag` in content: lines keyed by story flags the player holds. First matching flag wins.
         // Optional `by_fragments` in content: lines keyed by the fewest fragments needed. Repeat visits get only these.
-        const tier = this.fragmentTier(npc.id);
+        const flagged = this.flagLines(npc.id);
+        const tier = flagged.length ? flagged : this.fragmentTier(npc.id);
         if (tier.length) {
           const first = !this.heard.has(npc.id);
           this.heard.add(npc.id);
@@ -1001,6 +1013,7 @@ export class Npcs {
     }
     if (choice.effect && !alreadyUsed) {
       this.usedChoices.add(actionKey);
+      if (choice.sets) this.storyFlags.add(choice.sets);
       const roll = choice.chance === undefined || Math.random() < choice.chance;
       const effect = roll ? choice.effect : choice.otherwise;
       if (effect) this.pendingOutcome = { effect: effect === 'chaos' ? CHAOS[Math.floor(Math.random() * CHAOS.length)] : effect, npc };
@@ -1114,6 +1127,17 @@ export class Npcs {
     const min = Object.keys(tiers).map(Number).filter((n) => n <= have).sort((a, b) => b - a)[0];
     if (min === undefined) return [];
     return tiers[String(min)].map((_, i) => `by_fragments.${min}.${i}`);
+  }
+
+  /** Keys for the first `by_flag` entry whose story flag the player holds, or none. First matching flag in object order wins. */
+  private flagLines(id: NpcId): string[] {
+    const byFlag = npcText[id]?.by_flag as Record<string, string[]> | undefined;
+    if (!byFlag) return [];
+    for (const flag of Object.keys(byFlag)) {
+      if (!this.storyFlags.has(flag)) continue;
+      return byFlag[flag].map((_, i) => `by_flag.${flag}.${i}`);
+    }
+    return [];
   }
 
   private sayLine(): void {
