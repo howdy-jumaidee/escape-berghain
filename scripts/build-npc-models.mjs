@@ -1,4 +1,4 @@
-// Original early-2000s PS2 / Vice City-inspired low-poly NPC figures for Escape Berghain.
+// Original early-2000s PS2-style / horsey Berlin club-inspired low-poly NPC figures for Escape Berghain.
 // Run: node scripts/build-npc-models.mjs
 // Writes public/models/npc_*.glb. The game loads them through placeModel(); a missing file stays a grey box.
 //
@@ -753,7 +753,7 @@ function makeOutfitTex(pattern, opt) {
     }
 
     case 'security_uniform': {
-      // Vice City PD / club security uniform: crisp dark navy + khaki accents + silver badge
+      // Club security uniform: crisp dark navy + khaki accents + silver badge (berliner bouncer look)
       c.gradV(0, 64, 0x20304a, 0x121c2e);
       // Khaki-tan shoulder epaulettes & collar trim
       c.rect(0, 0, 18, 7, 0xb8a47a);
@@ -1494,7 +1494,7 @@ class Figure {
 
     const bin = Buffer.concat(bins);
     const json = {
-      asset: { version: '2.0', generator: 'escape-berghain-npc-vice' },
+      asset: { version: '2.0', generator: 'escape-berghain-npc-horsey' },
       scene: 0,
       scenes: [{ nodes: [0] }],
       nodes,
@@ -1584,7 +1584,7 @@ function assertOutwardGeometry() {
 }
 
 // ============================================================================
-// PS2 Vice City Character Builder (Tapered Limbs, Collars, Sculpted Heads)
+// PS2-style horsey Character Builder (Tapered Limbs, Collars, Sculpted Heads)
 // ============================================================================
 
 function buildPerson(opt) {
@@ -1707,7 +1707,7 @@ function buildPerson(opt) {
     f.taperBox(0, tailBottom, waistY + 0.02, -0.015, hipW * 1.18, depth * 1.05, waistW * 1.04, depth * 0.92, 0.015);
   }
 
-  // 3D Sculpted Open Collar / Jacket Lapels (signature Vice City detail!)
+  // 3D Sculpted Open Collar / Jacket Lapels (signature horsey detail!)
   if (opt.collar === 'open' || opt.collar === 'lapels' || opt.collar === 'popped') {
     const colHex = opt.collarColor ?? top;
     f.use(colHex, metal, rough * 0.9, skinOpts);
@@ -1832,7 +1832,7 @@ function buildPerson(opt) {
       f.taperBox(ax, cuffY - 0.025, cuffY + 0.025, 0.005, armR * 1.85, armR * 1.85, armR * 1.85, armR * 1.85);
     }
 
-    // Forearm (angled slightly forward for classic Vice City idle posture!)
+    // Forearm (angled slightly forward for classic horsey idle posture!)
     const forearmBare = sleeveStyle === 'short' || sleeveStyle === 'sleeveless' || sleeveStyle === 'rolled';
     if (forearmBare) f.use(skin, 0.02, 0.8, skinOpts);
     else if (opt.sleeveTextured) f.use(0xffffff, metal, rough, outfitOpts);
@@ -2350,7 +2350,7 @@ function buildIceCreamCone(f, a) {
 }
 
 // ============================================================================
-// The 25 NPC Cast Definitions (Vice City / 80s Miami meets Berlin Club)
+// The 25 NPC Cast Definitions (horsey / 80s Berlin club cast)
 // ============================================================================
 
 const cast = [
@@ -3044,4 +3044,4 @@ if (failed) {
   console.error(`${failed} figures failed verification`);
   process.exit(1);
 }
-console.log(`wrote & verified ${cast.length} Vice City low-poly NPC figures`);
+console.log(`wrote & verified ${cast.length} horsey low-poly NPC figures`);

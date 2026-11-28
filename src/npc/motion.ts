@@ -1,5 +1,5 @@
 // Procedural 132 BPM Berlin techno choreography & articulated knee-bending locomotion engine.
-// Supports both 11-bone Vice City skinned rigs (body -> spine -> head/armL/foreArmL/armR/foreArmR,
+// Supports both 11-bone horsey skinned rigs (body -> spine -> head/armL/foreArmL/armR/foreArmR,
 // legL/calfL, legR/calfR) and 6-bone equine rigs gracefully (missing child bones are skipped).
 import * as THREE from 'three';
 
@@ -27,7 +27,7 @@ export interface DanceRig {
   bodyY: number;
   /** True when `body` is a root bone parenting limbs (safe to translate Y for knee-dip). */
   bodyIsRoot: boolean;
-  /** +1 when armL sits on +X (Vice City rigs), -1 when armL sits on -X (equine rigs). */
+  /** +1 when armL sits on +X (horsey rigs), -1 when armL sits on -X (equine rigs). */
   armLSign: number;
   /** Beat spring state for natural groove overshoot. */
   spring: number;
