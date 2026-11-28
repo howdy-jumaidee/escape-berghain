@@ -9,7 +9,7 @@ import { resolveCircle, type BuiltLevel } from './level';
 
 const WALK = 2;
 const RUN = 3.6;
-const SIGHT = 11;
+const SIGHT = 8; // detection distance, metres. Smaller = more room to hide in the crowd (#68 balance).
 /** Closing time: everyone moves faster and sees further. */
 const FINALE_SPEED = 1.5;
 const FINALE_SIGHT = 1.25;
