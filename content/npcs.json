@@ -141,7 +141,8 @@
         "text": "A horse trying to get home.",
         "reply": "Honesty in the toilet queue. Rare. Your head feels lighter.",
         "reply_used": "Honesty still suits you. Keep moving before the queue swallows you.",
-        "effect": "brain_freeze"
+        "effect": "brain_freeze",
+        "sets": "confessed_horse"
       },
       {
         "id": "designer",
@@ -177,6 +178,12 @@
       "5": [
         "All five. You know who you are now. Tragic. You have to go home and be it.",
         "Go. The queue will remember you. Mostly as a horse."
+      ]
+    },
+    "by_flag": {
+      "listened_to_elders": [
+        "The elder spoke and you actually listened. The queue is quietly proud of you.",
+        "Glasses, number, ticket, keys, bike. He is right, annoyingly. Go in that order."
       ]
     }
   },
@@ -215,7 +222,13 @@
       "Heute nicht. Too many horses already.",
       "...",
       "The back door was never the problem. The front door is."
-    ]
+    ],
+    "by_flag": {
+      "known_to_security": [
+        "Security has your face now, horse. Torch and everything.",
+        "Front door is out. Back door is watched too. Ask the cleaner about a side way."
+      ]
+    }
   },
   "spirit_guide": {
     "name": "You, sort of",
@@ -233,7 +246,13 @@
       "Mmmm. Mmmm. Mmmm.",
       "The herd knows where your ticket is. Stomp with them, on the beat.",
       "Mmmm."
-    ]
+    ],
+    "by_flag": {
+      "knighted": [
+        "Mmmm. Sir Horse.",
+        "Mmmm. The knight's own steed. Low notes only for you."
+      ]
+    }
   },
   "cleaner": {
     "name": "Cleaner",
@@ -274,7 +293,13 @@
         "effect": "chaos",
         "reply_used": "The mop remembers. The mop says no."
       }
-    ]
+    ],
+    "by_flag": {
+      "known_to_security": [
+        "Security knows your snout now. They radio it in with the morning mop report.",
+        "Still want that shortcut? Follow the wet floor, stay low, and leave the sign out."
+      ]
+    }
   },
   "leather_daddy": {
     "name": "Leather daddy",
@@ -394,7 +419,17 @@
         "effect": "chaos",
         "reply_used": "Same hoof, same future. Pillar."
       }
-    ]
+    ],
+    "by_flag": {
+      "trusted_glitter": [
+        "He sent you the wrong way on purpose, darling. Shiny is not the same as kind.",
+        "The real way is your own memories. Boring. Reliable. Unlike him."
+      ],
+      "listened_to_elders": [
+        "You listened to the old one. Smart foal.",
+        "The cards agree with him tonight. Rare. Follow the cards."
+      ]
+    }
   },
   "rubber_knight": {
     "name": "Rubber knight",
@@ -428,7 +463,8 @@
         "text": "I challenge you to a dance duel.",
         "reply": "Have at thee! *squeak* *squeak* *squeak* ...I yield. Thou art too horse.",
         "effect": "cheer",
-        "reply_used": "My knees still squeak from our last duel."
+        "reply_used": "My knees still squeak from our last duel.",
+        "sets": "knighted"
       },
       {
         "id": "weird",
@@ -437,7 +473,13 @@
         "effect": "chaos",
         "reply_used": "Begone, I said. Lovingly."
       }
-    ]
+    ],
+    "by_flag": {
+      "trusted_glitter": [
+        "Glitter boy's shortcut, thou sayest? I once followed one into a mop bucket.",
+        "Thou art braver than I, little steed. Or simply more glittery."
+      ]
+    }
   },
   "old_raver": {
     "name": "Old raver",
@@ -455,7 +497,8 @@
         "text": "How do I get out of here faster?",
         "reply": "Stop wandering. Memories first, door last. Sit down, drink water, breathe.",
         "effect": "sober",
-        "reply_used": "Water. Breathe. You're not listening."
+        "reply_used": "Water. Breathe. You're not listening.",
+        "sets": "listened_to_elders"
       },
       {
         "id": "next",
@@ -490,7 +533,8 @@
         "effect": "shortcut",
         "chance": 0.4,
         "otherwise": "wrong_way",
-        "reply_used": "I already showed you! Keep up!"
+        "reply_used": "I already showed you! Keep up!",
+        "sets": "trusted_glitter"
       },
       {
         "id": "glasses",
@@ -545,7 +589,8 @@
         "text": "Are you going to tell security about me?",
         "reply": "I tell security everything. It's the only fun part of my shift.",
         "effect": "snitch",
-        "reply_used": "Already did. Twice."
+        "reply_used": "Already did. Twice.",
+        "sets": "known_to_security"
       },
       {
         "id": "weird",
@@ -554,7 +599,14 @@
         "effect": "chaos",
         "reply_used": "No."
       }
-    ]
+    ],
+    "by_flag": {
+      "trusted_glitter": [
+        "...",
+        "Glitter boy sent you? He sends everyone somewhere. It is usually the toilets.",
+        "The darkroom stays closed either way. Especially for his friends."
+      ]
+    }
   },
   "lighting_tech": {
     "name": "Lighting tech",
@@ -594,7 +646,13 @@
         "effect": "chaos",
         "reply_used": "Horse mode is still on. You're welcome."
       }
-    ]
+    ],
+    "by_flag": {
+      "knighted": [
+        "Sir Horse! The strobes salute you.",
+        "One blackout on me later, champion. You earned it in the duel."
+      ]
+    }
   },
   "toilet_junkie": {
     "name": "Toilet regular",
@@ -616,7 +674,13 @@
     "talk": [
       "You look hooved already. One for the road?",
       "The back exit is past the wet floor. The wet floor is past the truth."
-    ]
+    ],
+    "by_flag": {
+      "known_to_security": [
+        "Security has been asking about a horse all night. Small world, huh.",
+        "Story for a story, then: the back exit is past the wet floor. Do not tell them I said."
+      ]
+    }
   },
   "pup": {
     "name": "Pup",
@@ -627,6 +691,12 @@
     "talk": [
       "The leather choir upstairs is my pack. Say hi.",
       "Rubber, leather, sweat. Berlin, baby."
-    ]
+    ],
+    "by_flag": {
+      "confessed_horse": [
+        "Woof. ...You told the philosopher you're a horse. The whole queue heard that.",
+        "I'm a horse too, technically. We should start a union."
+      ]
+    }
   }
 }
