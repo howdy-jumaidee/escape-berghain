@@ -63,11 +63,19 @@ export class Techno {
     comp.ratio.value = 4;
     comp.attack.value = 0.003;
     comp.release.value = 0.15;
-    this.master = gain(ctx, 0.9);
+    // Hard limiter after the comp: kick transients can outrun a 3 ms attack and clip the DAC.
+    const lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -2;
+    lim.knee.value = 0;
+    lim.ratio.value = 20;
+    lim.attack.value = 0.0005;
+    lim.release.value = 0.08;
+    this.master = gain(ctx, 0.85);
     this.meter = ctx.createAnalyser();
     this.meter.fftSize = 512;
-    this.master.connect(comp);
-    comp.connect(this.meter).connect(ctx.destination);
+    this.master.connect(comp).connect(lim);
+    // Meter sits after the limiter, so ?debug ebAudio() reads what actually hits the output.
+    lim.connect(this.meter).connect(ctx.destination);
 
     // Music goes through the trip filter, then the wall (zone) filter.
     this.music = gain(ctx, 1);
@@ -172,7 +180,7 @@ export class Techno {
     padLp.connect(this.padGain).connect(this.duck);
     this.padGain.connect(this.reverb);
 
-    // The crowd: a murmur bed under everything, breathing slowly. Muffled with the music through walls.
+    // The crowd: a low murmur bed under everything, breathing slowly. Muffled with the music through walls.
     const crowd = ctx.createBufferSource();
     crowd.buffer = this.noise;
     crowd.loop = true;
@@ -180,13 +188,17 @@ export class Techno {
     crowdBp.type = 'bandpass';
     crowdBp.frequency.value = 520;
     crowdBp.Q.value = 0.6;
-    this.crowdGain = gain(ctx, 0.038);
+    // Dark top end: the murmur stays a bed under the kick and bass, never competes in the mids.
+    const crowdLp = ctx.createBiquadFilter();
+    crowdLp.type = 'lowpass';
+    crowdLp.frequency.value = 850;
+    this.crowdGain = gain(ctx, 0.028);
     const crowdLfo = ctx.createOscillator();
     crowdLfo.frequency.value = 0.07;
-    const crowdLfoGain = gain(ctx, 0.014);
+    const crowdLfoGain = gain(ctx, 0.009);
     crowdLfo.connect(crowdLfoGain).connect(this.crowdGain.gain);
     // Through the duck: the kick pushes the murmur down, it sits under the music.
-    crowd.connect(crowdBp).connect(this.crowdGain).connect(this.duck);
+    crowd.connect(crowdBp).connect(crowdLp).connect(this.crowdGain).connect(this.duck);
     crowd.start();
     crowdLfo.start();
 
@@ -213,15 +225,15 @@ export class Techno {
     this.choirGain.connect(this.reverb);
   }
 
-  /** Standing with the leather choir. */
+  /** Standing with the leather choir. Sits under the music, not on top of it. */
   setChoir(on: boolean): void {
-    this.choirGain.gain.setTargetAtTime(on ? 0.07 : 0, this.ctx.currentTime, 0.6);
+    this.choirGain.gain.setTargetAtTime(on ? 0.05 : 0, this.ctx.currentTime, 0.6);
   }
 
   /** Closing time: acid all the way up, a siren riser every four bars, the crowd roars. */
   setFinale(): void {
     this.finale = true;
-    this.crowdGain.gain.setTargetAtTime(0.09, this.ctx.currentTime, 1);
+    this.crowdGain.gain.setTargetAtTime(0.075, this.ctx.currentTime, 1);
   }
 
   /** A cheer from the crowd: a noise swell and a few whistles. */
@@ -291,7 +303,7 @@ export class Techno {
   }
 
   set muted(m: boolean) {
-    this.master.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.05);
+    this.master.gain.setTargetAtTime(m ? 0 : 0.85, this.ctx.currentTime, 0.05);
   }
 
   setMix(mix: Mix): void {
