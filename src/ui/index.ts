@@ -92,7 +92,8 @@ export function startUi(): void {
         el('kbd', '', b).textContent = String(i + 1);
         el('span', '', b).textContent = item.text;
         b.addEventListener('click', () => pick(i));
-        b.addEventListener('mouseenter', () => highlight(i));
+        // mousemove, not mouseenter: a list that opens under a resting cursor must not steal the highlight.
+        b.addEventListener('mousemove', () => { if (selected !== i) highlight(i); });
         return b;
       }),
     );
