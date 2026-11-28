@@ -211,5 +211,17 @@
       "Keys: give ticket 47 to coat check.",
       "The bike riddle: the riddle horse waits in the toilet corridor."
     ]
+  },
+  "darkroom": {
+    "enter": "The darkroom. No lights. Whatever you see in here, you brought with you.",
+    "walls_moved": "The walls just moved. Everybody in here acts like that's normal.",
+    "clue_1": "A flyer: DARKROOM. Door policy: no photos, no questions. Left at the first wall. Everyone goes right. Everyone is wrong.",
+    "clue_2": "A stamp on the floor: RIGHT ON THE SNARE. Then straight while the hats run.",
+    "clue_3": "The Friday guy's handwriting on a flyer: Left for about 128. Then up. Trust the BPM, not your eyes.",
+    "clue_4": "A flyer: The red walls move every four kicks. One in your way? Dance a bit. It gets bored.",
+    "exit_shut_1": "A door marked STAFF. It checks your memories. You don't have enough. Bring three.",
+    "exit_shut_2": "Still shut. The door says it has seen you before. You don't remember. That's the problem.",
+    "exit_shut_3": "The door does not negotiate. Three memories. It's the policy. Nobody wrote the policy.",
+    "exit_open": "Three memories. The STAFF door sighs and lets you through. Cold air, a mop bucket, the back exit."
   }
 }
