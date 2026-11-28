@@ -831,7 +831,10 @@ export class Npcs {
       if (choices.length) {
         const first = !this.heard.has(npc.id);
         this.heard.add(npc.id);
-        const keys = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        const tier = this.fragmentTier(npc.id);
+        const base = full.length ? (first ? full : [full[full.length - 1]]) : ['lines.0'];
+        // Repeat visits swap the last intro line for the fragment-tier lines, if the NPC has them.
+        const keys = tier.length ? (first ? [...base, ...tier] : tier) : base;
         return {
           keys,
           keepFocus: true,
