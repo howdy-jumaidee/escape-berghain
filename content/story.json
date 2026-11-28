@@ -64,7 +64,7 @@
     "glasses_slip_1": "It slips. Hooves are not hands.",
     "glasses_slip_2": "Again. Come on.",
     "ice_cream": "Brain freeze. Everything goes sharp.",
-    "mate_found": "A bottle of MATE. Space to drink.",
+    "mate_found": "A bottle of MATE. It goes straight down.",
     "hooved": "Hooved. The floor tilts sideways.",
     "bag_found": "Something small and square. Space to take it."
   },
@@ -157,6 +157,11 @@
   ],
   "talk_hint": "Space to continue. Esc to leave.",
   "view_hint": "V to change view",
+  "interact": {
+    "key": "Space",
+    "talk": "Talk",
+    "grab": "Grab"
+  },
   "talk_outcomes": {
     "sober": "Your head clears a little.",
     "trip_up": "That was not water. The floor starts breathing.",
