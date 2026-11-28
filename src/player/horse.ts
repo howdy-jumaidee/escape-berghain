@@ -27,7 +27,7 @@ const TURN_SPEED = 2.4;
 const LEG_LENGTH = 0.8;
 /** Time in the club until the time-based part of the steering is fully drunk (trip makes it worse on top).
  *  Tune here: lower = gets hard faster. #67 wants first-timers through the hall in 90 s, veterans fighting for every turn. */
-const SOBER_UP_SECONDS = 45;
+const SOBER_UP_SECONDS = 35;
 
 export type CameraMode = 'follow' | 'eyes';
 export type Resolver = (pos: THREE.Vector3, radius: number) => void;
@@ -186,7 +186,7 @@ export class Horse {
     // Drunk steering. It starts soft so you can learn it, then gets worse the longer
     // you're in the club and the higher your trip: `drunk` goes from 0 to 1.
     if (state.started && !state.ending) this.playTime += dt;
-    const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.65 + k * 0.55);
+    const drunk = Math.min(1, Math.min(1, this.playTime / SOBER_UP_SECONDS) * 0.7 + k * 0.7);
 
     // Follow and first person: W/S move, A/D steer. Drunk drift stays bounded.
     const forward = free
@@ -197,7 +197,7 @@ export class Horse {
       : 0;
     const wants = forward !== 0;
 
-    const drift = free && (forward !== 0 || steer !== 0) ? Math.sin(this.t * 0.9) * drunk * 0.75 : 0;
+    const drift = free && (forward !== 0 || steer !== 0) ? Math.sin(this.t * 0.9) * drunk * 0.9 : 0;
     const wantTurn = steer * TURN_SPEED + drift;
     const response = 11 - drunk * 6.5;
     this.turnVel += (wantTurn - this.turnVel) * (1 - Math.exp(-response * dt));
@@ -213,9 +213,9 @@ export class Horse {
     if (free) {
       this.lurchIn -= dt;
       if (this.lurchIn <= 0 && drunk > 0.2) {
-        this.lurchIn = 1.0 + Math.random() * (3.4 - drunk * 2.2);
+        this.lurchIn = 0.9 + Math.random() * (3.2 - drunk * 2.1);
         const side = Math.random() < 0.5 ? -1 : 1;
-        const power = drunk * 3.4;
+        const power = drunk * 3.8;
         this.velocity.x += Math.cos(this.heading) * side * power;
         this.velocity.z -= Math.sin(this.heading) * side * power;
         this.swayVel += side * 2;

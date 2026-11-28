@@ -72,7 +72,13 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 Only after Gate 4 is safe. Each one is an issue for one model, in its own folder.
 
 - [x] **Different views.** V cycles follow and eyes. Top down is gone (#87)
-- [ ] **Multiple floors** (Dee wants these). The 9 m galleries are walkable and now have dancers (#85). Still open: Panorama Bar as a real second floor, one `levels/level1.json` grid per floor, seen through a gap in the ceiling
+- [x] **Multiple floors.** The 9 m galleries are walkable with dancers (#85) and Panorama Bar sits on the 9 m south gallery (#101)
+- [x] **Vice City dark club cast, rare unicorns & Berghain haze.** Real shirtless/leather Vice City NPCs and crowd, horses/donkeys/rare unicorns with Space clarity blessing, fog-machine smoke clouds, hoof stomp shockwave, and comedy dialogue pass (#102, #105)
+- [ ] **Custom donkey & unicorn 3D assets.** Swap procedural equine heads for downloaded donkey and unicorn models once dropped in `~/Downloads`
+- [ ] **Spatial sound cues ("follow your ears").** Faint shimmering ping when within ~12 m of an uncollected memory fragment and a crystalline shimmer when passing a rare unicorn
+- [ ] **Interaction proximity pulse & beat-sync stomp feedback.** Subtle visual glow when within Space grab/talk range and a brighter shockwave ring when E lands cleanly on the beat
+- [ ] **Dynamic Toilet Queue Philosopher.** Scale his lines live with how many memories you hold (`0` to `5`) so backtracking rewards repeat talks
+- [ ] **Softer first-30s steering curve for cold playtests.** Keep turning slightly crisper during the opening 30 seconds before drunk sway kicks in hard, so first-time judges learn WASD + V smoothly
 - [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out
 - [ ] Convert fonts to woff2 (smaller download)
 - [ ] Mobile touch controls
