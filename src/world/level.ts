@@ -2,7 +2,18 @@
 import * as THREE from 'three';
 import { CELL, CEILING, cellCenter, type ZoneId } from '../contracts';
 import { placeModel } from '../look/models';
-import { buildArchitecture } from './architecture';
+import {
+  applyWorldUVs,
+  boardConcreteTextures,
+  buildArchitecture,
+  CONCRETE_DARK_COLOR,
+  CONCRETE_LIGHT_COLOR,
+  CONCRETE_PLINTH_COLOR,
+  CONCRETE_TILE_SIZE,
+  FLOOR_CONCRETE_COLOR,
+  FLOOR_TILE_SIZE,
+  floorConcreteTextures,
+} from './architecture';
 
 export type { LevelData } from '../data';
 import type { LevelData } from '../data';
@@ -76,6 +87,20 @@ export interface BuiltLevel {
   data: LevelData;
 }
 
+/** Recomputes world-scale UVs on placeModel's fallback box geometry (keeps future .glb swaps intact). */
+function applyWorldUVsToPlaceholder(
+  group: THREE.Group,
+  tileSize: number,
+  offsetX: number,
+  offsetY: number,
+  offsetZ: number,
+): void {
+  const mesh = group.children[0] as THREE.Mesh | undefined;
+  if (mesh?.isMesh && mesh.geometry) {
+    applyWorldUVs(mesh.geometry, tileSize, offsetX, offsetY, offsetZ);
+  }
+}
+
 export function buildLevel(data: LevelData): BuiltLevel {
   const root = new THREE.Group();
   root.name = 'level';
@@ -84,6 +109,60 @@ export function buildLevel(data: LevelData): BuiltLevel {
   const cells = new Map<string, [number, number][]>();
   const gates = new Map<string, { collider: Collider; object: THREE.Object3D }>();
   let start = cellCenter(1, 1);
+
+  // Shared cold brutalist Sichtbeton & scuffed poured-concrete floor materials (reusing GPU textures).
+  const concreteTex = boardConcreteTextures();
+  const floorTex = floorConcreteTextures();
+
+  const wallConcreteMat = new THREE.MeshStandardMaterial({
+    color: CONCRETE_DARK_COLOR,
+    map: concreteTex.map,
+    bumpMap: concreteTex.bumpMap,
+    bumpScale: 0.12,
+    roughnessMap: concreteTex.roughnessMap,
+    roughness: 0.92,
+    metalness: 0.04,
+  });
+
+  const pillarConcreteMat = new THREE.MeshStandardMaterial({
+    color: CONCRETE_LIGHT_COLOR,
+    map: concreteTex.map,
+    bumpMap: concreteTex.bumpMap,
+    bumpScale: 0.14,
+    roughnessMap: concreteTex.roughnessMap,
+    roughness: 0.92,
+    metalness: 0.04,
+  });
+
+  const plinthConcreteMat = new THREE.MeshStandardMaterial({
+    color: CONCRETE_PLINTH_COLOR,
+    map: concreteTex.map,
+    bumpMap: concreteTex.bumpMap,
+    bumpScale: 0.13,
+    roughnessMap: concreteTex.roughnessMap,
+    roughness: 0.95,
+    metalness: 0.05,
+  });
+
+  const floorConcreteMat = new THREE.MeshStandardMaterial({
+    color: FLOOR_CONCRETE_COLOR,
+    map: floorTex.map,
+    bumpMap: floorTex.bumpMap,
+    bumpScale: 0.05,
+    roughnessMap: floorTex.roughnessMap,
+    roughness: 1.0, // roughnessMap directly encodes 0.45..0.92 damp/scuffed dance-floor sheen
+    metalness: 0.08,
+  });
+
+  const baseFloorMat = new THREE.MeshStandardMaterial({
+    color: 0x3a3f47,
+    map: floorTex.map,
+    bumpMap: floorTex.bumpMap,
+    bumpScale: 0.04,
+    roughnessMap: floorTex.roughnessMap,
+    roughness: 1.0,
+    metalness: 0.06,
+  });
 
   data.grid.forEach((line, row) => {
     [...line].forEach((ch, col) => {
@@ -96,9 +175,10 @@ export function buildLevel(data: LevelData): BuiltLevel {
       const c = cellCenter(col, row);
       if (name === 'player_start') start = c;
 
-      // Every non wall cell gets a floor tile.
+      // Every non wall cell gets a scuffed dark poured-concrete floor slab.
       if (name !== 'hall_wall') {
-        const floor = placeModel('hall_floor', { x: CELL, y: 0.05, z: CELL }, concrete);
+        const floor = placeModel('hall_floor', { x: CELL, y: 0.05, z: CELL }, floorConcreteMat);
+        applyWorldUVsToPlaceholder(floor, FLOOR_TILE_SIZE, c.x, 0.025, c.z);
         floor.position.set(c.x, -0.05, c.z);
         root.add(floor);
       }
@@ -106,9 +186,27 @@ export function buildLevel(data: LevelData): BuiltLevel {
 
       const spec = MODULES[name];
       if (!spec) return;
-      const obj = placeModel(name, spec.size, spec.material);
+      const mat =
+        name === 'hall_wall' ? wallConcreteMat : name === 'hall_pillar' ? pillarConcreteMat : spec.material;
+      const obj = placeModel(name, spec.size, mat);
       const ox = spec.offset?.x ?? 0;
       const oz = spec.offset?.z ?? 0;
+
+      if (name === 'hall_wall' || name === 'hall_pillar') {
+        applyWorldUVsToPlaceholder(obj, CONCRETE_TILE_SIZE, c.x + ox, spec.size.y / 2, c.z + oz);
+      }
+
+      // Monumental dark concrete plinth base collar anchoring every 19 m column (non-blocking visual flange).
+      if (name === 'hall_pillar') {
+        const plinthH = 0.85;
+        const plinthGeo = new THREE.BoxGeometry(2.55, plinthH, 2.55);
+        applyWorldUVs(plinthGeo, CONCRETE_TILE_SIZE, c.x + ox, plinthH / 2, c.z + oz);
+        const plinth = new THREE.Mesh(plinthGeo, plinthConcreteMat);
+        plinth.name = 'hall_pillar_plinth';
+        plinth.position.y = plinthH / 2;
+        obj.add(plinth);
+      }
+
       obj.position.set(c.x + ox, 0, c.z + oz);
       root.add(obj);
       if (spec.tall) tall.push(obj);
@@ -134,7 +232,17 @@ export function buildLevel(data: LevelData): BuiltLevel {
   // The floor under the walls, so the fog has something to sit on at the edges.
   const rows = data.grid.length;
   const cols = Math.max(...data.grid.map((l) => l.length));
-  const base = new THREE.Mesh(new THREE.PlaneGeometry(cols * CELL + 40, rows * CELL + 40), darkConcrete);
+  const baseW = cols * CELL + 40;
+  const baseD = rows * CELL + 40;
+  const baseGeo = new THREE.PlaneGeometry(baseW, baseD);
+  const baseUv = baseGeo.getAttribute('uv');
+  if (baseUv) {
+    for (let i = 0; i < baseUv.count; i++) {
+      baseUv.setXY(i, baseUv.getX(i) * (baseW / FLOOR_TILE_SIZE), baseUv.getY(i) * (baseD / FLOOR_TILE_SIZE));
+    }
+    baseUv.needsUpdate = true;
+  }
+  const base = new THREE.Mesh(baseGeo, baseFloorMat);
   base.rotation.x = -Math.PI / 2;
   base.position.set((cols * CELL) / 2, -0.06, (rows * CELL) / 2);
   root.add(base);

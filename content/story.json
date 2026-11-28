@@ -26,6 +26,12 @@
   "unicorn": {
     "blessing": "The rare unicorn nods once. Your vision snaps razor sharp. You feel weirdly hydrated."
   },
+  "specials": {
+    "lemur": "A ring-tailed lemur on the gallery. Nobody checks IDs up here.",
+    "chimp": "The chimpanzee has better rhythm than everyone in Berlin. Respect.",
+    "panda": "A giant panda vibing in the haze. Pure bamboo zen. Your head clears.",
+    "ghoul": "A glowing ghoul who's been in here since 1998. Still waiting for the drop."
+  },
   "losses": {
     "passed_out": "You wake up in the toilet queue. Someone is still talking about their ex.",
     "caught": "Animal control drops you back where you were. He asks if you can get him in next time."

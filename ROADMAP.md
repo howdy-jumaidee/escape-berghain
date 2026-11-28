@@ -62,6 +62,9 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 | Robin | Rewrite the story drafts in `content/` (#22), 3 cold playtests, pitch (#23) | |
 
 - [x] **Steering ramps up.** It started too aggressive. Now you start almost sober (stiff, steady, no lurching) and it gets looser over 90 seconds in the club, plus more with the trip: overshooting turns, slower to line up, sideways lurches. Tune `SOBER_UP_SECONDS` in `src/player/horse.ts`. Getting caught or passing out resets it to soft, so a respawn isn't a punishment
+- [x] **Rare special creatures & 11-bone techno dance.** Ring-tailed lemur (west 9 m gallery), chimpanzee, giant panda, and Fallout ghoul with Space interactions, plus 11-bone NPC techno dance rigs and GPU vertex-shader crowd animations
+- [x] **Horse ragdoll collapse & brutalist concrete.** Loss sequences (caught / blackout) collapse the horse onto brutalist procedural concrete floors
+- [x] **Overcrowded toilets, 4 live DJs & talk-back dialogue.** Packed toilet corridor + 4 live animated DJs at the booth, and interactive 1/2/3 talk-back dialogue choices on 5 key NPCs (`friday_guy`, `bartender_bear`, `philosopher`, `leather_daddy`, `drag_oracle`)
 - [ ] Only `fix/` branches after 12:00
 - [ ] 3 cold playtests by outsiders, run by Robin
 
@@ -74,6 +77,7 @@ Only after Gate 4 is safe. Each one is an issue for one model, in its own folder
 - [x] **Different views.** V cycles follow and eyes. Top down is gone (#87)
 - [x] **Multiple floors.** The 9 m galleries are walkable with dancers (#85) and Panorama Bar sits on the 9 m south gallery (#101)
 - [x] **Vice City dark club cast, rare unicorns & Berghain haze.** Real shirtless/leather Vice City NPCs and crowd, horses/donkeys/rare unicorns with Space clarity blessing, fog-machine smoke clouds, hoof stomp shockwave, and comedy dialogue pass (#102, #105)
+- [x] **Interactive talk-back NPCs, rare creatures, GPU crowd & live DJs.** Talk-back choices with real gameplay help (`friday_guy`, `bartender_bear`, `philosopher`, `leather_daddy`, `drag_oracle`), Lemur/Chimp/Panda/Ghoul sightings, 11-bone NPC techno dance + GPU vertex-shader crowd, horse ragdoll collapse on loss, brutalist concrete textures, overcrowded toilets, and 4 live DJs
 - [ ] **Custom donkey & unicorn 3D assets.** Swap procedural equine heads for downloaded donkey and unicorn models once dropped in `~/Downloads`
 - [ ] **Spatial sound cues ("follow your ears").** Faint shimmering ping when within ~12 m of an uncollected memory fragment and a crystalline shimmer when passing a rare unicorn
 - [ ] **Interaction proximity pulse & beat-sync stomp feedback.** Subtle visual glow when within Space grab/talk range and a brighter shockwave ring when E lands cleanly on the beat

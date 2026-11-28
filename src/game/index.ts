@@ -8,6 +8,7 @@ import {
   BeatCounter,
   PASS_OUTS_TO_HERD,
   lock,
+  unlock,
   type EndingId,
   type FragmentId,
 } from '../contracts';
@@ -16,7 +17,11 @@ import { level, debug } from '../data';
 const DJ_STOMPS = 8;
 const DJ_RANGE = 2.8;
 const PASS_OUT_TRIP = 45;
+const CAUGHT_RAGDOLL_MS = 1350;
+const PASSOUT_RAGDOLL_MS = 1300;
 let endingPending = false;
+let collapsing = false;
+let collapseTimer = 0;
 
 export function startGame(): void {
   // Fragments: one owner.
@@ -35,31 +40,56 @@ export function startGame(): void {
     setTimeout(() => showEnding('secret_dj'), 1800);
   });
 
-  // Loss: trip at max. Wake up in the toilet queue. Three times and you're one of the herd.
+  // Loss: trip at max. Let the horse ragdoll onto the floor before waking in the toilet queue.
+  // Three times and you're one of the herd.
   bus.on('trip:max', () => {
-    if (state.ending || endingPending) return;
+    if (state.ending || endingPending || collapsing) return;
+    collapsing = true;
     state.passOuts++;
-    if (state.passOuts >= PASS_OUTS_TO_HERD) {
+    lock('ragdoll');
+    const isHerd = state.passOuts >= PASS_OUTS_TO_HERD;
+    if (isHerd) {
       endingPending = true;
       lock('ending');
-      setTimeout(() => showEnding('herd'), 1200);
-      return;
     }
-    state.trip = PASS_OUT_TRIP;
-    bus.emit('trip:changed', { trip: state.trip });
-    bus.emit('player:respawn', { zone: 'toilet_corridor' });
-    bus.emit('ui:say', { key: 'story:losses.passed_out', seconds: 4 });
-    const warning = `story:spirit_guide.herd_warning_${state.passOuts}`;
-    setTimeout(() => {
-      if (!state.ending && !endingPending) bus.emit('ui:say', { key: warning, seconds: 5 });
-    }, 4500);
+    clearTimeout(collapseTimer);
+    collapseTimer = window.setTimeout(() => {
+      collapseTimer = 0;
+      collapsing = false;
+      if (isHerd) {
+        unlock('ragdoll');
+        showEnding('herd');
+        return;
+      }
+      if (!state.ending && !endingPending) {
+        state.trip = PASS_OUT_TRIP;
+        bus.emit('trip:changed', { trip: state.trip });
+        bus.emit('player:respawn', { zone: 'toilet_corridor' });
+        bus.emit('ui:say', { key: 'story:losses.passed_out', seconds: 4 });
+        const warning = `story:spirit_guide.herd_warning_${state.passOuts}`;
+        setTimeout(() => {
+          if (!state.ending && !endingPending) bus.emit('ui:say', { key: warning, seconds: 5 });
+        }, 4500);
+      }
+      unlock('ragdoll');
+    }, PASSOUT_RAGDOLL_MS);
   });
 
-  // Loss: caught. Back to the last checkpoint.
+  // Loss: caught. Let the horse tumble & flop across the concrete before respawning at checkpoint.
   bus.on('player:caught', () => {
-    if (state.ending || endingPending) return;
-    bus.emit('player:respawn', { zone: state.checkpoint });
-    bus.emit('ui:say', { key: 'story:losses.caught', seconds: 5 });
+    if (state.ending || endingPending || collapsing) return;
+    collapsing = true;
+    lock('ragdoll');
+    clearTimeout(collapseTimer);
+    collapseTimer = window.setTimeout(() => {
+      collapseTimer = 0;
+      collapsing = false;
+      if (!state.ending && !endingPending) {
+        bus.emit('player:respawn', { zone: state.checkpoint });
+        bus.emit('ui:say', { key: 'story:losses.caught', seconds: 5 });
+      }
+      unlock('ragdoll');
+    }, CAUGHT_RAGDOLL_MS);
   });
 
   // Spirit guide speaks after each fragment. With all five: closing time.
@@ -129,6 +159,10 @@ function startDjBooth(cell: [number, number]): void {
 
 function showEnding(ending: EndingId): void {
   if (state.ending) return;
+  clearTimeout(collapseTimer);
+  collapseTimer = 0;
+  collapsing = false;
+  unlock('ragdoll');
   endingPending = false;
   state.ending = ending;
   bus.emit('ending:show', { ending });

@@ -61,8 +61,10 @@
   },
   "crowd": {
     "main_hall": 6,
-    "panorama_bar": 3,
-    "bar_cloakroom": 1.4
+    "panorama_bar": 4.4,
+    "bar_cloakroom": 3.4,
+    "toilet_corridor": 5.5,
+    "back_exit": 1.4
   },
   "grid": [
     "#################",
