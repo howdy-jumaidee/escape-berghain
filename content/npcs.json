@@ -73,6 +73,24 @@
       "You. Pony. I've been dancing since Friday. My legs are purely ceremonial now.",
       "Your glasses? Something glinted under the left speaker. Left from the DJ. Or my left. One of the lefts.",
       "Exit? Left for about 128. Then up."
+    ],
+    "choices": [
+      {
+        "id": "glasses",
+        "text": "Where did you see my glasses?",
+        "reply": "Left speaker by the DJ booth. Crawl under the sub, hooves first."
+      },
+      {
+        "id": "mate",
+        "text": "Got a spare Club Mate?",
+        "reply": "Always. Don't drop it with those hooves.",
+        "reply_used": "Already gave you my last bottle, pony. Check the floor right next to me."
+      },
+      {
+        "id": "horse",
+        "text": "Be honest. Am I a horse?",
+        "reply": "Bro, it's Sunday 7 am. We are all horses."
+      }
     ]
   },
   "coat_check": {
@@ -107,6 +125,24 @@
       "Who are you, really? A horse dreaming you're a graphic designer from Neukölln?",
       "Nobody in here knows their own face. No mirrors, just concrete and bad decisions.",
       "But your wrist remembers. Look down at yourself."
+    ],
+    "choices": [
+      {
+        "id": "horse",
+        "text": "A horse trying to get home.",
+        "reply": "Honesty in the toilet queue. Rare. Your head feels lighter.",
+        "reply_used": "Honesty still suits you. Keep moving before the queue swallows you."
+      },
+      {
+        "id": "designer",
+        "text": "A graphic designer from Neukölln.",
+        "reply": "Aren't we all, comrade. Check your wrist with Q once you have glasses."
+      },
+      {
+        "id": "guestlist",
+        "text": "I'm on the guestlist.",
+        "reply": "The guestlist is a social construct. The back exit isn't."
+      }
     ]
   },
   "tourists": {
@@ -184,6 +220,19 @@
       "Stop right there. Breathe. Love the pony-play commitment, babe. Where'd you get the hooves, KitKat?",
       "Coat check won't give anyone anything without a ticket. Not even a horse.",
       "And the number you're looking for? It's on your wrist. Has been all night."
+    ],
+    "choices": [
+      {
+        "id": "stealth",
+        "text": "Help me get past security?",
+        "reply": "Melt into the shirtless dancers. Torch beams can't pierce the crowd. Stay low, cutie.",
+        "reply_used": "Stay inside the crowd, cutie. Torch beams can't pierce the dancers."
+      },
+      {
+        "id": "hooves",
+        "text": "Where did I get these hooves?",
+        "reply": "KitKat, probably. Or you evolved for 132 BPM. Either way, stunning."
+      }
     ]
   },
   "bartender_bear": {
@@ -195,6 +244,24 @@
       "We don't serve horses. Kidding. We serve everyone. Except you, you've had enough.",
       "Water's off since Saturday. There's a MATE in the far corner of the main hall, by the wall.",
       "Drink it slow. It'll clear your head and wreck your legs."
+    ],
+    "choices": [
+      {
+        "id": "serve",
+        "text": "Pour me a MATE, please.",
+        "reply": "Alright, one on the house. Don't tell the bouncer.",
+        "reply_used": "One on the house was the deal, pal. Corner of the main hall has more."
+      },
+      {
+        "id": "ticket",
+        "text": "Seen coat check ticket 47?",
+        "reply": "Taped to a concrete pillar right by the bar. Hard to miss once you have glasses."
+      },
+      {
+        "id": "sober",
+        "text": "Do I look sober enough to leave?",
+        "reply": "You have four legs and zero pants. You fit right in."
+      }
     ]
   },
   "drag_oracle": {
@@ -206,6 +273,23 @@
       "Sit, foal. Don't stare at the unicorn on the floor, darling, he's been on the guestlist since 2009.",
       "First card: the Glasses. Then the Number. Then the Ticket. Then the Keys.",
       "Last card: the Bike. Reversed. The riddle horse holds it. Don't tell him I told you."
+    ],
+    "choices": [
+      {
+        "id": "next",
+        "text": "Read my cards. What do I need next?",
+        "next_1": "First card: your glasses. Crawl under the left speaker by the DJ booth.",
+        "next_2": "Second card: your wrist stamp. Press Q now that you have glasses.",
+        "next_3": "Third card: ticket 47. Taped to a concrete pillar right by the bar.",
+        "next_4": "Fourth card: your keys. Hand ticket 47 to coat check.",
+        "next_5": "Fifth card: the riddle horse in the toilet corridor. Answer his river riddle.",
+        "next_done": "All five cards are upright, darling. Run for the back exit past the toilets!"
+      },
+      {
+        "id": "unicorn",
+        "text": "What's the deal with the unicorns?",
+        "reply": "Four of them hide on the dance floor. Press Space next to one and thank me later, darling."
+      }
     ]
   },
   "rubber_knight": {

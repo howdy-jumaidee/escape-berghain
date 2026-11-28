@@ -19,11 +19,19 @@ const GRACE = 4;
 const LOOK_AROUND = 4;
 
 interface GuardRig {
-  legL?: THREE.Object3D;
-  legR?: THREE.Object3D;
-  armL?: THREE.Object3D;
-  armR?: THREE.Object3D;
+  body?: THREE.Object3D;
+  spine?: THREE.Object3D;
   head?: THREE.Object3D;
+  armL?: THREE.Object3D;
+  foreArmL?: THREE.Object3D;
+  armR?: THREE.Object3D;
+  foreArmR?: THREE.Object3D;
+  legL?: THREE.Object3D;
+  calfL?: THREE.Object3D;
+  legR?: THREE.Object3D;
+  calfR?: THREE.Object3D;
+  bodyY: number;
+  bodyIsRoot: boolean;
 }
 
 interface Guard {
@@ -215,14 +223,32 @@ export class Patrols {
     const modelNode = g.model.children[0] ?? null;
     if (!modelNode) return null;
     if (g.rigSource === modelNode) return g.rig;
-    const rig: GuardRig = {};
+    const rig: GuardRig = { bodyY: 0, bodyIsRoot: false };
+    let found = false;
     g.model.traverse((c) => {
-      if (c.name === 'legL' || c.name === 'legR' || c.name === 'armL' || c.name === 'armR' || c.name === 'head') {
+      if (
+        c.name === 'body' ||
+        c.name === 'spine' ||
+        c.name === 'head' ||
+        c.name === 'armL' ||
+        c.name === 'foreArmL' ||
+        c.name === 'armR' ||
+        c.name === 'foreArmR' ||
+        c.name === 'legL' ||
+        c.name === 'calfL' ||
+        c.name === 'legR' ||
+        c.name === 'calfR'
+      ) {
         rig[c.name] = c;
+        found = true;
       }
     });
+    if (rig.body) {
+      rig.bodyY = rig.body.position.y;
+      rig.bodyIsRoot = Boolean((rig.body as THREE.Bone).isBone);
+    }
     g.rigSource = modelNode;
-    g.rig = rig.legL || rig.legR || rig.armL || rig.armR || rig.head ? rig : null;
+    g.rig = found ? rig : null;
     return g.rig;
   }
 
@@ -230,22 +256,63 @@ export class Patrols {
     const rig = this.getRig(g);
     if (!rig) return;
     const moving = speed > 0.15;
-    const targetAmp = moving ? Math.min(0.68, 0.25 + speed * 0.1) : 0;
+    const targetAmp = moving ? Math.min(0.68, 0.25 + speed * 0.11) : 0;
     g.stride += (targetAmp - g.stride) * (1 - Math.exp(-10 * dt));
-    if (moving) g.phase += dt * (3.2 + speed * 1.45);
-    const swing = Math.sin(g.phase) * g.stride;
-    if (rig.legL) rig.legL.rotation.x = swing;
-    if (rig.legR) rig.legR.rotation.x = -swing;
-    if (rig.armL) rig.armL.rotation.x = -swing * 0.8;
-    if (rig.armR) rig.armR.rotation.x = swing * 0.8;
-    if (rig.head) {
+    if (moving) g.phase += dt * (3.2 + speed * 1.55);
+
+    const strideBlend = Math.min(1, g.stride / 0.28);
+    const s = Math.sin(g.phase);
+    const swing = s * g.stride;
+
+    // Articulated leg stride with rear-swing knee flexion (+rotation.x bends calf backward).
+    const liftL = Math.max(0, Math.cos(g.phase - 0.35));
+    const liftR = Math.max(0, -Math.cos(g.phase - 0.35));
+    const kneeAmp = 0.58 + Math.min(0.28, speed * 0.08);
+    if (rig.legL) rig.legL.rotation.x = -swing;
+    if (rig.legR) rig.legR.rotation.x = swing;
+    if (rig.calfL) rig.calfL.rotation.x = strideBlend * (0.06 + liftL * kneeAmp);
+    if (rig.calfR) rig.calfR.rotation.x = strideBlend * (0.06 + liftR * kneeAmp);
+
+    // Subtle vertical pelvis stride bob when rooted on a skinned skeleton.
+    if (rig.body && rig.bodyIsRoot) {
+      rig.body.position.y = rig.bodyY - 0.014 * strideBlend + Math.abs(s) * 0.032 * strideBlend;
+    }
+
+    // Torch is mounted on the +X side (armL): keep torch arm steady & aimed forward while off-hand (armR) swings.
+    const torchBob = Math.abs(s) * 0.05 * strideBlend;
+    if (rig.armL) {
+      rig.armL.rotation.x = -0.62 - torchBob;
+      rig.armL.rotation.z = 0.06;
+    }
+    if (rig.foreArmL) {
+      rig.foreArmL.rotation.x = -0.56 + torchBob * 0.5;
+    }
+    if (rig.armR) {
+      rig.armR.rotation.x = -swing * 0.85;
+      rig.armR.rotation.z = -0.08;
+    }
+    if (rig.foreArmR) {
+      rig.foreArmR.rotation.x = -0.34 - strideBlend * (0.12 + Math.max(0, s) * 0.28);
+    }
+
+    if (looking) g.lookPhase += dt;
+    else g.lookPhase = 0;
+
+    // Spine counter-twist during walk/run, or alert scan sweep when looking around.
+    if (rig.spine) {
       if (looking) {
-        g.lookPhase += dt;
-        rig.head.rotation.y = Math.sin(g.lookPhase * 1.6) * 0.45;
+        rig.spine.rotation.x = 0.05;
+        rig.spine.rotation.y = Math.sin(g.lookPhase * 1.6) * 0.22;
+        rig.spine.rotation.z = 0;
       } else {
-        g.lookPhase = 0;
-        rig.head.rotation.y = 0;
+        rig.spine.rotation.x = 0.03 + Math.min(0.08, speed * 0.022) * strideBlend;
+        rig.spine.rotation.y = swing * 0.24;
+        rig.spine.rotation.z = -swing * 0.04;
       }
+    }
+
+    if (rig.head) {
+      rig.head.rotation.y = looking ? Math.sin(g.lookPhase * 1.6) * 0.45 : -swing * 0.10;
       rig.head.rotation.x = moving ? Math.abs(Math.cos(g.phase)) * 0.04 : 0;
     }
   }
