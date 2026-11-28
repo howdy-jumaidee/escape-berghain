@@ -1,14 +1,14 @@
 // NPCs: the crowd, the named weirdos, dialogue from content/npcs.json, the riddle horse, the herd, the spirit guide.
 // Issues #14, #15, #16. Model names: npc_<id>.glb in public/models/, e.g. npc_patrick.glb. Missing models are grey boxes.
 import * as THREE from 'three';
-import { bus, state, cellCenter, BeatCounter, lock, unlock, type NpcId, type TextKey, type ZoneId } from '../contracts';
+import { bus, state, cellCenter, FLOOR_HEIGHT, BeatCounter, lock, unlock, type NpcId, type TextKey, type ZoneId } from '../contracts';
 import { placeModel } from '../look/models';
 import { level, npcText } from '../data';
 import { Crowd, type Spot } from './crowd';
 import { Djs } from './djs';
 import { animateCharacter, bindRig, type DanceArchetype } from './motion';
 
-const TALK_RANGE = 2.4;
+const TALK_RANGE = 3.4;
 /** Room the crowd gives a conversation. The camera sits 2.25 m from the face, so this covers the whole line. */
 const CONVO_CLEAR_RADIUS = 2.7;
 /** Regulars are bigger than dancers, so they keep a little more room. */
@@ -127,7 +127,7 @@ const FOCUS = new Set<NpcId>([
 ]);
 /** The strangest and the story-important few: stumble into one of these and they pull you into a conversation themselves. */
 const AUTO_TALK = new Set<NpcId>([
-  'riddle_horse', 'coat_check', 'drag_oracle', 'ice_cream_horse', 'pup', 'leather_choir',
+  'riddle_horse', 'coat_check', 'drag_oracle', 'ice_cream_horse', 'pup', 'leather_choir', 'friday_guy', 'patrick',
 ]);
 /** Figures that aren't the standard 1.8 m box. */
 const SIZES: Partial<Record<NpcId, { x: number; y: number; z: number }>> = {
@@ -138,7 +138,9 @@ const SIZES: Partial<Record<NpcId, { x: number; y: number; z: number }>> = {
   leather_daddy: { x: 0.65, y: 1.88, z: 0.42 },
 };
 /** How close you have to stumble before they grab you. */
-const BUMP_RANGE = 1.5;
+const BUMP_RANGE = 2.0;
+/** Range at which non-auto regulars call out a passing one-liner to invite you to press Space. */
+const GREET_RANGE = 4.0;
 /** Walk this far away before they can grab you again. */
 const REARM_RANGE = 4.5;
 
@@ -217,6 +219,8 @@ export class Npcs {
   private guideVisible = false;
   private barkAt = 0;
   private animalBarkAt = -1e9;
+  private greetAt = -1e9;
+  private greetedAt = new Map<NpcId, number>();
   private choirNear = false;
   private mopTimer = MOP_EVERY;
   private cleanerPhase = 0;
@@ -279,6 +283,7 @@ export class Npcs {
       this.herdHint();
       this.choir();
       this.bumpInto();
+      this.ambientGreet();
     });
     addEventListener('keydown', (e) => {
       if (e.repeat) return;
@@ -722,26 +727,26 @@ export class Npcs {
 
   private talk(at: THREE.Vector3): void {
     if (state.ending || this.convo || this.replyActive || performance.now() < this.talkCooldownUntil) return;
-    // Check rare creatures first across ALL floors (the rare Lemur lives on floor 1 / y = 9!).
-    if (state.floor !== 0) return;
     let best: Npc | null = null;
     let bestHolder = 0;
     let bestD = TALK_RANGE;
-    for (const npc of this.npcs) {
-      const idx = this.closestHolder(npc, at);
-      const h = npc.holders[idx];
-      const dHolder = h ? Math.hypot(h.position.x - at.x, h.position.z - at.z) : npc.pos.distanceTo(at);
-      const d = Math.min(dHolder, npc.pos.distanceTo(at) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
-      if (d < bestD) {
-        best = npc;
-        bestHolder = idx;
-        bestD = d;
+    if (state.floor === 0) {
+      for (const npc of this.npcs) {
+        const idx = this.closestHolder(npc, at);
+        const h = npc.holders[idx];
+        const dHolder = h ? Math.hypot(h.position.x - at.x, h.position.z - at.z) : npc.pos.distanceTo(at);
+        const d = Math.min(dHolder, npc.pos.distanceTo(at) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
+        if (d < bestD) {
+          best = npc;
+          bestHolder = idx;
+          bestD = d;
+        }
       }
     }
     if (!best) {
-      // Rare Unicorn Easter Egg: press Space right next to one of the rare unicorns for a moment of crisp clarity.
+      // Rare Unicorn Easter Egg: press Space right next to a unicorn (ground floor or 9 m galleries) for crisp clarity.
       const now = performance.now();
-      if (now - this.unicornAt > 25000 && this.crowd.nearUnicorn(at.x, at.z, 0, 2.4)) {
+      if (now - this.unicornAt > 25000 && this.crowd.nearUnicorn(at.x, at.z, state.floor * FLOOR_HEIGHT, TALK_RANGE)) {
         this.unicornAt = now;
         bus.emit('item:consumed', { item: 'ice_cream' });
         bus.emit('crowd:cheer', {});
@@ -865,9 +870,31 @@ export class Npcs {
       const h = npc.holders[holderIndex];
       const d = h ? Math.hypot(h.position.x - this.player.x, h.position.z - this.player.z) : npc.pos.distanceTo(this.player);
       if (d > REARM_RANGE && npc.pos.distanceTo(this.player) > REARM_RANGE) this.disarmed.delete(npc);
-      const range = npc.id === 'leather_choir' ? 1.5 : BUMP_RANGE;
+      const range = npc.id === 'leather_choir' ? 2.0 : BUMP_RANGE;
       if (d < range && !this.disarmed.has(npc) && !this.convo && state.started && !state.ending && !state.inputLocked) {
         this.startConvo(npc, holderIndex);
+        return;
+      }
+    }
+  }
+
+  /** Non-auto regulars call out a short one-liner in passing so the club feels alive and invites Space talks. */
+  private ambientGreet(): void {
+    if (state.floor !== 0 || !state.started || state.ending || this.convo || this.replyActive || state.inputLocked) return;
+    const now = performance.now();
+    if (now - this.greetAt < 8000) return;
+    for (const npc of this.npcs) {
+      if (AUTO_TALK.has(npc.id) || npc.id === 'bouncer' || npc.id === 'tourists') continue;
+      const lines = npcText[npc.id]?.lines ?? [];
+      if (!lines.length) continue;
+      if (now - (this.greetedAt.get(npc.id) ?? -1e9) < 22000) continue;
+      const h = npc.holders[this.closestHolder(npc, this.player)];
+      const d = h ? Math.hypot(h.position.x - this.player.x, h.position.z - this.player.z) : npc.pos.distanceTo(this.player);
+      if (d < GREET_RANGE) {
+        this.greetAt = now;
+        this.greetedAt.set(npc.id, now);
+        this.talking = npc;
+        bus.emit('npc:talk', { npc: npc.id, lineId: `npcs:${npc.id}.lines.${npc.line++ % lines.length}` });
         return;
       }
     }
@@ -1081,19 +1108,22 @@ export class Npcs {
   /** Tell the bus when a talkable NPC or a unicorn comes into or leaves range. Only sends on change. */
   private announceNear(): void {
     const p = this.player;
+    const py = state.floor * FLOOR_HEIGHT;
     let near = false;
     let talk = false;
-    if (state.started && state.floor === 0 && !state.ending && !this.convo) {
-      for (const npc of this.npcs) {
-        const h = npc.holders[this.closestHolder(npc, p)];
-        const dHolder = h ? Math.hypot(h.position.x - p.x, h.position.z - p.z) : npc.pos.distanceTo(p);
-        const d = Math.min(dHolder, npc.pos.distanceTo(p) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
-        if (d < TALK_RANGE) {
-          near = true;
-          if (!AUTO_TALK.has(npc.id)) talk = true;
+    if (state.started && !state.ending && !this.convo) {
+      if (state.floor === 0) {
+        for (const npc of this.npcs) {
+          const h = npc.holders[this.closestHolder(npc, p)];
+          const dHolder = h ? Math.hypot(h.position.x - p.x, h.position.z - p.z) : npc.pos.distanceTo(p);
+          const d = Math.min(dHolder, npc.pos.distanceTo(p) - (npc.id === 'herd' || npc.id === 'leather_choir' ? 1.2 : 0));
+          if (d < TALK_RANGE) {
+            near = true;
+            if (!AUTO_TALK.has(npc.id)) talk = true;
+          }
         }
       }
-      if (!talk && this.crowd.nearUnicorn(p.x, p.z, 0, TALK_RANGE)) {
+      if (!talk && this.crowd.nearUnicorn(p.x, p.z, py, TALK_RANGE)) {
         near = true;
         talk = true;
       }
@@ -1103,7 +1133,7 @@ export class Npcs {
       this.wasTalk = talk;
       bus.emit('player:near', { by: 'npc', near, kind: talk ? 'talk' : undefined });
     }
-    const uni = state.started && state.floor === 0 && this.crowd.nearUnicorn(p.x, p.z, 0, UNICORN_HEAR_RANGE);
+    const uni = state.started && this.crowd.nearUnicorn(p.x, p.z, py, UNICORN_HEAR_RANGE);
     if (uni !== this.wasNearUnicorn) {
       this.wasNearUnicorn = uni;
       bus.emit('unicorn:near', { near: uni });
@@ -1189,12 +1219,12 @@ export class Npcs {
     return !!herd && Math.abs(z - herd.pos.z) < 1.8 && Math.abs(x - herd.pos.x) < 6;
   }
 
-  /** An animal guest nearby says something crazy, at most every 7 s. */
+  /** An animal guest nearby says something crazy, at most every 5 s. */
   private animalBark(x: number, z: number): void {
     if (!state.started || state.ending || this.convo) return;
     const now = performance.now();
-    if (now - this.animalBarkAt < 7000) return;
-    if (this.crowd.animalNear(x, z, 3) === 0) return;
+    if (now - this.animalBarkAt < 5000) return;
+    if (this.crowd.animalNear(x, z, 3.8) === 0) return;
     this.animalBarkAt = now;
     bus.emit('ui:say', { key: `story:animals.lines.${Math.floor(Math.random() * 6)}`, seconds: 3 });
   }

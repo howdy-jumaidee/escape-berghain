@@ -1,7 +1,7 @@
 // World: level, collisions, zones, pickups, checkpoints, the exit. Issues #9 and #11.
 // Talks to other systems only through the bus. game-boot calls update() and resolve().
 import * as THREE from 'three';
-import { bus, state, cellCenter, CELL, type FragmentId, type ItemId } from '../contracts';
+import { bus, state, cellCenter, CELL, FLOOR_HEIGHT, type FragmentId, type ItemId } from '../contracts';
 import { level as levelData, story, debug } from '../data';
 import { placeModel } from '../look/models';
 import { buildLevel, resolveCircle, type BuiltLevel } from './level';
@@ -14,9 +14,30 @@ import { Patrols } from './patrols';
 const SHUTTERS_AFTER = 600;
 const DOOR_RANGE = 1.5;
 
-const GRAB_RANGE = 1.8;
+const GRAB_RANGE = 2.2;
 const EXIT_RANGE = 2.4;
 const OFF_FLOOR_PLAYER = new THREE.Vector3(-999, 0, -999);
+
+/** Second-floor (9 m galleries, catwalk, upstairs Panorama Bar) collectibles: verified inside walkable deck bounds. */
+const FLOOR1_PICKUPS: { item: ItemId; x: number; z: number }[] = [
+  // West balcony (x: 6.5..12.5, z: 12..53.5)
+  { item: 'mate', x: 9.5, z: 17.0 },
+  { item: 'bag', x: 9.5, z: 36.0 },
+  { item: 'mate', x: 9.5, z: 49.5 },
+  // Catwalk bridge (x: 12.5..59.5, z: 26..30.5, clear of pillars at x=21 & x=45)
+  { item: 'mate', x: 15.5, z: 29.0 },
+  { item: 'bag', x: 33.0, z: 28.5 },
+  { item: 'bag', x: 53.5, z: 28.5 },
+  // East balcony (x: 59.5..65.5, z: 12..53.5)
+  { item: 'bag', x: 62.5, z: 18.0 },
+  { item: 'mate', x: 62.5, z: 38.0 },
+  { item: 'bag', x: 62.5, z: 49.5 },
+  // South balcony & upstairs Panorama Bar (x: 6.5..65.5, z: 47.5..53.5, stairs land at x=25.5..29.1)
+  { item: 'bag', x: 20.0, z: 50.5 },
+  { item: 'mate', x: 33.0, z: 50.5 },
+  { item: 'bag', x: 46.0, z: 51.0 },
+  { item: 'mate', x: 56.0, z: 50.5 },
+];
 
 interface Pickup {
   kind: 'fragment' | 'item';
@@ -26,6 +47,7 @@ interface Pickup {
   /** How many more grabs slip before it sticks. */
   slips: number;
   baseY: number;
+  floor: number;
   hinted: boolean;
 }
 
@@ -109,6 +131,19 @@ export class World {
     // Hoof bags: small square packets scattered all over the club, more common than mate.
     for (const [col, row] of this.level.cells.get('hoof_bag') ?? []) {
       this.addPickup({ kind: 'item', item: 'bag', slips: 0 }, 'prop_bag', { x: 0.12, y: 0.05, z: 0.12 }, 0xffb300, col, row);
+    }
+    // Second-floor collectibles on the 9 m galleries, catwalk, and upstairs Panorama Bar.
+    for (const spot of FLOOR1_PICKUPS) {
+      const isMate = spot.item === 'mate';
+      this.addPickupAt(
+        { kind: 'item', item: spot.item, slips: 0 },
+        isMate ? 'prop_mate' : 'prop_bag',
+        isMate ? { x: 0.14, y: 0.45, z: 0.14 } : { x: 0.12, y: 0.05, z: 0.12 },
+        0xffb300,
+        spot.x,
+        spot.z,
+        1,
+      );
     }
     const exit = this.level.cells.get('exit_door')?.[0];
     if (exit) {
@@ -248,23 +283,23 @@ export class World {
       bus.emit('zone:entered', { zone });
     }
 
-    // Pickups bob and spin so they read in the dark.
+    // Pickups bob and spin so they read in the dark. Works on both ground floor and 9 m galleries.
     for (const pu of this.pickups) {
       pu.object.rotation.y += dt * 1.5;
       pu.object.position.y = pu.baseY + Math.sin(this.t * 3) * 0.08;
-      if (state.floor === 0 && pu.kind === 'item' && !pu.hinted && dist(pu.object.position, p) < 2.5) {
+      if (state.floor === pu.floor && pu.kind === 'item' && !pu.hinted && dist(pu.object.position, p) < 2.5) {
         pu.hinted = true;
         bus.emit('ui:say', { key: pu.item === 'bag' ? 'story:items.bag_found' : 'story:items.mate_found', seconds: 3 });
       }
     }
 
-    // Club Mate is picked up by walking into it. Hoof bags are Space-only (grab), like fragments:
+    // Club Mate is picked up by walking into it (on any floor). Hoof bags are Space-only (grab), like fragments:
     // they punish you, so they should never fire by accident on the crowded floor.
-    if (state.floor === 0 && !state.ending && state.started && !state.inputLocked) {
+    if (!state.ending && state.started && !state.inputLocked) {
       let nearest: Pickup | null = null;
-      let nearestD = 1.15;
+      let nearestD = 1.25;
       for (const pu of this.pickups) {
-        if (pu.kind !== 'item' || pu.item !== 'mate') continue;
+        if (pu.floor !== state.floor || pu.kind !== 'item' || pu.item !== 'mate') continue;
         const d = dist(pu.object.position, p);
         if (d < nearestD) {
           nearest = pu;
@@ -358,6 +393,7 @@ export class World {
     color: number,
     x: number,
     z: number,
+    floor = 0,
   ): void {
     const object = placeModel(model, size, glow(color));
     // Placeholder props are primitive shapes (Emma can drop a .glb of the same name in later):
@@ -366,7 +402,7 @@ export class World {
       object.clear();
       object.add(model === 'prop_mate' ? bottleMesh() : packetMesh());
     }
-    const baseY = 0.35;
+    const baseY = floor * FLOOR_HEIGHT + 0.35;
     object.position.set(x, baseY, z);
     // A halo so it's findable in the haze. A sprite, not a light: changing the light count recompiles every shader.
     // Mate's aura is slightly smaller than the fragments'; the bag's is smaller still.
@@ -377,28 +413,31 @@ export class World {
     halo.position.y = 0.1;
     object.add(halo);
     this.root.add(object);
-    this.pickups.push({ ...base, object, baseY, hinted: false });
+    this.pickups.push({ ...base, object, baseY, floor, hinted: false });
   }
 
   private announceSpot(pu: Pickup): void {
     if (pu.kind !== 'fragment' || !pu.fragment) return;
-    bus.emit('fragment:spot', { id: pu.fragment, x: pu.object.position.x, z: pu.object.position.z, floor: 0 });
+    bus.emit('fragment:spot', { id: pu.fragment, x: pu.object.position.x, z: pu.object.position.z, floor: pu.floor });
   }
 
   /** Tell the bus when a Space-only pickup, darkroom clue or ice cream counter comes into or leaves range. Only sends on change. */
   private announceNear(): void {
     let near = false;
-    if (state.started && state.floor === 0 && !state.ending) {
-      near = this.darkroom.near(this.player.x, this.player.z);
-      if (!near) {
-        const ice = this.level.cells.get('panorama_ice_cream')?.[0];
-        if (ice && this.t - this.iceCreamAt > 15) {
-          const c = cellCenter(ice[0], ice[1]);
-          if (Math.hypot(c.x - this.player.x, c.z - this.player.z) < 2.6) near = true;
+    if (state.started && !state.ending) {
+      if (state.floor === 0) {
+        near = this.darkroom.near(this.player.x, this.player.z);
+        if (!near) {
+          const ice = this.level.cells.get('panorama_ice_cream')?.[0];
+          if (ice && this.t - this.iceCreamAt > 15) {
+            const c = cellCenter(ice[0], ice[1]);
+            if (Math.hypot(c.x - this.player.x, c.z - this.player.z) < 2.6) near = true;
+          }
         }
       }
       if (!near) {
         for (const pu of this.pickups) {
+          if (pu.floor !== state.floor) continue;
           // Club Mate picks up on walk-in, so don't flash a Space Grab prompt for it.
           if (pu.kind === 'item' && pu.item === 'mate') continue;
           if (Math.hypot(pu.object.position.x - this.player.x, pu.object.position.z - this.player.z) < GRAB_RANGE) {
@@ -415,25 +454,28 @@ export class World {
   }
 
   private grab(x: number, z: number): void {
-    if (state.ending || state.floor !== 0) return;
-    if (this.darkroom.grab(x, z)) return;
+    if (state.ending) return;
+    if (state.floor === 0 && this.darkroom.grab(x, z)) return;
     const here = new THREE.Vector3(x, 0, z);
 
-    // Ice cream counter.
-    const ice = this.level.cells.get('panorama_ice_cream')?.[0];
-    if (ice) {
-      const c = cellCenter(ice[0], ice[1]);
-      if (dist(new THREE.Vector3(c.x, 0, c.z), here) < 2.6 && this.t - this.iceCreamAt > 15) {
-        this.iceCreamAt = this.t;
-        bus.emit('item:consumed', { item: 'ice_cream' });
-        bus.emit('ui:say', { key: 'story:items.ice_cream', seconds: 3 });
-        return;
+    // Ice cream counter (ground floor).
+    if (state.floor === 0) {
+      const ice = this.level.cells.get('panorama_ice_cream')?.[0];
+      if (ice) {
+        const c = cellCenter(ice[0], ice[1]);
+        if (dist(new THREE.Vector3(c.x, 0, c.z), here) < 2.6 && this.t - this.iceCreamAt > 15) {
+          this.iceCreamAt = this.t;
+          bus.emit('item:consumed', { item: 'ice_cream' });
+          bus.emit('ui:say', { key: 'story:items.ice_cream', seconds: 3 });
+          return;
+        }
       }
     }
 
     let best: Pickup | null = null;
     let bestD = GRAB_RANGE;
     for (const pu of this.pickups) {
+      if (pu.floor !== state.floor) continue;
       const d = dist(pu.object.position, here);
       if (d < bestD) {
         best = pu;
