@@ -223,22 +223,24 @@ export class Npcs {
   }
 
   /** Push the horse out of the crowd. Wired into the horse's collision by game-boot. Mutates pos. */
-  pushPlayer(pos: THREE.Vector3, radius: number): void {
-    // Special NPCs are solid: you bump into them, you don't walk through them.
-    for (const npc of this.npcs) {
-      if (!FOCUS.has(npc.id)) continue;
-      for (const h of npc.holders) {
-        const dx = pos.x - h.position.x;
-        const dz = pos.z - h.position.z;
-        const d = Math.hypot(dx, dz);
-        const min = radius + 0.38;
-        if (d < min && d > 1e-4) {
-          pos.x = h.position.x + (dx / d) * min;
-          pos.z = h.position.z + (dz / d) * min;
+  pushPlayer(pos: THREE.Vector3, radius: number, y = 0): void {
+    // Named regulars stand on the ground floor. Gallery guests are handled by the crowd.
+    if (y < 3) {
+      for (const npc of this.npcs) {
+        if (!FOCUS.has(npc.id)) continue;
+        for (const h of npc.holders) {
+          const dx = pos.x - h.position.x;
+          const dz = pos.z - h.position.z;
+          const d = Math.hypot(dx, dz);
+          const min = radius + 0.38;
+          if (d < min && d > 1e-4) {
+            pos.x = h.position.x + (dx / d) * min;
+            pos.z = h.position.z + (dz / d) * min;
+          }
         }
       }
     }
-    if (!this.crowd.push(pos, radius)) return;
+    if (!this.crowd.push(pos, radius, y)) return;
     const now = performance.now();
     if (now - this.barkAt < BARK_EVERY_MS || !state.started || state.ending) return;
     this.barkAt = now;
