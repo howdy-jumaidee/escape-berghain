@@ -83,6 +83,7 @@ export class World {
   constructor() {
     this.level = buildLevel(levelData);
     this.root = this.level.root;
+    this.player.set(this.level.start.x, 0, this.level.start.z);
 
     // Walkable 9 m mezzanine galleries, catwalk bridge, and monumental steel staircase.
     this.galleries = buildGalleries(levelData);
@@ -384,15 +385,26 @@ export class World {
     bus.emit('fragment:spot', { id: pu.fragment, x: pu.object.position.x, z: pu.object.position.z, floor: 0 });
   }
 
-  /** Tell the bus when a pickup comes into or leaves grab range. Only sends on change. */
+  /** Tell the bus when a Space-only pickup, darkroom clue or ice cream counter comes into or leaves range. Only sends on change. */
   private announceNear(): void {
     let near = false;
-    if (state.floor === 0 && !state.ending) {
+    if (state.started && state.floor === 0 && !state.ending) {
       near = this.darkroom.near(this.player.x, this.player.z);
-      for (const pu of this.pickups) {
-        if (Math.hypot(pu.object.position.x - this.player.x, pu.object.position.z - this.player.z) < GRAB_RANGE) {
-          near = true;
-          break;
+      if (!near) {
+        const ice = this.level.cells.get('panorama_ice_cream')?.[0];
+        if (ice && this.t - this.iceCreamAt > 15) {
+          const c = cellCenter(ice[0], ice[1]);
+          if (Math.hypot(c.x - this.player.x, c.z - this.player.z) < 2.6) near = true;
+        }
+      }
+      if (!near) {
+        for (const pu of this.pickups) {
+          // Club Mate picks up on walk-in, so don't flash a Space Grab prompt for it.
+          if (pu.kind === 'item' && pu.item === 'mate') continue;
+          if (Math.hypot(pu.object.position.x - this.player.x, pu.object.position.z - this.player.z) < GRAB_RANGE) {
+            near = true;
+            break;
+          }
         }
       }
     }
