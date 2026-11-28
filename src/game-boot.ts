@@ -205,6 +205,8 @@ renderer.setAnimationLoop(() => {
   if (houseLights) house.intensity = (Math.random() < 0.08 ? 0.2 : 1.6) * Math.min(1, (houseLights += dt * 0.5) - 1 + 0.3);
 
   fx.setCameraBase(camBase, focus ? 0.12 : view === 'follow' ? 0.45 : 0.2);
+  // Light falls into the lens. Strongest in first person, still there over the shoulder.
+  fx.setSpill(focus ? 0.7 : view === 'eyes' ? 1 : 0.38);
   fx.update(dt);
   if (!focus) world.clipCamera(eyeAnchor, camera.position, 0.25, py);
   camera.lookAt(lookAt);
