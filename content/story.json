@@ -9,11 +9,12 @@
     "Somewhere out there is a stable. Ours. Let's trot home."
   ],
   "spirit_guide": {
-    "fragment_1": "Glasses. We wear glasses. That's something.",
-    "fragment_2": "47. Why do we know that number?",
-    "fragment_3": "A ticket. We came in with a jacket. We had a whole outfit.",
-    "fragment_4": "That keychain... our street!",
-    "fragment_5": "Our bike. By the river. We can get home.",
+    "first": "First memory: your glasses, under a speaker.",
+    "fragment_1": "Glasses. Next: press Q and look at your front leg.",
+    "fragment_2": "It says 47. Next: find ticket 47 by the bar.",
+    "fragment_3": "Ticket 47. Next: give it to coat check.",
+    "fragment_4": "Your keys. Next: the riddle horse, in the toilets.",
+    "fragment_5": "That's the way out. Next: the back exit.",
     "mate": "Mate. Clearer. Shakier. Worth it.",
     "look_blurry": "Everything is a smudge. We need our glasses first.",
     "look_again": "Still 47. Still a horse.",
@@ -33,8 +34,19 @@
     "herd": "You stopped looking for the exit. Now you dance in perfect sync with the others. Forever, or at least until Monday."
   },
   "title": "ESCAPE BERGHAIN",
+  "goal": {
+    "lines": [
+      "You turned into a horse.",
+      "Find your 5 lost memories.",
+      "Sneak past security and get out the back exit before you black out."
+    ]
+  },
+  "title_ui": {
+    "show_controls": "Controls",
+    "show_goal": "Goal"
+  },
   "start": {
-    "button": "Click to go in",
+    "button": "Play",
     "tagline": "Out of the stable since Friday.",
     "sub": "Headphones on. Sound up.",
     "skip": "Space to skip"
