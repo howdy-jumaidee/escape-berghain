@@ -41,6 +41,9 @@ const COLOURS: Partial<Record<NpcId, number>> = {
   glitter_boy: 0xd8d0ff,
   darkroom_keeper: 0x050507,
   lighting_tech: 0x2a2a2a,
+  toilet_junkie: 0x4a4a3a,
+  toilet_dealer: 0x5a3a2a,
+  pup: 0x141414,
 };
 /** How many figures stand at one NPC spot. */
 const GROUP: Partial<Record<NpcId, number>> = { herd: 3, tourists: 2, leather_choir: 5 };
@@ -108,12 +111,16 @@ const STYLES: Partial<Record<NpcId, DanceStyle>> = {
   glitter_boy: { hop: 0.28, step: 0.18, twist: 0.8, wander: 1.8 },
   darkroom_keeper: { hop: 0, step: 0, twist: 0.05, wander: 0 },
   lighting_tech: { hop: 0.02, step: 0, twist: 0.4, wander: 0.3 },
+  toilet_junkie: { hop: 0.02, step: 0.04, twist: 0.15, wander: 0.4 },
+  toilet_dealer: { hop: 0, step: 0, twist: 0.05, wander: 0 },
+  pup: { hop: 0.06, step: 0.1, twist: 0.5, wander: 0.8 },
 };
 const WANDER_SPEED = 0.6;
 /** Special NPCs: walk into them and you're pulled into a face to face conversation. */
 const FOCUS = new Set<NpcId>([
   'friday_guy', 'patrick', 'philosopher', 'tourists', 'ice_cream_horse', 'bouncer', 'cleaner', 'leather_choir', 'riddle_horse', 'coat_check',
   'leather_daddy', 'bartender_bear', 'drag_oracle', 'rubber_knight', 'old_raver', 'glitter_boy', 'darkroom_keeper', 'lighting_tech',
+  'toilet_junkie', 'toilet_dealer', 'pup',
 ]);
 /** Figures that aren't the standard 1.8 m box. */
 const SIZES: Partial<Record<NpcId, { x: number; y: number; z: number }>> = {
