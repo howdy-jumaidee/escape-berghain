@@ -1,7 +1,7 @@
 // NPCs: the crowd, the named weirdos, dialogue from content/npcs.json, the riddle horse, the herd, the spirit guide.
 // Issues #14, #15, #16. Model names: npc_<id>.glb in public/models/, e.g. npc_patrick.glb. Missing models are grey boxes.
 import * as THREE from 'three';
-import { bus, state, cellCenter, BeatCounter, lock, unlock, type NpcId, type TextKey } from '../contracts';
+import { bus, state, cellCenter, BeatCounter, lock, unlock, type NpcId, type TextKey, type ZoneId } from '../contracts';
 import { placeModel } from '../look/models';
 import { level, npcText } from '../data';
 import { Crowd, type Spot } from './crowd';
@@ -128,13 +128,32 @@ const BUMP_RANGE = 1.5;
 /** Walk this far away before they can grab you again. */
 const REARM_RANGE = 4.5;
 
-const TALK_BACK_NPCS = new Set<NpcId>(['friday_guy', 'bartender_bear', 'philosopher', 'leather_daddy', 'drag_oracle']);
+const TALK_BACK_NPCS = new Set<NpcId>([
+  'friday_guy', 'bartender_bear', 'philosopher', 'leather_daddy', 'drag_oracle',
+  'old_raver', 'glitter_boy', 'darkroom_keeper', 'lighting_tech', 'rubber_knight', 'cleaner',
+]);
+
+/** What picking a talk-back answer does. Set per choice in content/npcs.json as `effect`. */
+type TalkEffect =
+  | 'sober' | 'trip_up' | 'mate' | 'brain_freeze' | 'cheer'
+  | 'hint' | 'lie' | 'shortcut' | 'wrong_way' | 'snitch' | 'chaos';
+const CHAOS: TalkEffect[] = ['sober', 'trip_up', 'mate', 'brain_freeze', 'cheer', 'shortcut', 'wrong_way'];
+type NextStep = 1 | 2 | 3 | 4 | 5 | 'done';
+/** Where a shortcut drops you for the next missing memory. */
+const STEP_ZONE: Record<string, ZoneId> = {
+  1: 'main_hall', 2: 'main_hall', 3: 'bar_cloakroom', 4: 'bar_cloakroom', 5: 'toilet_corridor', done: 'back_exit',
+};
+const ALL_ZONES: ZoneId[] = ['main_hall', 'bar_cloakroom', 'toilet_corridor', 'panorama_bar', 'back_exit'];
 
 interface TalkChoiceEntry {
   id: string;
   text: string;
   reply?: string;
   reply_used?: string;
+  effect?: TalkEffect;
+  /** Chance (0..1) that `effect` happens; otherwise `otherwise` does. Liars use it. */
+  chance?: number;
+  otherwise?: TalkEffect;
 }
 
 interface Convo {
@@ -190,6 +209,8 @@ export class Npcs {
   private replyTimer = 0;
   private talkCooldownUntil = 0;
   private usedChoices = new Set<string>();
+  /** The outcome of the last talk-back pick. It lands when the reply closes. */
+  private pendingOutcome: { effect: TalkEffect; npc: Npc } | null = null;
   /** Currently focused NPC figure (covers active convo plus keepFocus riddle state until npc:unfocus). */
   private focused: { npc: Npc; holderIndex: number } | null = null;
   /** Optional world XZ target for the focused NPC to face (e.g. when focus camera dodges a wall). */
@@ -260,6 +281,7 @@ export class Npcs {
     });
     bus.on('riddle:answered', ({ correct }) => this.riddleAnswered(correct));
     bus.on('npc:unfocus', () => {
+      this.flushOutcome();
       clearTimeout(this.replyTimer);
       this.replyTimer = 0;
       this.replyActive = false;
@@ -269,6 +291,7 @@ export class Npcs {
       unlock('talk');
     });
     const abortConvo = () => {
+      this.pendingOutcome = null;
       clearTimeout(this.riddleTimer);
       this.riddleTimer = 0;
       clearTimeout(this.replyTimer);
@@ -891,6 +914,7 @@ export class Npcs {
     const choices = raw.map((c, i) => ({
       id: c.id,
       textKey: `npcs:${npc.id}.choices.${i}.text` as TextKey,
+      used: this.usedChoices.has(`${npc.id}:${c.id}`),
     }));
     bus.emit('npc:choices', { npc: npc.id, choices });
   }
@@ -911,34 +935,15 @@ export class Npcs {
     const alreadyUsed = this.usedChoices.has(actionKey);
     let lineId: TextKey = `npcs:${npcId}.choices.${index}.${alreadyUsed && choice.reply_used ? 'reply_used' : 'reply'}`;
 
-    if (npcId === 'friday_guy') {
-      if (choiceId === 'glasses' && !alreadyUsed) {
-        this.usedChoices.add(actionKey);
-        state.trip = Math.max(0, state.trip - 8);
-        bus.emit('trip:changed', { trip: state.trip });
-      } else if (choiceId === 'mate' && !alreadyUsed) {
-        this.usedChoices.add(actionKey);
-        bus.emit('item:spawn', { item: 'mate', x: npc.pos.x + 1.2, z: npc.pos.z + 1.0 });
-      }
-    } else if (npcId === 'bartender_bear') {
-      if (choiceId === 'serve' && !alreadyUsed) {
-        this.usedChoices.add(actionKey);
-        bus.emit('item:consumed', { item: 'mate' });
-      }
-    } else if (npcId === 'philosopher') {
-      if (choiceId === 'horse' && !alreadyUsed) {
-        this.usedChoices.add(actionKey);
-        bus.emit('item:consumed', { item: 'ice_cream' });
-      }
-    } else if (npcId === 'leather_daddy') {
-      if (choiceId === 'stealth' && !alreadyUsed) {
-        this.usedChoices.add(actionKey);
-        bus.emit('crowd:cheer', {});
-        bus.emit('item:consumed', { item: 'ice_cream' });
-      }
-    } else if (npcId === 'drag_oracle' && choiceId === 'next') {
-      const missing = ([1, 2, 3, 4, 5] as const).find((id) => !state.fragments.includes(id));
-      lineId = missing ? `npcs:drag_oracle.choices.0.next_${missing}` : 'npcs:drag_oracle.choices.0.next_done';
+    if (npcId === 'drag_oracle' && choiceId === 'next') {
+      const step = this.nextStep();
+      lineId = `npcs:drag_oracle.choices.0.next_${step}`;
+    }
+    if (choice.effect && !alreadyUsed) {
+      this.usedChoices.add(actionKey);
+      const roll = choice.chance === undefined || Math.random() < choice.chance;
+      const effect = roll ? choice.effect : choice.otherwise;
+      if (effect) this.pendingOutcome = { effect: effect === 'chaos' ? CHAOS[Math.floor(Math.random() * CHAOS.length)] : effect, npc };
     }
 
     this.talking = npc;
@@ -949,7 +954,59 @@ export class Npcs {
     this.replyTimer = window.setTimeout(() => this.closeReply(), 3800);
   }
 
+  private nextStep(): NextStep {
+    return ([1, 2, 3, 4, 5] as const).find((id) => !state.fragments.includes(id)) ?? 'done';
+  }
+
+  /** Apply the outcome of the last talk-back pick, once, and tell the player what happened. */
+  private flushOutcome(): void {
+    const o = this.pendingOutcome;
+    this.pendingOutcome = null;
+    if (!o || state.ending) return;
+    const step = this.nextStep();
+    const say = (key: TextKey, seconds = 3.5) => bus.emit('ui:say', { key, seconds });
+    switch (o.effect) {
+      case 'sober':
+        state.trip = Math.max(0, state.trip - 12);
+        bus.emit('trip:changed', { trip: state.trip });
+        return say('story:talk_outcomes.sober');
+      case 'trip_up':
+        // Never straight to a blackout: a bad tip should hurt, not end the run.
+        if (state.trip < 90) state.trip = Math.min(90, state.trip + 12);
+        bus.emit('trip:changed', { trip: state.trip });
+        return say('story:talk_outcomes.trip_up');
+      case 'mate':
+        bus.emit('item:spawn', { item: 'mate', x: o.npc.pos.x + 1.2, z: o.npc.pos.z + 1.0 });
+        return say('story:talk_outcomes.mate');
+      case 'brain_freeze':
+        bus.emit('item:consumed', { item: 'ice_cream' });
+        return say('story:talk_outcomes.brain_freeze');
+      case 'cheer':
+        bus.emit('crowd:cheer', {});
+        return say('story:talk_outcomes.cheer');
+      case 'hint':
+        return say(`story:talk_hints.${step}`, 5);
+      case 'lie':
+        return say(`story:talk_lies.${step}`, 5);
+      case 'snitch':
+        bus.emit('selfie:flash', { x: this.player.x, z: this.player.z });
+        return say('story:talk_outcomes.snitch');
+      case 'shortcut':
+        bus.emit('player:respawn', { zone: STEP_ZONE[step] });
+        return say('story:talk_outcomes.shortcut');
+      case 'wrong_way': {
+        const right = STEP_ZONE[step];
+        const options = ALL_ZONES.filter((z) => z !== right && z !== state.zone && z !== 'back_exit');
+        bus.emit('player:respawn', { zone: options[Math.floor(Math.random() * options.length)] ?? 'toilet_corridor' });
+        return say('story:talk_outcomes.wrong_way');
+      }
+      case 'chaos':
+        return say('story:talk_outcomes.nothing');
+    }
+  }
+
   private closeReply(): void {
+    this.flushOutcome();
     if (!this.replyActive && !this.replyTimer) return;
     clearTimeout(this.replyTimer);
     this.replyTimer = 0;

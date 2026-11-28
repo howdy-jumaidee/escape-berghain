@@ -39,12 +39,15 @@ export function startUi(): void {
   };
   const talkHint = el('div', 'eb-talk-hint', talk);
   talkHint.textContent = t('story:talk_hint');
+  const chooseHint = el('div', 'eb-choose-hint', talk);
+  chooseHint.textContent = t('story:talk_choose_hint');
   let focused = false;
   bus.on('npc:talk', ({ npc, lineId }) => {
     if (riddleOpen || choiceOpen) return;
     talkName.textContent = t(`npcs:${npc}.name`);
     talkText.textContent = t(lineId);
     answers.replaceChildren();
+    talk.classList.remove('choosing');
     talk.classList.add('on');
     clearTimeout(talkTimer);
     // In a face to face conversation the line stays until you press Space.
@@ -57,22 +60,55 @@ export function startUi(): void {
   const barBottom = el('div', 'eb-bar-bottom', root);
   bus.on('npc:focus', () => {
     focused = true;
+    root.classList.add('talking');
     clearTimeout(talkTimer);
     for (const e of [barTop, barBottom, talk]) e.classList.add('focus');
   });
   bus.on('npc:unfocus', () => {
     focused = false;
+    root.classList.remove('talking');
     for (const e of [barTop, barBottom, talk]) e.classList.remove('focus');
   });
 
   // Riddle & talk-back choices: keys 1 to 3 or click.
   let riddleAnswers: { text: string; correct: boolean }[] = [];
-  let activeChoices: { id: string; textKey: string }[] = [];
+  let activeChoices: { id: string; textKey: string; used?: boolean }[] = [];
+  let selected = 0;
+  /** When the answer list opened. The Space press that ended the NPC's line must not also pick an answer. */
+  let listOpenedAt = 0;
+  const rows = () => Array.from(answers.querySelectorAll('button'));
+  const highlight = (i: number) => {
+    const list = rows();
+    if (!list.length) return;
+    selected = (i + list.length) % list.length;
+    list.forEach((b, j) => b.classList.toggle('sel', j === selected));
+  };
+  /** Build the answer rows. `used` rows are greyed, like topics you already asked about. */
+  const fillAnswers = (items: { text: string; used?: boolean }[], pick: (i: number) => void) => {
+    answers.replaceChildren(
+      ...items.map((item, i) => {
+        const b = el('button', item.used ? 'used' : '');
+        b.type = 'button';
+        el('kbd', '', b).textContent = String(i + 1);
+        el('span', '', b).textContent = item.text;
+        b.addEventListener('click', () => pick(i));
+        b.addEventListener('mouseenter', () => highlight(i));
+        return b;
+      }),
+    );
+    // Start on the first answer you haven't used yet.
+    const fresh = items.findIndex((item) => !item.used);
+    highlight(fresh < 0 ? 0 : fresh);
+    listOpenedAt = performance.now();
+    talk.classList.add('choosing');
+  };
   let activeChoiceNpc: NpcId | '' = '';
   const resetConversationUi = () => {
     focused = false;
+    root.classList.remove('talking');
     clearTimeout(talkTimer);
     answers.replaceChildren();
+    talk.classList.remove('choosing');
     for (const e of [barTop, barBottom, talk]) e.classList.remove('focus');
     talk.classList.remove('on');
   };
@@ -81,6 +117,7 @@ export function startUi(): void {
     riddleOpen = false;
     unlock('riddle');
     answers.replaceChildren();
+    talk.classList.remove('choosing');
     talk.classList.remove('on');
     bus.emit('npc:unfocus', {});
   };
@@ -91,6 +128,7 @@ export function startUi(): void {
     activeChoiceNpc = '';
     unlock('choice');
     answers.replaceChildren();
+    talk.classList.remove('choosing');
     if (unfocus) {
       talk.classList.remove('on');
       bus.emit('npc:unfocus', {});
@@ -103,6 +141,7 @@ export function startUi(): void {
     riddleOpen = false;
     unlock('riddle');
     answers.replaceChildren();
+    talk.classList.remove('choosing');
     talk.classList.remove('on');
     bus.emit('riddle:answered', { correct: a.correct });
   };
@@ -115,6 +154,7 @@ export function startUi(): void {
     activeChoiceNpc = '';
     unlock('choice');
     answers.replaceChildren();
+    talk.classList.remove('choosing');
     if (npc) bus.emit('npc:choice-picked', { npc, choiceId: c.id, index: i });
   };
   bus.on('riddle:show', () => {
@@ -125,16 +165,7 @@ export function startUi(): void {
     riddleAnswers = (lookup('npcs:riddle_horse.riddle.answers') as typeof riddleAnswers | undefined) ?? [];
     talkName.textContent = t('npcs:riddle_horse.name');
     talkText.textContent = t('npcs:riddle_horse.riddle.question');
-    answers.replaceChildren(
-      ...riddleAnswers.map((a, i) => {
-        const b = el('button', '');
-        b.type = 'button';
-        el('kbd', '', b).textContent = String(i + 1);
-        b.append(a.text);
-        b.addEventListener('click', () => answer(i));
-        return b;
-      }),
-    );
+    fillAnswers(riddleAnswers, answer);
     talk.classList.add('on');
   });
   bus.on('npc:choices', (detail) => {
@@ -148,18 +179,18 @@ export function startUi(): void {
     activeChoices = detail.choices ?? [];
     lock('choice');
     talkName.textContent = t(`npcs:${detail.npc}.name`);
-    answers.replaceChildren(
-      ...activeChoices.map((c, i) => {
-        const b = el('button', '');
-        b.type = 'button';
-        el('kbd', '', b).textContent = String(i + 1);
-        b.append(t(c.textKey));
-        b.addEventListener('click', () => pickChoice(i));
-        return b;
-      }),
-    );
+    fillAnswers(activeChoices.map((c) => ({ text: t(c.textKey), used: c.used })), pickChoice);
     talk.classList.add('on');
   });
+  /** Up/down (or W/S) move the highlight. Returns true for keys the answer list handled, incl. Enter/Space. */
+  const navigate = (e: KeyboardEvent): boolean => {
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') highlight(selected - 1);
+    else if (e.code === 'ArrowDown' || e.code === 'KeyS') highlight(selected + 1);
+    else if (e.code !== 'Enter' && e.code !== 'Space') return false;
+    e.preventDefault();
+    if ((e.code === 'Enter' || e.code === 'Space') && performance.now() - listOpenedAt < 300) return false;
+    return true;
+  };
   addEventListener('keydown', (e) => {
     if (e.repeat) return;
     if (riddleOpen) {
@@ -169,6 +200,8 @@ export function startUi(): void {
       } else if (/^Digit[1-9]$/.test(e.code)) {
         e.preventDefault();
         answer(Number(e.code.slice(5)) - 1);
+      } else if (navigate(e)) {
+        if (e.code === 'Enter' || e.code === 'Space') answer(selected);
       }
       return;
     }
@@ -179,6 +212,8 @@ export function startUi(): void {
       } else if (/^Digit[1-9]$/.test(e.code)) {
         e.preventDefault();
         pickChoice(Number(e.code.slice(5)) - 1);
+      } else if (navigate(e)) {
+        if (e.code === 'Enter' || e.code === 'Space') pickChoice(selected);
       }
     }
   });

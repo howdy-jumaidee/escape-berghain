@@ -78,18 +78,27 @@
       {
         "id": "glasses",
         "text": "Where did you see my glasses?",
-        "reply": "Left speaker by the DJ booth. Crawl under the sub, hooves first."
+        "reply": "Left speaker by the DJ booth. Crawl under the sub, hooves first.",
+        "effect": "sober"
       },
       {
         "id": "mate",
         "text": "Got a spare Club Mate?",
         "reply": "Always. Don't drop it with those hooves.",
-        "reply_used": "Already gave you my last bottle, pony. Check the floor right next to me."
+        "reply_used": "Already gave you my last bottle, pony. Check the floor right next to me.",
+        "effect": "mate"
       },
       {
         "id": "horse",
         "text": "Be honest. Am I a horse?",
         "reply": "Bro, it's Sunday 7 am. We are all horses."
+      },
+      {
+        "id": "weird",
+        "text": "Do you want to smell my hooves?",
+        "reply": "Bro. It's Friday. I've smelled worse in Panorama. Here, drink this, it's mostly water.",
+        "effect": "chaos",
+        "reply_used": "Once was enough, bro."
       }
     ]
   },
@@ -131,7 +140,8 @@
         "id": "horse",
         "text": "A horse trying to get home.",
         "reply": "Honesty in the toilet queue. Rare. Your head feels lighter.",
-        "reply_used": "Honesty still suits you. Keep moving before the queue swallows you."
+        "reply_used": "Honesty still suits you. Keep moving before the queue swallows you.",
+        "effect": "brain_freeze"
       },
       {
         "id": "designer",
@@ -142,6 +152,13 @@
         "id": "guestlist",
         "text": "I'm on the guestlist.",
         "reply": "The guestlist is a social construct. The back exit isn't."
+      },
+      {
+        "id": "weird",
+        "text": "What if the queue is waiting for us?",
+        "reply": "Finally someone gets it. We are the toilet. Go. Take my place in line, I'll be eternal elsewhere.",
+        "effect": "chaos",
+        "reply_used": "We've had this conversation in a past life. You were a pony."
       }
     ],
     "by_fragments": {
@@ -227,6 +244,36 @@
     "talk": [
       "Six o'clock. Every Sunday. Mind the floor.",
       "I always mop the back exit last. Follow the wet floor, you'll find the way out."
+    ],
+    "choices": [
+      {
+        "id": "exit",
+        "text": "Is the back exit really where you mop last?",
+        "reply": "Every Sunday. Follow the wet floor. Here, I'll take you, I'm going there anyway.",
+        "effect": "shortcut",
+        "reply_used": "I'm not a taxi. Follow the wet floor."
+      },
+      {
+        "id": "help",
+        "text": "Can you clean my memory up a bit?",
+        "reply": "I clean floors, not heads. But fine. Splash of cold water, on the house.",
+        "effect": "sober",
+        "reply_used": "One splash per horse."
+      },
+      {
+        "id": "mess",
+        "text": "I think I made a mess in the toilets.",
+        "reply": "Everyone made a mess in the toilets. I'm telling the security anyway.",
+        "effect": "snitch",
+        "reply_used": "Already reported. Thank you for your honesty."
+      },
+      {
+        "id": "weird",
+        "text": "Can I ride the mop?",
+        "reply": "Absolutely not. ...One lap. Hold on.",
+        "effect": "chaos",
+        "reply_used": "The mop remembers. The mop says no."
+      }
     ]
   },
   "leather_daddy": {
@@ -244,12 +291,27 @@
         "id": "stealth",
         "text": "Help me get past security?",
         "reply": "Melt into the shirtless dancers. Torch beams can't pierce the crowd. Stay low, cutie.",
-        "reply_used": "Stay inside the crowd, cutie. Torch beams can't pierce the dancers."
+        "reply_used": "Stay inside the crowd, cutie. Torch beams can't pierce the dancers.",
+        "effect": "cheer"
       },
       {
         "id": "hooves",
         "text": "Where did I get these hooves?",
         "reply": "KitKat, probably. Or you evolved for 132 BPM. Either way, stunning."
+      },
+      {
+        "id": "shortcut",
+        "text": "Know a back way out of here?",
+        "reply": "Through the staff door, cub. Don't touch anything sticky.",
+        "effect": "shortcut",
+        "reply_used": "I showed you once. I'm not a tour guide."
+      },
+      {
+        "id": "weird",
+        "text": "Can I borrow your harness for my saddle?",
+        "reply": "It's vintage, darling. Fine. Wear it with pride and tell no one.",
+        "effect": "chaos",
+        "reply_used": "You're still wearing it. I can tell."
       }
     ]
   },
@@ -268,17 +330,26 @@
         "id": "serve",
         "text": "Pour me a MATE, please.",
         "reply": "Alright, one on the house. Don't tell the bouncer.",
-        "reply_used": "One on the house was the deal, pal. Corner of the main hall has more."
+        "reply_used": "One on the house was the deal, pal. Corner of the main hall has more.",
+        "effect": "sober"
       },
       {
         "id": "ticket",
         "text": "Seen coat check ticket 47?",
-        "reply": "Taped to a concrete pillar right by the bar. Hard to miss once you have glasses."
+        "reply": "Taped to a concrete pillar right by the bar. Hard to miss once you have glasses.",
+        "effect": "shortcut"
       },
       {
         "id": "sober",
         "text": "Do I look sober enough to leave?",
         "reply": "You have four legs and zero pants. You fit right in."
+      },
+      {
+        "id": "weird",
+        "text": "One oat milk for my inner child, please.",
+        "reply": "We don't serve children. Inner or outer. Take this and go away.",
+        "effect": "chaos",
+        "reply_used": "Still no oat milk. Still no children."
       }
     ]
   },
@@ -301,12 +372,27 @@
         "next_3": "Third card: ticket 47. Taped to a concrete pillar right by the bar.",
         "next_4": "Fourth card: your keys. Hand ticket 47 to coat check.",
         "next_5": "Fifth card: the riddle horse in the toilet corridor. Answer his river riddle.",
-        "next_done": "All five cards are upright, darling. Run for the back exit past the toilets!"
+        "next_done": "All five cards are upright, darling. Run for the back exit past the toilets!",
+        "effect": "hint"
       },
       {
         "id": "unicorn",
         "text": "What's the deal with the unicorns?",
         "reply": "Four of them hide on the dance floor. Press Space next to one and thank me later, darling."
+      },
+      {
+        "id": "shortcut",
+        "text": "Can you just teleport me there?",
+        "reply": "Close your eyes, darling. Count to three. Don't throw up on the cards.",
+        "effect": "shortcut",
+        "reply_used": "The cards are tired. So am I."
+      },
+      {
+        "id": "weird",
+        "text": "Read my hoof instead.",
+        "reply": "Long life line. Short attention span. You will meet a tall dark stranger. It's a pillar.",
+        "effect": "chaos",
+        "reply_used": "Same hoof, same future. Pillar."
       }
     ]
   },
@@ -319,6 +405,38 @@
       "Hail, traveller. I am sworn to dance until Monday, or until the squeaking stops.",
       "I used to wander like thee. Then I took a stiletto to the knee.",
       "Thou seekest the way out? It lies beyond the gate the riddle horse guards. Go with grace, little steed."
+    ],
+    "choices": [
+      {
+        "id": "quest",
+        "text": "Will you escort me, noble knight?",
+        "reply": "Aye! To the gate! Er. Which gate. I shall pick one with confidence.",
+        "effect": "shortcut",
+        "chance": 0.5,
+        "otherwise": "wrong_way",
+        "reply_used": "My oath is spent, little steed. Squeak onward alone."
+      },
+      {
+        "id": "riddle",
+        "text": "What is the riddle horse’s answer?",
+        "reply": "A river! No. A candle. No. It is surely a river. Or a fish.",
+        "effect": "lie",
+        "reply_used": "I stand by the fish."
+      },
+      {
+        "id": "duel",
+        "text": "I challenge you to a dance duel.",
+        "reply": "Have at thee! *squeak* *squeak* *squeak* ...I yield. Thou art too horse.",
+        "effect": "cheer",
+        "reply_used": "My knees still squeak from our last duel."
+      },
+      {
+        "id": "weird",
+        "text": "Your armour smells like a balloon animal.",
+        "reply": "I AM a balloon animal, in my heart. Take this blessing and begone.",
+        "effect": "chaos",
+        "reply_used": "Begone, I said. Lovingly."
+      }
     ]
   },
   "old_raver": {
@@ -330,6 +448,28 @@
       "I came in a horse once. Back in the old building, before this one.",
       "Everyone runs for this door. Running isn't what gets you out.",
       "Remembering is. Glasses, number, ticket, keys, bike. Then you can go home."
+    ],
+    "choices": [
+      {
+        "id": "advice",
+        "text": "How do I get out of here faster?",
+        "reply": "Stop wandering. Memories first, door last. Sit down, drink water, breathe.",
+        "effect": "sober",
+        "reply_used": "Water. Breathe. You're not listening."
+      },
+      {
+        "id": "next",
+        "text": "What am I forgetting?",
+        "reply": "Let me think. I was at the first party in this building, you know.",
+        "effect": "hint"
+      },
+      {
+        "id": "weird",
+        "text": "Were horses allowed in the old club?",
+        "reply": "Horses ran the old club. One of them was the booker. Here, old school trick.",
+        "effect": "chaos",
+        "reply_used": "That horse booked Ricardo three times. Legend."
+      }
     ]
   },
   "glitter_boy": {
@@ -341,6 +481,38 @@
       "Oh. My. God. The fetish horse! Okay, quest for you. Very important.",
       "I lost my other earring. Probably under the DJ booth. Or in Panorama. Or in my harness.",
       "Also if you spot one of the rare glowing unicorns on the floor, press Space. Instant clarity. Love the mane though."
+    ],
+    "choices": [
+      {
+        "id": "earring",
+        "text": "Show me where your earring is and I will look.",
+        "reply": "Follow me, babe! I know a super secret shortcut. Trust.",
+        "effect": "shortcut",
+        "chance": 0.4,
+        "otherwise": "wrong_way",
+        "reply_used": "I already showed you! Keep up!"
+      },
+      {
+        "id": "glasses",
+        "text": "Have you seen a pair of glasses?",
+        "reply": "Totally. They're in the darkroom. Under a guy named Klaus. Go now.",
+        "effect": "lie",
+        "reply_used": "Klaus says hi."
+      },
+      {
+        "id": "candy",
+        "text": "Got anything to make the floor stop moving?",
+        "reply": "Of course, babe, sharing is caring.",
+        "effect": "trip_up",
+        "reply_used": "All gone, babe. Sorry not sorry."
+      },
+      {
+        "id": "weird",
+        "text": "Neigh.",
+        "reply": "Oh my god, same. Neigh. NEIGH. Okay we're bonded now.",
+        "effect": "chaos",
+        "reply_used": "Neigh forever, babe."
+      }
     ]
   },
   "darkroom_keeper": {
@@ -352,6 +524,36 @@
       "...",
       "The way out is through the darkroom. Nobody's ever come back to say otherwise.",
       "Not tonight, though. It's closed for... reasons. Come back when the walls stop moving."
+    ],
+    "choices": [
+      {
+        "id": "way",
+        "text": "Is the darkroom really the way out?",
+        "reply": "Yes. Walk in. Turn left. Then left again. Then left. Trust me.",
+        "effect": "wrong_way",
+        "reply_used": "..."
+      },
+      {
+        "id": "memory",
+        "text": "Have you seen any of my memories in there?",
+        "reply": "Plenty of memories in there. Not yours. Nobody keeps their own.",
+        "effect": "hint",
+        "reply_used": "Same answer. Darker now."
+      },
+      {
+        "id": "rat",
+        "text": "Are you going to tell security about me?",
+        "reply": "I tell security everything. It's the only fun part of my shift.",
+        "effect": "snitch",
+        "reply_used": "Already did. Twice."
+      },
+      {
+        "id": "weird",
+        "text": "Can I hold your torch? I am scared of the dark.",
+        "reply": "...Fine. Thirty seconds. Don't make it weird.",
+        "effect": "chaos",
+        "reply_used": "No."
+      }
     ]
   },
   "lighting_tech": {
@@ -363,6 +565,35 @@
       "Don't look straight at the strobes, they're mine.",
       "Pro tip: stand dead still in a strobe and the torches can't see you. Physics.",
       "Also the herd dances to my lights, not the music. Nobody believes me."
+    ],
+    "choices": [
+      {
+        "id": "cover",
+        "text": "Can you kill the lights so I can sneak by?",
+        "reply": "One blackout, coming up. Thirty seconds of nobody seeing anything. Go.",
+        "effect": "cheer",
+        "reply_used": "I only get one blackout per shift, mate."
+      },
+      {
+        "id": "route",
+        "text": "Which way to the coat check?",
+        "reply": "Easy, I'll light a path. Follow the green beam, not the red one.",
+        "effect": "shortcut",
+        "reply_used": "The beam's still there. Green. Not red."
+      },
+      {
+        "id": "strobe",
+        "text": "Is the strobe trick real?",
+        "reply": "Dead real. Stand still in a strobe, the torches miss you. Ask the herd.",
+        "reply_used": "Still real. Still physics."
+      },
+      {
+        "id": "weird",
+        "text": "Can you make the lights horse coloured?",
+        "reply": "Horse coloured. Okay. Brown, but emotional. Watch this.",
+        "effect": "chaos",
+        "reply_used": "Horse mode is still on. You're welcome."
+      }
     ]
   }
 }
