@@ -143,7 +143,25 @@
         "text": "I'm on the guestlist.",
         "reply": "The guestlist is a social construct. The back exit isn't."
       }
-    ]
+    ],
+    "by_fragments": {
+      "0": [
+        "Zero memories. Pure being. Honestly I envy you. The whole queue envies you.",
+        "I've been in this line since Thursday. The line is the club. The toilet is a rumour."
+      ],
+      "1": [
+        "You remember something. Careful. Memory is how the queue gets you.",
+        "One more thing you know is one more thing you can lose. Door policy of the soul."
+      ],
+      "3": [
+        "Half horse, half person. Most people in here manage neither.",
+        "You're starting to look like someone. Someone who would skip this queue. Don't."
+      ],
+      "5": [
+        "All five. You know who you are now. Tragic. You have to go home and be it.",
+        "Go. The queue will remember you. Mostly as a horse."
+      ]
+    }
   },
   "tourists": {
     "name": "Tourists",
