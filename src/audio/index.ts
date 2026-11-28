@@ -8,11 +8,11 @@ import { Cues } from './cues';
 /** How the music sounds from each zone. Issue #70: hall loud and physical, toilets muffled with tile echo,
  * Panorama warm, back exit quiet and dry. `verb` is the reverb send: tiled corridor rings, the back exit is dry. */
 const ZONE_MIX: Record<ZoneId, Mix> = {
-  main_hall: { cutoff: 18000, volume: 1, warm: 0, verb: 0.4 },
-  bar_cloakroom: { cutoff: 2400, volume: 0.8, warm: 0, verb: 0.3 },
-  toilet_corridor: { cutoff: 340, volume: 0.7, warm: 0, verb: 0.7 },
-  panorama_bar: { cutoff: 14000, volume: 0.9, warm: 1, verb: 0.5 },
-  back_exit: { cutoff: 700, volume: 0.5, warm: 0, verb: 0.12 },
+  main_hall: { cutoff: 18000, volume: 1, warm: 0, verb: 0.45 },
+  bar_cloakroom: { cutoff: 2000, volume: 0.75, warm: 0, verb: 0.3 },
+  toilet_corridor: { cutoff: 420, volume: 0.7, warm: 0, verb: 0.8 },
+  panorama_bar: { cutoff: 15000, volume: 0.95, warm: 1, verb: 0.5 },
+  back_exit: { cutoff: 600, volume: 0.45, warm: 0, verb: 0.06 },
 };
 
 const MUFFLED: Mix = { cutoff: 220, volume: 0.9, warm: 0 };
