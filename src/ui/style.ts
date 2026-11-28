@@ -151,7 +151,8 @@ export const css = /* css */ `
 /* Security: the screen edges go red while a torch is on you. No text. */
 .eb-seen { position: absolute; inset: 0; opacity: 0; transition: opacity 0.15s; box-shadow: inset 0 0 140px 30px rgba(255, 42, 26, 0.55); }
 
-.eb-van { position: absolute; inset: 0; background: #000; display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 0.35s; }
+/* Full-screen story cards sit above the help box (z 3) and captions (z 4). */
+.eb-van { position: absolute; inset: 0; z-index: 6; background: #000; display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 0.35s; }
 .eb-van.on { opacity: 1; }
 .eb-van h2 { margin: 0 0 var(--s-3); font: 400 var(--t-xl)/var(--lh-tight) var(--mono); letter-spacing: 0.15em; }
 .eb-van p { margin: var(--s-1); font: 400 var(--t-md)/var(--lh-body) var(--mono); color: var(--text-2); }

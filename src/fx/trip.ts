@@ -20,7 +20,10 @@ import {
 import { bus, state, TRIP_MAX } from '../contracts';
 import { ProximityGlowEffect } from './glow';
 
-const TRIP_PER_SECOND = 0.8; // the horse gets properly high in ~2 minutes
+// Playtests: 0.8 (blackout in ~2 min) was far too hard. Now a grace period, then a slow climb:
+// 45 s clear-headed, then 100 trip in about 8 more minutes. Mate, fragments and talk-back sober you up on top.
+const TRIP_PER_SECOND = 0.21;
+const TRIP_GRACE_SECONDS = 45;
 const FRAGMENT_RELIEF = 10;
 const MATE_RELIEF = 30;
 const MATE_SECONDS = 10;
@@ -124,6 +127,8 @@ export class TripFx {
   private camWobbleScale = 1;
   private hasCameraBase = false;
   private t = 0;
+  /** Seconds of free play, for the grace period at the start. */
+  private playTime = 0;
   private mateLeft = 0;
   private freezeLeft = 0;
   /** Eased version of the trip, so relief doesn't snap the screen sharp in one frame. */
@@ -207,8 +212,10 @@ export class TripFx {
     this.t += dt;
 
     if (state.started && !state.ending && !state.inputLocked) {
+      this.playTime += dt;
       const prev = state.trip;
-      state.trip = Math.min(TRIP_MAX, state.trip + TRIP_PER_SECOND * dt);
+      const rise = this.playTime < TRIP_GRACE_SECONDS ? 0 : TRIP_PER_SECOND;
+      state.trip = Math.min(TRIP_MAX, state.trip + rise * dt);
       if (Math.floor(prev) !== Math.floor(state.trip)) bus.emit('trip:changed', { trip: state.trip });
       if (state.trip >= TRIP_MAX && prev < TRIP_MAX) bus.emit('trip:max', {});
     }

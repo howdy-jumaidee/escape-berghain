@@ -8,13 +8,13 @@ import { placeModel } from '../look/models';
 import { resolveCircle, type BuiltLevel } from './level';
 
 const WALK = 2;
-const RUN = 3.6;
-const SIGHT = 8; // detection distance, metres. Smaller = more room to hide in the crowd (#68 balance).
+const RUN = 3.1;
+const SIGHT = 6.5; // detection distance, metres. Smaller = more room to hide in the crowd (#68 balance). Playtests: 8 was too punishing.
 /** Closing time: everyone moves faster and sees further. */
 const FINALE_SPEED = 1.5;
 const FINALE_SIGHT = 1.25;
 const SIGHT_ANGLE = 0.5; // radians either side
-const CATCH_SECONDS = 1.1;
+const CATCH_SECONDS = 2; // seconds of torchlight before you're caught. Playtests: 1.1 left no time to react.
 const GRACE = 4;
 const LOOK_AROUND = 4;
 
