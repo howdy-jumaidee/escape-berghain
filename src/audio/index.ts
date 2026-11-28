@@ -1,15 +1,17 @@
 // Audio manager: owns the beat clock, the music and the sound effects. Issue #19.
 // Starts on game:start (browsers only allow sound after a click). M mutes.
 import { bus, state, TRIP_MAX, BEAT_SECONDS, type ZoneId } from '../contracts';
+import { debug } from '../data';
 import { Techno, type Mix } from './techno';
 
-/** How the music sounds from each zone. */
+/** How the music sounds from each zone. Issue #70: hall loud and physical, toilets muffled with tile echo,
+ * Panorama warm, back exit quiet and dry. `verb` is the reverb send: tiled corridor rings, the back exit is dry. */
 const ZONE_MIX: Record<ZoneId, Mix> = {
-  main_hall: { cutoff: 18000, volume: 1, warm: 0 },
-  bar_cloakroom: { cutoff: 2400, volume: 0.8, warm: 0 },
-  toilet_corridor: { cutoff: 380, volume: 0.75, warm: 0 },
-  panorama_bar: { cutoff: 14000, volume: 0.9, warm: 1 },
-  back_exit: { cutoff: 900, volume: 0.6, warm: 0 },
+  main_hall: { cutoff: 18000, volume: 1, warm: 0, verb: 0.4 },
+  bar_cloakroom: { cutoff: 2400, volume: 0.8, warm: 0, verb: 0.3 },
+  toilet_corridor: { cutoff: 340, volume: 0.7, warm: 0, verb: 0.7 },
+  panorama_bar: { cutoff: 14000, volume: 0.9, warm: 1, verb: 0.5 },
+  back_exit: { cutoff: 700, volume: 0.5, warm: 0, verb: 0.12 },
 };
 
 const MUFFLED: Mix = { cutoff: 220, volume: 0.9, warm: 0 };
@@ -23,6 +25,9 @@ export function startAudio(): void {
   let music: Techno | null = null;
   let muted = false;
   let fallback = 0;
+
+  // ?debug: peak meter on the master, so clipping is measurable in the console: ebAudio()
+  if (debug.on) (window as unknown as { ebAudio: () => number }).ebAudio = () => music?.level() ?? 0;
 
   bus.on('game:start', () => {
     if (music) return;
@@ -74,10 +79,12 @@ export function startAudio(): void {
 
   bus.on('zone:entered', ({ zone }) => {
     if (!state.ending) music?.setMix(ZONE_MIX[zone]);
+    if (state.started && !state.ending) music?.sfxZone();
   });
   bus.on('trip:changed', ({ trip }) => music?.setTrip(trip / TRIP_MAX, state.brainFreezeActive));
 
   bus.on('player:step', () => music?.sfxStep());
+  bus.on('player:stomp', () => music?.sfxNeigh());
   bus.on('fragment:found', () => music?.sfxPickup());
   bus.on('item:slipped', () => music?.sfxSlip());
   bus.on('item:consumed', ({ item }) => {
