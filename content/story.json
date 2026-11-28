@@ -185,5 +185,31 @@
     "5": "The riddle horse in the toilet corridor. Answer his riddle.",
     "done": "You have everything. Back exit, past the toilets. Go."
   },
-  "talk_choose_hint": "Up/Down or W/S to choose. Enter to answer, or press 1 to 4. Esc to leave."
+  "talk_choose_hint": "Up/Down or W/S to choose. Enter to answer, or press 1 to 4. Esc to leave.",
+  "help": {
+    "label": "Help",
+    "label_mission": "Memories",
+    "tab": "H help",
+    "tips": [
+      "WASD to walk. Go slow, you are a horse on drugs.",
+      "Space next to someone to talk. Space next to something shiny to grab it.",
+      "E to stomp on the beat. Q to look at yourself. V to change view."
+    ],
+    "mission": "Find your 5 memories, then get out the back exit.",
+    "mission_done": "Back exit. Past the toilets. Go.",
+    "memories": [
+      "Glasses",
+      "Wrist stamp",
+      "Ticket 47",
+      "Keys",
+      "The bike riddle"
+    ],
+    "hints": [
+      "Glasses: under the speaker by the DJ booth.",
+      "Wrist stamp: press Q to look at yourself.",
+      "Ticket 47: taped to a pillar by the bar.",
+      "Keys: give ticket 47 to coat check.",
+      "The bike riddle: the riddle horse waits in the toilet corridor."
+    ]
+  }
 }

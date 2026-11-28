@@ -6,6 +6,7 @@ import { debug } from '../data';
 import { css } from './style';
 import { t, list, lookup } from './text';
 import { playIntro } from './intro';
+import { startHelp } from './help';
 
 export function startUi(): void {
   const style = document.createElement('style');
@@ -222,6 +223,9 @@ export function startUi(): void {
       }
     }
   });
+
+  // Glass help box: tips after landing, then the mission and the five memories.
+  startHelp(root);
 
   // View toggle hint: slowly fades in 2.8 s after landing, holds 9 s, then fades out (or immediately on V).
   const viewHint = el('div', 'eb-view-hint', root);
