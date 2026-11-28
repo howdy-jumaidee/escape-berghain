@@ -11,6 +11,8 @@ import { animateCharacter, bindRig, type DanceArchetype } from './motion';
 const TALK_RANGE = 2.4;
 /** Room the crowd gives a conversation. The camera sits 2.25 m from the face, so this covers the whole line. */
 const CONVO_CLEAR_RADIUS = 2.7;
+/** Regulars are bigger than dancers, so they keep a little more room. */
+const REGULAR_CLEAR_RADIUS = 3.1;
 /** How close a unicorn has to be before audio plays its shimmer. */
 const UNICORN_HEAR_RANGE = 6;
 const WALK_AWAY = 4.5;
@@ -184,6 +186,8 @@ export class Npcs {
   private npcs: Npc[] = [];
   private player = new THREE.Vector3();
   private nearCheck = 0;
+  /** Regulars pushed aside for a conversation, so the ones that never wander can be put back. */
+  private madeRoom = new Set<Npc>();
   private wasNear = false;
   private wasNearUnicorn = false;
   private talking: Npc | null = null;
@@ -405,7 +409,32 @@ export class Npcs {
     // Conversations only happen on the ground floor. Clear around the figure the camera actually frames.
     const talk = this.convo ?? this.focused;
     const figure = talk ? (talk.npc.holders[talk.holderIndex]?.position ?? talk.npc.pos) : this.replyActive ? this.talking?.pos : null;
-    if (figure) this.crowd.clearRing(figure.x, figure.z, CONVO_CLEAR_RADIUS, 0);
+    if (figure) {
+      this.crowd.clearRing(figure.x, figure.z, CONVO_CLEAR_RADIUS, 0);
+      // Named regulars too (the start crown stands right where the camera goes). Pushed, never hidden.
+      const own = talk?.npc ?? (this.replyActive ? this.talking : null);
+      for (const other of this.npcs) {
+        if (other === own) continue;
+        for (const h of other.holders) {
+          const dx = h.position.x - figure.x;
+          const dz = h.position.z - figure.z;
+          const d = Math.hypot(dx, dz);
+          if (d >= REGULAR_CLEAR_RADIUS) continue;
+          const nx = d > 1e-4 ? dx / d : 1;
+          const nz = d > 1e-4 ? dz / d : 0;
+          h.position.x = figure.x + nx * REGULAR_CLEAR_RADIUS;
+          h.position.z = figure.z + nz * REGULAR_CLEAR_RADIUS;
+          this.madeRoom.add(other);
+        }
+      }
+    } else if (this.madeRoom.size) {
+      // Conversation over: regulars who never wander (coat check, bouncer...) go straight back to their spot.
+      for (const other of this.madeRoom) {
+        if ((STYLES[other.id] ?? DEFAULT_STYLE).wander > 0) continue;
+        other.holders.forEach((h, i) => h.position.copy(other.homes[i]));
+      }
+      this.madeRoom.clear();
+    }
     this.crowd.update(dt, this.beatPulse, this.beatN);
     this.djs.update(dt, this.beatPulse, this.beatN);
     const bounce = this.beatPulse * this.beatPulse;
