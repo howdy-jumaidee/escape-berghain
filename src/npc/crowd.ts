@@ -55,7 +55,10 @@ export class Crowd {
   private skinHex: number[] = [];
   private hairHex: number[] = [];
   private clothes: THREE.InstancedMesh;
-  private skin: THREE.InstancedMesh;
+  private armL: THREE.InstancedMesh;
+  private armR: THREE.InstancedMesh;
+  private legL: THREE.InstancedMesh;
+  private legR: THREE.InstancedMesh;
   private humanHead: THREE.InstancedMesh | null = null;
   private hair: THREE.InstancedMesh | null = null;
   private eyes: THREE.InstancedMesh | null = null;
@@ -171,13 +174,22 @@ export class Crowd {
     const hairMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.4 });
     const coatMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, vertexColors: true });
-    this.clothes = makeMesh(clothesGeo(), clothMat, Math.max(this.n, 1));
-    this.skin = makeMesh(skinGeo(), skinMat, Math.max(this.n, 1));
-    this.root.add(this.clothes, this.skin);
+    const n = Math.max(this.n, 1);
+    this.clothes = makeMesh(clothesGeo(), clothMat, n);
+    this.armL = makeMesh(armGeo(), skinMat, n);
+    this.armR = makeMesh(armGeo(), skinMat, n);
+    this.legL = makeMesh(legGeo(), clothMat, n);
+    this.legR = makeMesh(legGeo(), clothMat, n);
+    this.root.add(this.clothes, this.armL, this.armR, this.legL, this.legR);
     const white = new THREE.Color(0xffffff);
     for (let i = 0; i < this.n; i++) {
-      this.clothes.setColorAt(i, new THREE.Color(this.outfit[i]));
-      this.skin.setColorAt(i, new THREE.Color(this.skinHex[i]));
+      const outfit = new THREE.Color(this.outfit[i]);
+      const skin = new THREE.Color(this.skinHex[i]);
+      this.clothes.setColorAt(i, outfit);
+      this.legL.setColorAt(i, outfit);
+      this.legR.setColorAt(i, outfit);
+      this.armL.setColorAt(i, skin);
+      this.armR.setColorAt(i, skin);
     }
     const paintHumans = (m: THREE.InstancedMesh, hexes: number[]) => {
       for (let i = 0; i < this.n; i++) if (this.species[i] === 0) m.setColorAt(this.slot[i], new THREE.Color(hexes[i]));
@@ -195,7 +207,7 @@ export class Crowd {
       if (!m) continue;
       for (let s = 0; s < m.count; s++) m.setColorAt(s, white);
     }
-    for (const m of [this.clothes, this.skin, this.humanHead, this.hair, this.eyes, this.tripHead, this.guestHorse, this.guestUni, this.guestDonkey]) {
+    for (const m of [this.clothes, this.armL, this.armR, this.legL, this.legR, this.humanHead, this.hair, this.eyes, this.tripHead, this.guestHorse, this.guestUni, this.guestDonkey]) {
       if (m?.instanceColor) m.instanceColor.needsUpdate = true;
     }
   }
@@ -267,11 +279,20 @@ export class Crowd {
       const stepOut = style === 1 ? side * 0.16 * (1 - pulse * 0.5) : 0;
       if (style === 2) yaw += Math.sin(beatN * Math.PI * 0.5 + ph) * 0.5;
 
-      d.position.set(x + Math.cos(yaw) * stepOut, this.baseY[i] + jump, z - Math.sin(yaw) * stepOut);
-      d.rotation.set(0, yaw, sway);
+      const px = x + Math.cos(yaw) * stepOut;
+      const pz = z - Math.sin(yaw) * stepOut;
+      const py = this.baseY[i] + jump;
+      const stride = Math.sin(this.t * (queue ? 2.4 : 6.2) + ph) * (queue ? 0.18 : 0.55 + pulse * 0.25);
+      d.position.set(px, py, pz);
+      d.rotation.order = 'YXZ';
+      d.rotation.set(stride * 0.12, yaw, sway);
       d.updateMatrix();
       this.clothes.setMatrixAt(i, d.matrix);
-      this.skin.setMatrixAt(i, d.matrix);
+      // Limbs pivot at the hip and shoulder, opposite left and right, so a walk reads at a glance.
+      limbAt(this.legL, i, d, px, py, pz, yaw, -0.09, 0.78, 0, stride);
+      limbAt(this.legR, i, d, px, py, pz, yaw, 0.09, 0.78, 0, -stride);
+      limbAt(this.armL, i, d, px, py, pz, yaw, -0.24, 1.32, 0, -stride * 0.85);
+      limbAt(this.armR, i, d, px, py, pz, yaw, 0.24, 1.32, 0, stride * 0.85);
       const sp = this.species[i];
       const s = this.slot[i];
       if (sp === 0) {
@@ -284,7 +305,7 @@ export class Crowd {
       else if (sp === 2) this.guestUni?.setMatrixAt(s, d.matrix);
       else this.guestDonkey?.setMatrixAt(s, d.matrix);
     }
-    for (const m of [this.clothes, this.skin, this.humanHead, this.hair, this.eyes, this.tripHead, this.guestHorse, this.guestUni, this.guestDonkey]) {
+    for (const m of [this.clothes, this.armL, this.armR, this.legL, this.legR, this.humanHead, this.hair, this.eyes, this.tripHead, this.guestHorse, this.guestUni, this.guestDonkey]) {
       if (m) m.instanceMatrix.needsUpdate = true;
     }
   }
@@ -335,6 +356,29 @@ export class Crowd {
   }
 }
 
+/** Place one limb. Offset is in the dancer's local space; swing is a rotation around local X. */
+function limbAt(
+  mesh: THREE.InstancedMesh,
+  index: number,
+  d: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  yaw: number,
+  ox: number,
+  oy: number,
+  oz: number,
+  swing: number,
+): void {
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  d.position.set(x + ox * c + oz * s, y + oy, z - ox * s + oz * c);
+  d.rotation.order = 'YXZ';
+  d.rotation.set(swing, yaw, 0);
+  d.updateMatrix();
+  mesh.setMatrixAt(index, d.matrix);
+}
+
 function makeMesh(geo: THREE.BufferGeometry, mat: THREE.Material, count: number): THREE.InstancedMesh {
   const m = new THREE.InstancedMesh(geo, mat, count);
   m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -372,20 +416,22 @@ function sphere(r: number, x: number, y: number, z: number): THREE.SphereGeometr
 
 function clothesGeo(): THREE.BufferGeometry {
   return mergeGeometries([
-    cyl(0.07, 0.74, -0.09, 0.4, 0),
-    cyl(0.07, 0.74, 0.09, 0.4, 0),
-    box(0.12, 0.06, 0.18, -0.09, 0.03, 0.03),
-    box(0.12, 0.06, 0.18, 0.09, 0.03, 0.03),
     box(0.3, 0.16, 0.16, 0, 0.82, 0),
     box(0.34, 0.4, 0.18, 0, 1.1, 0),
     box(0.44, 0.1, 0.16, 0, 1.32, 0),
   ])!;
 }
 
-function skinGeo(): THREE.BufferGeometry {
+/** One arm, hanging from the shoulder (local origin). */
+function armGeo(): THREE.BufferGeometry {
+  return cyl(0.045, 0.46, 0, -0.23, 0);
+}
+
+/** One leg plus shoe, hanging from the hip (local origin). */
+function legGeo(): THREE.BufferGeometry {
   return mergeGeometries([
-    cyl(0.045, 0.46, -0.24, 1.08, 0),
-    cyl(0.045, 0.46, 0.24, 1.08, 0),
+    cyl(0.07, 0.74, 0, -0.37, 0),
+    box(0.12, 0.06, 0.18, 0, -0.74, 0.03),
   ])!;
 }
 

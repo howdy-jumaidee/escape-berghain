@@ -108,6 +108,36 @@ interface Convo {
 }
 const STOP_FOR_PLAYER = 3.5;
 
+interface LimbRig {
+  legL?: THREE.Object3D;
+  legR?: THREE.Object3D;
+  armL?: THREE.Object3D;
+  armR?: THREE.Object3D;
+  head?: THREE.Object3D;
+  swing: number;
+  vel: number;
+}
+
+/** Find the limb pivots once the glTF has replaced the grey box. Missing parts are skipped. */
+function limbRig(root: THREE.Object3D): LimbRig | null {
+  const cached = root.userData.rig as LimbRig | undefined;
+  if (cached) return cached;
+  if (root.userData.rigMiss) return null;
+  const rig: LimbRig = { swing: 0, vel: 0 };
+  root.traverse((c) => {
+    if (c.name === 'legL' || c.name === 'legR' || c.name === 'armL' || c.name === 'armR' || c.name === 'head') {
+      rig[c.name] = c;
+    }
+  });
+  if (!rig.legL && !rig.armL && !rig.head) {
+    root.userData.rigTries = ((root.userData.rigTries as number) ?? 0) + 1;
+    if ((root.userData.rigTries as number) > 180) root.userData.rigMiss = true;
+    return null;
+  }
+  root.userData.rig = rig;
+  return rig;
+}
+
 export class Npcs {
   readonly root = new THREE.Group();
   readonly crowd: Crowd;
@@ -321,6 +351,23 @@ export class Npcs {
     o.position.x = Math.cos(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
     o.position.z = -Math.sin(yaw) * side * style.step * (1 - this.beatPulse * 0.5);
     o.rotation.y = yaw + (attentive ? 0 : Math.sin(this.beatN * Math.PI * 0.5 + i) * style.twist);
+    // Fake ragdoll: limbs are separate pivots in the glTF. A spring lets the swing overshoot the beat.
+    const rig = limbRig(o);
+    if (rig) {
+      const amp = (attentive ? 0.22 : 0.62) * (style.hop < 0.05 ? 0.35 : 1);
+      const target = Math.sin(this.t * 6.4 + i * 1.7) * amp;
+      rig.vel += (target - rig.swing) * 28 * dt;
+      rig.vel *= Math.exp(-5.5 * dt);
+      rig.swing += rig.vel * dt;
+      if (rig.legL) rig.legL.rotation.x = rig.swing;
+      if (rig.legR) rig.legR.rotation.x = -rig.swing;
+      if (rig.armL) rig.armL.rotation.x = -rig.swing * 0.9;
+      if (rig.armR) rig.armR.rotation.x = rig.swing * 0.9;
+      if (rig.head) {
+        rig.head.rotation.x = Math.sin(this.t * 2.1 + i) * 0.07;
+        rig.head.rotation.z = Math.sin(this.t * 1.3 + i) * 0.05;
+      }
+    }
   }
 
   private spawn(id: NpcId, col: number, row: number): void {
