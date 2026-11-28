@@ -1,5 +1,13 @@
 # Roadmap
 
+**Tonight (Fri 27 into Sat 28, before the pitch).** Recap of what landed. Detail in `docs/recaps/phase-4.md`.
+
+- Title screen: three-line goal (horse, five memories, back exit before you black out), a Controls toggle (WASD, Space, Q, E, V, M), and a separate Play button. In play, one fading line says the next step. Still no HUD.
+- NPC figures replace the cubes: low-poly club people, plus horses, unicorns and donkeys. The crowd stays instanced. The same guests stand on the 9 m galleries. Limbs swing on the beat (fake ragdoll, not physics).
+- Two camera views only. V cycles follow and the horse's eyes. Top down is gone.
+- Soft hazy light in both views. Strongest in first person. In follow, shafts and a rim wrap the horse, with haze in front of the lens. Contrast drops so it stays dreamy.
+- Go-live: `dev` was squash-merged to `main` in #91. GitHub build is green. Vercel did not deploy: "Deployment rate limited — retry in 24 hours." https://escape-berghain.vercel.app was still the previous bundle when checked.
+
 Deadline: Saturday 28 Nov, 16:00. Each phase ends with a gate.
 
 **Play it:** https://escape-berghain.vercel.app (production, from `main`). Every PR also gets a Vercel preview (behind Vercel login for now, #36).
@@ -40,7 +48,7 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 - [x] Drunk steering
 - [x] Jacket story simplified: give the ticket, get the keys. No minigame, no phone, no clock
 - [x] Cut list items 1 to 3 cut: extra regulars, Konami rat, mirror
-- [x] Nice-to-have started: three views (V): top down, follow cam, the horse's own eyes
+- [x] Two views (V): follow cam and the horse's own eyes. Top down removed (#87)
 
 ## Now: Phase 4, polish and fix (Saturday morning to 14:00)
 
@@ -63,8 +71,8 @@ The whole game is playable start to finish in the browser. You wake up as a hors
 
 Only after Gate 4 is safe. Each one is an issue for one model, in its own folder.
 
-- [x] **Different views.** V cycles top down, follow and eyes
-- [ ] **Multiple floors** (Dee wants these). The staircase actually goes up: Panorama Bar as a real second floor above the main hall, seen through a gap in the ceiling. One `levels/level1.json` grid per floor, the stairs move you between them, the camera rises with you
+- [x] **Different views.** V cycles follow and eyes. Top down is gone (#87)
+- [ ] **Multiple floors** (Dee wants these). The 9 m galleries are walkable and now have dancers (#85). Still open: Panorama Bar as a real second floor, one `levels/level1.json` grid per floor, seen through a gap in the ceiling
 - [ ] **Labyrinth mystery.** The darkroom maze behind the toilets: a dark labyrinth lit only by your trip, where the walls shift on the beat and the way through is written in clues (flyers, stamps, the Friday guy's BPM directions). A sixth memory, or a secret way out
 - [ ] Convert fonts to woff2 (smaller download)
 - [ ] Mobile touch controls
