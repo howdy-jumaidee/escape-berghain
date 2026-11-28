@@ -84,9 +84,10 @@ export const css = /* css */ `
 .eb-prompt kbd { border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; font: 400 var(--t-xs)/1.4 var(--mono); color: var(--text-1); }
 .eb-prompt span { font: 400 var(--t-sm)/var(--lh-tight) var(--mono); color: var(--text-2); }
 
-/* Help box: one small, quiet frosted-glass panel, top left (200 px, all text at the 12 px minimum). Dim when idle, full when it has news.
-   Off on the title (until intro:land), hidden in face to face talks and endings. */
-.eb-help { position: absolute; left: var(--s-4); top: var(--s-4); width: 200px;
+/* Help box: one small, quiet frosted-glass panel, top left. Wide enough for "MEMORIES  1 / 5 recovered"
+   on one line and for the glasses hint to break after "under the". All text stays at the 12 px minimum.
+   Dim when idle, full when it has news. Off on the title (until intro:land), hidden in face to face talks and endings. */
+.eb-help { position: absolute; left: var(--s-4); top: var(--s-4); width: 260px;
   max-width: calc(100vw - 2 * var(--s-4)); z-index: 3; }
 .eb-help.off { display: none; }
 .eb-ui.talking .eb-help { display: none; }
@@ -95,21 +96,22 @@ export const css = /* css */ `
   -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
 .eb-help.live .eb-help-panel { opacity: 1; }
 .eb-help.closed .eb-help-panel { display: none; }
-.eb-help-label { margin-bottom: var(--s-1); font: 400 var(--t-xs)/var(--lh-tight) var(--mono);
+.eb-help-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin-bottom: var(--s-2); }
+.eb-help-label { font: 400 var(--t-xs)/var(--lh-tight) var(--mono);
+  letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-3); text-shadow: var(--legible); }
+.eb-help-count { font: 400 var(--t-xs)/var(--lh-tight) var(--mono); color: var(--text-3);
+  text-shadow: var(--legible); white-space: nowrap; }
+.eb-help-kicker { margin: 0 0 var(--s-1); font: 400 var(--t-xs)/var(--lh-tight) var(--mono);
   letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-3); text-shadow: var(--legible); }
 .eb-help-tip, .eb-help-mission { margin: 0; font: 400 var(--t-xs)/1.4 var(--mono);
   color: var(--text-2); text-shadow: var(--legible); }
-.eb-help-mission { margin-bottom: var(--s-1); color: var(--text-2); }
+.eb-help-mission { margin-bottom: var(--s-2); color: var(--text-2); }
 .eb-help-list { display: grid; gap: 0; }
-.eb-help-item { display: flex; gap: var(--s-1); font: 400 var(--t-xs)/1.45 var(--mono);
+.eb-help-item { display: flex; gap: var(--s-1); align-items: baseline; font: 400 var(--t-xs)/1.45 var(--mono);
   color: var(--text-2); text-shadow: var(--legible); }
-.eb-help-item .tick { visibility: hidden; }
+.eb-help-item .tick { flex: none; width: 1ch; text-align: center; }
 .eb-help-item.done { color: var(--text-1); }
-.eb-help-item.done .tick { visibility: visible; }
-.eb-help-hint { display: none; margin: var(--s-1) 0 0; font: 400 var(--t-xs)/var(--lh-body) var(--mono);
-  color: var(--text-3); text-shadow: var(--legible); }
-.eb-help-hint.on { display: block; }
-.eb-help.tips .eb-help-mission, .eb-help.tips .eb-help-list, .eb-help.tips .eb-help-hint { display: none; }
+.eb-help.tips .eb-help-kicker, .eb-help.tips .eb-help-mission, .eb-help.tips .eb-help-list, .eb-help.tips .eb-help-count { display: none; }
 .eb-help:not(.tips) .eb-help-tip { display: none; }
 /* Closed: only a tiny tab in the same corner. */
 .eb-help-tab { display: none; padding: var(--s-1) var(--s-2); background: rgba(20, 20, 24, 0.38);
