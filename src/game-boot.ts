@@ -258,4 +258,4 @@ renderer.setAnimationLoop(() => {
 });
 
 // Playtesting: /?debug puts window.eb = { state, bus, world, npcs, horse, camera } on the page.
-if (debug.on) (window as unknown as { eb: unknown }).eb = { state, bus, world, npcs, horse, camera };
+if (debug.on) (window as unknown as { eb: unknown }).eb = { state, bus, world, npcs, horse, camera, fx, renderer };
