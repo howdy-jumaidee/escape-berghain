@@ -1,6 +1,6 @@
 # Roadmap
 
-**Status Saturday 28 Nov, 11:45 CET (pitch 14:00-16:00, submit 15:30).** `main` is at `38ac767`, promoted in #174, and production deployed at 11:45 (READY): https://escape-berghain.vercel.app and https://escapeberghain.dev serve it now. Earlier detail in `docs/recaps/phase-4.md`.
+**Status Saturday 28 Nov, 12:45 CET (pitch 14:00-16:00, submit 15:30).** `main` is at `2b46382` (memories menu #186, promoted in #189 and #185), `dev` at `8d283ab` (#191 pitch/handoff artifacts). Production is live and verified: https://escapeberghain.dev serves the `2b46382` bundle (HTTP 200, fresh deploy, checked 12:33). No open PRs. Earlier detail in `docs/recaps/phase-4.md`.
 
 - Title screen: three-line goal (horse, five memories, back exit before you black out), a Controls toggle (WASD, Space, Q, E, V, M), and a separate Play button. In play, one fading line says the next step. Still no HUD, plus a glass help box (H) with tips and a memory checklist (#160, #170).
 - NPC figures replace the cubes: low-poly club people, plus horses, unicorns and donkeys. The crowd stays instanced. The same guests stand on the 9 m galleries. Limbs swing on the beat (fake ragdoll, not physics).
@@ -8,17 +8,17 @@
 - Soft hazy light in both views. Strongest in first person. In follow, shafts and a rim wrap the horse, with haze in front of the lens. Contrast drops so it stays dreamy.
 - Saturday morning fairness pass (handoff in `docs/handoff-gemini-2026-11-28.md`, report in `docs/recaps/handoff-gemini-report.md`): only 6 story/strange NPCs auto-grab you, the rest are Space-to-talk with a glass prompt (#158, #167); 40 s patrol grace and guards start far from spawn (#164); softer start with 45 s trip grace (#161); hoof bags are Space-only, milder (+12 trip, 6 s) and half as many (#165); auto-talk NPCs spaced at least 18 m apart (#166).
 - White spots in dark scenes fixed at the root: clamp after the hue wobble (#172). Game feel pass: next-goal mission line, memory sting, found reactions, early rumour, fairer catches (#173). Darkroom labyrinth behind the toilets (#169).
-- Open PRs awaiting review: #150 captions, #155 per-zone audio grooves, #157 horsey renaming.
+- Saturday noon pass (12:00-12:40): Space prompt bug fixes (#176 spawn pileup, #177 world Grab prompt, #178 prompt lifecycle/blackout fade), captions in Fragment Mono (#150), per-zone audio mix and per-floor grooves (#155), horsey/berliner naming everywhere incl. GLB metadata (#157), OG/Twitter share meta hardened (#180, #188), vertical poster fallback on phones and any screen 768 px or narrower (#182, #184), memories panel with live count, one next hint and found marks (#186 on `main`, #190 on `dev`). Pitch deck, speaker notes and share images are in the repo under `docs/pitch/` (#191). All merged, all CI green, zero open PRs.
 
 Deadline: Saturday 28 Nov, 16:00. Each phase ends with a gate.
 
-**Play it:** https://escape-berghain.vercel.app (production, from `main`). Every PR also gets a Vercel preview (behind Vercel login for now, #36).
+**Play it:** https://escapeberghain.dev (production, from `main`; also mirrored at https://escape-berghain.vercel.app and GitHub Pages). Every PR also gets a Vercel preview (behind Vercel login for now, #36).
 
 Every gate ends with a recap: `docs/recaps/phase-<n>.md` (see `docs/recaps/TEMPLATE.md`). The recap covers the gate verdict, evals (build, preview walkthrough, "done when" tests, playtest notes) and bug testing (bug bash, console errors, issues filed). Dee writes it in chat and in the file.
 
 ## Where we are
 
-The whole game is playable start to finish in the browser, live at `main` = `38ac767`. You wake up as a horse on the dance floor, find five memories, slip past security through a packed crowd, and stagger out the back exit. Four endings, a darkroom labyrinth, story flags that change NPC lines. Generated Berghain techno. What's left: review the three open PRs, Emma's models and lighting, Robin's cold playtests, and the pitch. Nice-to-haves are listed below if there's time.
+The whole game is playable start to finish in the browser, live at `main` = `2b46382`. You wake up as a horse on the dance floor, find five memories, slip past security through a packed crowd, and stagger out the back exit. Four endings, a darkroom labyrinth, story flags that change NPC lines. Generated Berghain techno. Everything merged, no open PRs. What's left: Robin's cold playtests, Emma's models and lighting, and the pitch at 14:00. Nice-to-haves are listed below if there's time.
 
 ## Direction (decided Friday night)
 
@@ -52,13 +52,13 @@ The whole game is playable start to finish in the browser, live at `main` = `38a
 - [x] Cut list items 1 to 3 cut: extra regulars, Konami rat, mirror
 - [x] Two views (V): follow cam and the horse's own eyes. Top down removed (#87)
 
-## Phase 4 status (Saturday 11:45): polish and fix is landed
+## Phase 4 status (Saturday 12:45): polish and fix is landed, all PRs merged
 
 | Who | What | Status |
 |---|---|---|
 | Gemini Neon | Bug bash on `dev`, steering and blur tuning | Out of tokens; Mistral took the handoff tasks A-D (#164-#167). Steering ramp and 45 s trip grace landed in #161 |
 | SuperGrok | Patrol balance vs crowd cover | #161 kinder guards (6.5 m sight, 2 s torch); #164 start grace + far spawn |
-| Mistral | Captions (#69), audio per zone (#70) | PRs open: #150, #155 |
+| Mistral | Captions (#69), audio per zone (#70) | Merged: #150, #155 |
 | Claude (Opus) | White spots root cause, game feel | Merged: #172, #173 (issue #162) |
 | Emma | Models in the build (#7, #8), lighting in `src/look/` (#5) | Still open |
 | Robin | Story drafts in `content/` (#22), 3 cold playtests, pitch (#23) | Still open |
@@ -70,7 +70,7 @@ The whole game is playable start to finish in the browser, live at `main` = `38a
 - [x] Only `fix/` branches after 12:00 (in force from 12:00 today)
 - [ ] 3 cold playtests by outsiders, run by Robin
 
-**Gate 4 (14:00):** production deploy from `main` — done at 11:45, `main` `38ac767` is READY on Vercel. Still open: live URL played on a laptop that isn't ours, and the 60 second backup video recorded.
+**Gate 4 (14:00):** production deploy from `main` — done repeatedly, latest `main` `2b46382` live on escapeberghain.dev (verified serving the new bundle at 12:33). Still open: live URL played on a laptop that isn't ours, and the 60 second backup video recorded.
 
 ## Next: nice-to-haves
 
