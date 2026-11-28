@@ -164,7 +164,8 @@ export const css = /* css */ `
 
 /* Title and intro: pitch black. Vertical rhythm: title, 48, goal, 48, actions, 24, sub. */
 .eb-cover { position: absolute; inset: 0; z-index: 10; background: #000; display: grid; place-items: center; text-align: center;
-  padding: var(--s-5) var(--s-4); pointer-events: auto; transition: opacity 0.9s; }
+  /* Extra top padding sits the centered block a touch lower than dead centre (shifts down by --s-6). */
+  padding: calc(var(--s-5) + var(--s-8)) var(--s-4) var(--s-5); pointer-events: auto; transition: opacity 0.9s; }
 .eb-cover.off { opacity: 0; pointer-events: none; }
 .eb-title { font: 400 var(--t-display)/var(--lh-tight) var(--mono); letter-spacing: 0.05em; }
 .eb-panel { min-height: 7.5em; margin-top: var(--s-7); display: grid; place-items: center; }
