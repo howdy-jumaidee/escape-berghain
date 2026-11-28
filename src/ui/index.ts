@@ -53,15 +53,15 @@ export function startUi(): void {
     // In a face to face conversation the line stays until you press Space.
     if (!focused) talkTimer = window.setTimeout(hideTalk, 4500);
   });
-  bus.on('npc:silent', hideTalk);
+  bus.on('npc:silent', () => { root.classList.remove('talking'); hideTalk(); });
 
   // Face to face: letterbox bars slide in, the dialogue moves to the centre.
   const barTop = el('div', 'eb-bar-top', root);
   const barBottom = el('div', 'eb-bar-bottom', root);
   bus.on('npc:focus', () => {
     focused = true;
-    root.classList.add('talking');
     clearTimeout(talkTimer);
+    root.classList.add('talking');
     for (const e of [barTop, barBottom, talk]) e.classList.add('focus');
   });
   bus.on('npc:unfocus', () => {

@@ -41,6 +41,9 @@ const COLOURS: Partial<Record<NpcId, number>> = {
   glitter_boy: 0xd8d0ff,
   darkroom_keeper: 0x050507,
   lighting_tech: 0x2a2a2a,
+  toilet_junkie: 0x4a4a3a,
+  toilet_dealer: 0x5a3a2a,
+  pup: 0x141414,
 };
 /** How many figures stand at one NPC spot. */
 const GROUP: Partial<Record<NpcId, number>> = { herd: 3, tourists: 2, leather_choir: 5 };
@@ -108,12 +111,16 @@ const STYLES: Partial<Record<NpcId, DanceStyle>> = {
   glitter_boy: { hop: 0.28, step: 0.18, twist: 0.8, wander: 1.8 },
   darkroom_keeper: { hop: 0, step: 0, twist: 0.05, wander: 0 },
   lighting_tech: { hop: 0.02, step: 0, twist: 0.4, wander: 0.3 },
+  toilet_junkie: { hop: 0.02, step: 0.04, twist: 0.15, wander: 0.4 },
+  toilet_dealer: { hop: 0, step: 0, twist: 0.05, wander: 0 },
+  pup: { hop: 0.06, step: 0.1, twist: 0.5, wander: 0.8 },
 };
 const WANDER_SPEED = 0.6;
 /** Special NPCs: walk into them and you're pulled into a face to face conversation. */
 const FOCUS = new Set<NpcId>([
   'friday_guy', 'patrick', 'philosopher', 'tourists', 'ice_cream_horse', 'bouncer', 'cleaner', 'leather_choir', 'riddle_horse', 'coat_check',
   'leather_daddy', 'bartender_bear', 'drag_oracle', 'rubber_knight', 'old_raver', 'glitter_boy', 'darkroom_keeper', 'lighting_tech',
+  'toilet_junkie', 'toilet_dealer', 'pup',
 ]);
 /** Figures that aren't the standard 1.8 m box. */
 const SIZES: Partial<Record<NpcId, { x: number; y: number; z: number }>> = {
@@ -198,6 +205,7 @@ export class Npcs {
   private guidePulse = 0;
   private guideVisible = false;
   private barkAt = 0;
+  private animalBarkAt = -1e9;
   private choirNear = false;
   private mopTimer = MOP_EVERY;
   private cleanerPhase = 0;
@@ -246,6 +254,7 @@ export class Npcs {
 
     bus.on('player:moved', ({ x, z }) => {
       this.player.set(x, 0, z);
+      this.animalBark(x, z);
       if (this.talking && (state.floor !== 0 || this.talking.pos.distanceTo(this.player) > WALK_AWAY)) {
         this.talking = null;
         bus.emit('npc:silent', {});
@@ -344,6 +353,7 @@ export class Npcs {
       this.guideVisible = true;
       this.guide.visible = true;
       this.guide.position.copy(this.player).add(new THREE.Vector3(-1.2, 0, -0.8));
+      this.crownAroundPlayer();
     });
     bus.on('ui:say', ({ key }) => {
       if (key.startsWith('story:spirit_guide') || key.startsWith('story:intro') || key.startsWith('story:finale')) this.guidePulse = 1;
@@ -710,6 +720,25 @@ export class Npcs {
         say(`lines.${npc.line++ % lines.length}`);
       }
     }
+  }
+
+  /** Start ritual: the eight nearest regulars form a crown around the horse and stay there. */
+  private crownAroundPlayer(): void {
+    const ring = [...this.npcs]
+      .sort((a, b) => a.pos.distanceTo(this.player) - b.pos.distanceTo(this.player))
+      .slice(0, 8);
+    ring.forEach((npc, k) => {
+      const a = (k / ring.length) * Math.PI * 2 + 0.4;
+      const hx = this.player.x + Math.cos(a) * 2.6;
+      const hz = this.player.z + Math.sin(a) * 2.6;
+      npc.holders.forEach((h, i) => {
+        const off = (i - (npc.holders.length - 1) / 2) * 1.2;
+        h.position.set(hx + off, 0, hz);
+        npc.homes[i].set(hx + off, 0, hz);
+        npc.targets[i].copy(npc.homes[i]);
+        npc.retarget[i] = 8 + k;
+      });
+    });
   }
 
   /** The leather choir: stand with them and the music opens up. */
@@ -1112,6 +1141,16 @@ export class Npcs {
     if (state.floor !== 0) return false;
     const herd = this.npcs.find((n) => n.id === 'herd');
     return !!herd && Math.abs(z - herd.pos.z) < 1.8 && Math.abs(x - herd.pos.x) < 6;
+  }
+
+  /** An animal guest nearby says something crazy, at most every 7 s. */
+  private animalBark(x: number, z: number): void {
+    if (!state.started || state.ending || this.convo) return;
+    const now = performance.now();
+    if (now - this.animalBarkAt < 7000) return;
+    if (this.crowd.animalNear(x, z, 3) === 0) return;
+    this.animalBarkAt = now;
+    bus.emit('ui:say', { key: `story:animals.lines.${Math.floor(Math.random() * 6)}`, seconds: 3 });
   }
 
   private herdHint(): void {

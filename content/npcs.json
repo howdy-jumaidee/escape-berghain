@@ -595,5 +595,38 @@
         "reply_used": "Horse mode is still on. You're welcome."
       }
     ]
+  },
+  "toilet_junkie": {
+    "name": "Toilet regular",
+    "lines": [
+      "Sink's clogged again. Classic Berghain.",
+      "Don't flush twice. The pipes remember."
+    ],
+    "talk": [
+      "The darkroom behind the cubicles? Don't go in. ...Or do. Your trip lights the way.",
+      "I've seen horses in here before. You're the tallest."
+    ]
+  },
+  "toilet_dealer": {
+    "name": "Guy by the sinks",
+    "lines": [
+      "I don't sell. I trade. Stories for stories.",
+      "Small squares, big smiles. They're everywhere if you look."
+    ],
+    "talk": [
+      "You look hooved already. One for the road?",
+      "The back exit is past the wet floor. The wet floor is past the truth."
+    ]
+  },
+  "pup": {
+    "name": "Pup",
+    "lines": [
+      "Woof.",
+      "...I'm a horse too, technically."
+    ],
+    "talk": [
+      "The leather choir upstairs is my pack. Say hi.",
+      "Rubber, leather, sweat. Berlin, baby."
+    ]
   }
 }

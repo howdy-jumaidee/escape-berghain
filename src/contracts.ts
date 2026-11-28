@@ -30,7 +30,10 @@ export type NpcId =
   | 'glitter_boy'
   | 'darkroom_keeper'
   | 'lighting_tech'
-  | 'calm_horse';
+  | 'calm_horse'  | 'toilet_junkie'
+  | 'toilet_dealer'
+  | 'pup'
+;
 
 /** Things you can pick up or consume that aren't fragments. */
 export type ItemId = 'mate' | 'ice_cream' | 'bag';
