@@ -146,7 +146,9 @@ export const css = /* css */ `
 .eb-talk.focus { left: 0; right: 0; bottom: 0; transform: none; width: auto; max-width: none; z-index: 1; text-align: center;
   padding: var(--s-8) max(var(--s-4), calc(50vw - 360px)) var(--s-5); text-shadow: none;
   background: linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.86) 55%, rgba(0,0,0,0) 100%); }
-/* While talking, ambient captions move to the top so they never sit on the dialogue or the answers. */
+/* While a dialogue line is up, ambient captions move to the top so they never sit on the talk box. */
+.eb-ui.talk-on .eb-say { bottom: auto; top: var(--s-4); }
+/* In a face to face conversation they sit just under the letterbox bar. While talking, they move to the top. */
 .eb-ui.talking .eb-say { bottom: auto; top: 12vh; }
 .eb-talk.focus b { margin-bottom: var(--s-3); }
 .eb-talk.focus p { max-width: var(--measure); margin: 0 auto; font-size: var(--t-lg); line-height: var(--lh-body); text-wrap: balance; }

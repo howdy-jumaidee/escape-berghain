@@ -21,10 +21,13 @@ export function startUi(): void {
   const say = el('div', 'eb-say', root);
   let sayTimer = 0;
   bus.on('ui:say', ({ key, seconds = 3 }) => {
-    say.textContent = t(key);
+    const text = t(key);
+    say.textContent = text;
     say.classList.add('on');
     clearTimeout(sayTimer);
-    sayTimer = window.setTimeout(() => say.classList.remove('on'), seconds * 1000);
+    // Long captions need long enough to read at a glance (~15 chars/s), capped so nothing lingers.
+    const secs = Math.min(9, Math.max(seconds, 2 + text.length / 15));
+    sayTimer = window.setTimeout(() => say.classList.remove('on'), secs * 1000);
   });
 
   // Dialogue.
@@ -38,6 +41,9 @@ export function startUi(): void {
   const hideTalk = () => {
     if (!riddleOpen && !choiceOpen) talk.classList.remove('on');
   };
+  // Whenever a dialogue line is on screen, captions move to the top so the two never overlap.
+  new MutationObserver(() => root.classList.toggle('talk-on', talk.classList.contains('on')))
+    .observe(talk, { attributes: true, attributeFilter: ['class'] });
   const talkHint = el('div', 'eb-talk-hint', talk);
   talkHint.textContent = t('story:talk_hint');
   const chooseHint = el('div', 'eb-choose-hint', talk);
